@@ -1,0 +1,25 @@
+<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="medflow_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#004B93" /> <stop offset="100%" stop-color="#00A859" /> </linearGradient>
+  </defs>
+
+  <path d="M180 100H320V180H400V320H320V400H180V320H100V180H180V100Z" 
+        fill="white" stroke="url(#medflow_gradient)" stroke-width="12" stroke-linejoin="round"/>
+
+  <path d="M60 250H140L170 150L210 350L250 210L280 280H350" 
+        stroke="#004B93" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g stroke="url(#medflow_gradient)" stroke-width="8" stroke-linecap="round">
+    <path d="M220 220C230 200 270 200 280 220" />
+    <path d="M205 240C220 180 280 180 295 240" />
+    <path d="M235 250V270" />
+    <path d="M250 240V280" />
+    <path d="M265 250V270" />
+  </g>
+
+  <path d="M150 380C200 450 400 420 420 300" 
+        stroke="#00A859" stroke-width="12" stroke-linecap="round" fill="none" />
+  <path d="M400 320L420 295L445 320" 
+        stroke="#00A859" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
