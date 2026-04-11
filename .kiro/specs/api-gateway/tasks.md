@@ -16,13 +16,13 @@ This document breaks down the API Gateway implementation into testable tasks fol
 **Description**: Set up the basic Spring Boot project with all necessary dependencies.
 
 **Sub-tasks:**
-- [ ] 1.1 Create `pom.xml` with Spring Boot 3.2.4 and Spring Cloud 2023.0.1
-- [ ] 1.2 Add dependencies: Spring Cloud Gateway, Eureka Client, JJWT, Actuator
-- [ ] 1.3 Create package structure: `com.medflow.gateway`
-- [ ] 1.4 Create `GatewayApplication.java` main class with `@EnableDiscoveryClient`
-- [ ] 1.5 Create `application.yml` with basic configuration
-- [ ] 1.6 Create `application-docker.yml` for Docker profile
-- [ ] 1.7 Verify project builds: `mvn clean compile`
+- [x] 1.1 Create `pom.xml` with Spring Boot 3.2.4 and Spring Cloud 2023.0.1
+- [x] 1.2 Add dependencies: Spring Cloud Gateway, Eureka Client, JJWT, Actuator
+- [x] 1.3 Create package structure: `com.medflow.gateway`
+- [x] 1.4 Create `GatewayApplication.java` main class with `@EnableDiscoveryClient`
+- [x] 1.5 Create `application.yml` with basic configuration
+- [x] 1.6 Create `application-docker.yml` for Docker profile
+- [x] 1.7 Verify project builds: `mvn clean compile`
 
 **Acceptance Criteria:**
 - Maven build succeeds

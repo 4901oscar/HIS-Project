@@ -1,0 +1,46 @@
+jwt:
+  secret: test-secret-key-for-jwt-validation-must-be-at-least-256-bits-long
+
+spring:
+  application:
+    name: api-gateway-test
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: patient-service
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/patients/**
+        - id: clinical-service
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/clinical/**
+        - id: lab-service
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/lab/**
+        - id: pharmacy-service
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/pharmacy/**
+        - id: billing-service
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/billing/**
+        - id: auth-service
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/auth/**
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+logging:
+  level:
+    com.medflow.gateway: DEBUG

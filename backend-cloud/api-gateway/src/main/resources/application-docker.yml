@@ -1,0 +1,32 @@
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+  instance:
+    prefer-ip-address: false
+    hostname: api-gateway
+
+jwt:
+  secret: ${JWT_SECRET}
+
+logging:
+  level:
+    com.medflow.gateway: INFO
+    org.springframework.cloud.gateway: INFO
