@@ -31,9 +31,13 @@
 ## ⏳ En Progreso
 
 ### API Gateway
-- Estado: Pendiente
+- Estado: **Spec Completo - Listo para Implementación**
 - Puerto: 8080
-- Siguiente paso inmediato
+- Spec: `.kiro/specs/api-gateway/`
+  - ✅ requirements.md (5 user stories, NFRs, business rules)
+  - ✅ design.md (7 components, architecture, security)
+  - ✅ tasks.md (11 phases, TDD approach, ~10 hours)
+- Siguiente paso: Comenzar implementación siguiendo tasks.md
 
 ## 📋 Arquitectura Actual
 
@@ -77,7 +81,8 @@ medflow-his/
 
 ### Fase 1: Infraestructura (En Progreso)
 - [x] Discovery Server (Eureka) ✅
-- [ ] API Gateway ⏳ **← SIGUIENTE**
+- [x] API Gateway Spec ✅ **← SPEC COMPLETO**
+- [ ] API Gateway Implementation ⏳ **← SIGUIENTE**
 
 ### Fase 2: Servicios Core
 - [ ] Auth Service (JWT, RBAC)
@@ -135,11 +140,11 @@ TOTAL:               [██░░░░░░░░] 12.5% (1/8)
 ## 📝 Commits Recientes
 
 ```
+8ec78b6 - docs: complete API Gateway spec with requirements, design, and TDD tasks
 c6ed0b7 - docs(architecture): implement DDD architecture with 6 microservices
 a9cdf65 - docs(eureka): add comprehensive visual guides
 996f3ff - feat(eureka): implement Eureka Server for service discovery
 f8072af - chore: restructure project to monorepo with microservices
-a6cb91f - docs: add git flow workflow documentation
 ```
 
 ## 🎓 Conceptos Implementados
@@ -185,19 +190,37 @@ a6cb91f - docs: add git flow workflow documentation
 
 ## 🎯 Próximo Paso Inmediato
 
-### Implementar API Gateway
+### Implementar API Gateway (Siguiendo el Spec)
 
-**¿Por qué es el siguiente?**
-- Es el punto de entrada único para el frontend
-- Necesita Eureka para descubrir servicios
-- Todos los demás servicios dependen de él
-- Maneja autenticación JWT (validación)
+**Estado del Spec:**
+- ✅ Requirements completo (5 user stories, NFRs, business rules)
+- ✅ Design completo (7 components, architecture diagrams)
+- ✅ Tasks completo (11 phases, TDD approach)
+
+**Metodología:**
+- Seguir **Spec-Driven Design** (SDD)
+- Aplicar **Test-Driven Development** (TDD)
+- Ciclo Red-Green-Refactor para cada componente
+
+**Fases de Implementación (tasks.md):**
+1. Project Setup (30 min)
+2. JWT Validation - TDD (2 hours)
+3. Route Configuration - TDD (1 hour)
+4. Rate Limiting - TDD (2 hours)
+5. CORS Configuration (45 min)
+6. Error Handling (1 hour)
+7. Integration Testing (1.5 hours)
+8. Docker & Deployment (1 hour)
+9. Documentation (1 hour)
+10. Final Verification (1 hour)
+
+**Tiempo estimado total:** ~10 hours
 
 **¿Qué hará?**
 1. Recibir peticiones del frontend React
 2. Validar tokens JWT
 3. Enrutar a microservicios usando Eureka
-4. Implementar rate limiting
+4. Implementar rate limiting (100 req/min)
 5. Manejar CORS
 
 **Rutas que configuraremos:**
@@ -208,6 +231,17 @@ a6cb91f - docs: add git flow workflow documentation
 /api/lab/**         → lab-service:8084
 /api/pharmacy/**    → pharmacy-service:8085
 /api/billing/**     → billing-service:8086
+```
+
+**Comando para comenzar:**
+```bash
+# Leer el spec completo
+cat .kiro/specs/api-gateway/requirements.md
+cat .kiro/specs/api-gateway/design.md
+cat .kiro/specs/api-gateway/tasks.md
+
+# Comenzar con Phase 1: Project Setup
+# Seguir tasks.md paso a paso
 ```
 
 ## 💡 Decisiones de Arquitectura
