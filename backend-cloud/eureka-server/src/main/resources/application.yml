@@ -1,0 +1,58 @@
+# ============================================
+# Eureka Server Configuration
+# ============================================
+
+spring:
+  application:
+    name: eureka-server
+
+server:
+  port: 8761
+
+# ============================================
+# Eureka Server Settings
+# ============================================
+eureka:
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
+  
+  client:
+    # No registrarse a sí mismo (es el servidor)
+    register-with-eureka: false
+    # No buscar otros servidores Eureka (modo standalone)
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  
+  server:
+    # Tiempo de espera antes de eliminar un servicio inactivo
+    eviction-interval-timer-in-ms: 15000
+    # Deshabilitar auto-preservación en desarrollo
+    enable-self-preservation: false
+    # Umbral de renovación
+    renewal-percent-threshold: 0.85
+
+# ============================================
+# Actuator Configuration (Health Checks)
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ============================================
+# Logging Configuration
+# ============================================
+logging:
+  level:
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
