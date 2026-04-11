@@ -1,35 +1,76 @@
 # Backend Services - Microservicios de Negocio
 
-Esta carpeta contiene los microservicios de negocio de MedFlow HIS.
+Esta carpeta contiene los microservicios de negocio de MedFlow HIS basados en **Domain-Driven Design (DDD)**.
 
-## Servicios
+## 🏥 Servicios (6 Microservicios)
 
 ### 1. Auth Service (Puerto 8081)
-- **Propósito**: Autenticación y autorización
+- **Dominio**: Autenticación y Autorización
+- **Base de Datos**: `medflow_auth_db`
 - **Responsabilidades**:
   - Login de usuarios (empleados)
   - Gestión de tokens JWT
-  - Validación de permisos por rol
+  - Validación de permisos por rol (RBAC)
   - Gestión de sesiones
+  - Refresh tokens
 
 ### 2. Patient Service (Puerto 8082)
-- **Propósito**: Gestión de pacientes
+- **Dominio**: Gestión de Pacientes
+- **Base de Datos**: `medflow_patient_db`
 - **Responsabilidades**:
-  - Registro de pacientes
+  - Registro de pacientes (admisión)
   - Actualización de datos personales
-  - Historial de pacientes
+  - Almacenamiento de hash biométrico (huella)
+  - Generación de QR de identidad
+  - Historial de visitas
   - Búsqueda de pacientes
 
 ### 3. Clinical Service (Puerto 8083)
-- **Propósito**: Gestión clínica
+- **Dominio**: Gestión Clínica (Motor Médico)
+- **Base de Datos**: `medflow_clinical_db`
 - **Responsabilidades**:
-  - Citas médicas
+  - Triaje Manchester (clasificación de urgencia)
+  - Citas médicas y cálculo de slots
+  - Registro de signos vitales
   - Consultas médicas
-  - Signos vitales
-  - Recetas médicas
+  - Prescripción de recetas
   - Órdenes de laboratorio
-  - Dispensación de farmacia
-  - Facturación
+  - Historial clínico
+
+### 4. Lab Service (Puerto 8084)
+- **Dominio**: Laboratorio Clínico
+- **Base de Datos**: `medflow_lab_db`
+- **Responsabilidades**:
+  - Recepción de órdenes de laboratorio
+  - Trazabilidad de muestras
+  - Generación de códigos de barras
+  - Registro de resultados
+  - Almacenamiento de PDFs de exámenes
+  - Notificación de resultados listos
+
+### 5. Pharmacy Service (Puerto 8085)
+- **Dominio**: Farmacia
+- **Base de Datos**: `medflow_pharmacy_db`
+- **Responsabilidades**:
+  - Control de inventario de medicamentos
+  - Recepción de recetas médicas
+  - Validación de recetas pagadas
+  - Dispensación de medicamentos
+  - Registro de entrega física
+  - Alertas de stock bajo
+  - Gestión de lotes y vencimientos
+
+### 6. Billing Service (Puerto 8086)
+- **Dominio**: Facturación y Pagos
+- **Base de Datos**: `medflow_billing_db`
+- **Responsabilidades**:
+  - Gestión de cuenta corriente del paciente
+  - Generación de cargos (consultas, exámenes, medicamentos)
+  - Integración de métodos de pago
+  - Emisión de facturas
+  - Integración con SAT (facturación electrónica)
+  - Reportes financieros
+  - Control de pagos parciales
 
 ## Arquitectura
 

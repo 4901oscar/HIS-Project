@@ -66,7 +66,7 @@ services:
       retries: 5
 
   # ============================================
-  # Microservices
+  # Microservices - Business Domain
   # ============================================
 
   auth-service:
@@ -79,7 +79,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_auth_db
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
     depends_on:
@@ -105,7 +105,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_patient_db
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
     depends_on:
@@ -131,7 +131,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_clinical_db
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
     depends_on:
@@ -143,6 +143,84 @@ services:
       - medflow-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  lab-service:
+    build:
+      context: ./backend-services/lab-service
+      dockerfile: Dockerfile
+    container_name: medflow-lab-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_lab_db
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pharmacy-service:
+    build:
+      context: ./backend-services/pharmacy-service
+      dockerfile: Dockerfile
+    container_name: medflow-pharmacy-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_pharmacy_db
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  billing-service:
+    build:
+      context: ./backend-services/billing-service
+      dockerfile: Dockerfile
+    container_name: medflow-billing-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_billing_db
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
