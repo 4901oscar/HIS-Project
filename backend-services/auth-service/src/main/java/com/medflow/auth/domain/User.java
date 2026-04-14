@@ -1,0 +1,76 @@
+package com.medflow.auth.domain;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Entity
+@Table(name = "users", schema = "auth_schema")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class User {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    
+    @Column(unique = true, nullable = false, length = 50)
+    private String username;
+    
+    @Column(nullable = false, length = 255)
+    private String password;
+    
+    @Column(unique = true, nullable = false, length = 100)
+    private String email;
+    
+    @Column(name = "full_name", length = 200)
+    private String fullName;
+    
+    @Column(nullable = false)
+    private boolean active = true;
+    
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        schema = "auth_schema",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+    
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * Helper method to get roles as comma-separated string
+     * Example: "DOCTOR,ADMIN"
+     */
+    public String getRolesAsString() {
+        return roles.stream()
+            .map(role -> role.getName().name())
+            .collect(Collectors.joining(","));
+    }
+}

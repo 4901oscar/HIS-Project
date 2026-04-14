@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS auth_schema\;SET SCHEMA auth_schema
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        default_schema: auth_schema
+        dialect: org.hibernate.dialect.H2Dialect
+    show-sql: true
+    defer-datasource-initialization: true
+  
+  sql:
+    init:
+      mode: never  # Let tests manage their own data
+
+  h2:
+    console:
+      enabled: false
+
+jwt:
+  secret: test-secret-key-for-testing-purposes-only-256-bits
+  expiration: 3600000 # 1 hour for tests
+
+logging:
+  level:
+    com.medflow.auth: DEBUG
+    org.hibernate.SQL: DEBUG
