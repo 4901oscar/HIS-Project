@@ -70,14 +70,16 @@ El API Gateway es el **punto de entrada único** para todas las peticiones del f
 ### FR1: Enrutamiento de Peticiones
 El gateway DEBE enrutar peticiones basándose en el path:
 
-| Path | Servicio Destino | Puerto |
-|------|------------------|--------|
-| /api/auth/** | auth-service | 8081 |
-| /api/patients/** | patient-service | 8082 |
-| /api/clinical/** | clinical-service | 8083 |
-| /api/lab/** | lab-service | 8084 |
-| /api/pharmacy/** | pharmacy-service | 8085 |
-| /api/billing/** | billing-service | 8086 |
+| Path | Servicio Destino | Puerto | Arquitectura | Base de Datos |
+|------|------------------|--------|--------------|---------------|
+| /api/auth/** | auth-service | 8081 | MVC | auth_schema |
+| /api/patients/** | patient-service | 8082 | MVC | patient_schema |
+| /api/clinical/** | clinical-service | 8083 | **Hexagonal** | clinical_schema |
+| /api/lab/** | lab-service | 8084 | MVC | lab_schema |
+| /api/pharmacy/** | pharmacy-service | 8085 | MVC | pharmacy_schema |
+| /api/billing/** | billing-service | 8086 | MVC | billing_schema |
+
+**Nota**: Clinical Service usa Arquitectura Hexagonal debido a su lógica de negocio pesada (Triaje Manchester, cálculo de slots con Redis).
 
 ### FR2: Validación JWT
 El gateway DEBE:
@@ -191,10 +193,15 @@ El gateway DEBE propagar estos headers al servicio destino:
 ### A2: JWT
 - Todos los servicios usan el mismo JWT secret
 - JWT contiene claims: `userId`, `roles`, `exp`
+- JWT es generado por auth-service
+- JWT es stateless (almacenado en localStorage del frontend)
 
 ### A3: Servicios
 - Todos los servicios se registran en Eureka con nombres correctos
 - Todos los servicios exponen `/actuator/health`
+- Clinical Service usa Redis para cálculo de slots de citas
+- Base de datos: PostgreSQL con Schema-per-Service (auth_schema, patient_schema, clinical_schema, lab_schema, pharmacy_schema, billing_schema)
+- **Regla estricta**: CERO JOINs entre esquemas - comunicación vía APIs HTTP
 
 ## 8. Dependencies
 
@@ -208,10 +215,16 @@ El gateway DEBE propagar estos headers al servicio destino:
 - **Estado**: ⏳ Pendiente
 - **Necesario para**: Probar validación JWT end-to-end
 
-### D3: Redis (opcional fase 1)
+### D3: Redis
 - **Tipo**: Cache
 - **Estado**: ⏳ Pendiente
-- **Necesario para**: Rate limiting distribuido
+- **Necesario para**: Clinical Service - Cálculo de slots de citas en tiempo real
+
+### D4: PostgreSQL
+- **Tipo**: Base de Datos
+- **Estado**: ⏳ Pendiente
+- **Estrategia**: Monolito Lógico (Schema-per-Service)
+- **Esquemas**: auth_schema, patient_schema, clinical_schema, lab_schema, pharmacy_schema, billing_schema
 
 ## 9. Acceptance Criteria (Overall)
 
@@ -252,11 +265,14 @@ El gateway DEBE propagar estos headers al servicio destino:
 - ❌ WebSocket support - Solo HTTP
 - ❌ OAuth2 integration - Solo JWT
 - ❌ API documentation UI (Swagger) - Cada servicio lo tiene
+- ❌ Autenticación Biométrica - Descartada del MVP
+- ❌ Integración con SAT (Facturación Electrónica FEL) - Descartada del MVP
 
 ### Razones:
 - Mantener el gateway simple y enfocado
 - Agregar complejidad solo cuando sea necesario
 - Circuit Breaker se agregará cuando tengamos problemas de resiliencia
+- Autenticación Biométrica y SAT descartadas para mantener alcance del MVP manejable
 
 ## 11. Success Metrics
 

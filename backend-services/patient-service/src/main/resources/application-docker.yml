@@ -1,0 +1,50 @@
+# ============================================
+# Docker Environment Configuration
+# ============================================
+# This configuration overrides application.yml settings when running in Docker
+
+spring:
+  # ============================================
+  # PostgreSQL Database Configuration (Docker)
+  # ============================================
+  datasource:
+    url: jdbc:postgresql://postgres:5432/medflow_patient_db
+    username: ${DB_USERNAME:medflow}
+    password: ${DB_PASSWORD:medflow123}
+  
+  # ============================================
+  # JavaMail SMTP Configuration (Docker)
+  # ============================================
+  mail:
+    host: ${MAIL_HOST:mailhog}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+            required: false
+
+# ============================================
+# Eureka Client Configuration (Docker)
+# ============================================
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    hostname: patient-service
+
+# ============================================
+# Logging Configuration (Docker)
+# ============================================
+logging:
+  level:
+    com.medflow.patient: INFO
+    org.springframework.web: INFO
+    org.springframework.mail: INFO
+    org.hibernate.SQL: INFO

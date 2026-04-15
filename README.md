@@ -1,43 +1,52 @@
-# MedFlow HIS - Hospital Information System
+# 🏥 MedFlow HIS - Hospital Information System
 
 Sistema de Información Hospitalaria (HIS) basado en microservicios con arquitectura Spring Cloud y frontend React.
+
+**MVP para Graduación** - Sistema integral que cubre todo el flujo de atención médica hospitalaria.
 
 ## 🏗️ Arquitectura
 
 ```
 medflow-his/
-├── frontend-medflow/         # React + Vite + TypeScript
+├── frontend-medflow/         # React 18 + Vite + Tailwind CSS
 ├── backend-cloud/            # Spring Cloud Infrastructure
-│   ├── eureka-server/        # Service Discovery (8761)
-│   └── api-gateway/          # API Gateway (8080)
+│   ├── eureka-server/        # Service Discovery (8761) ✅
+│   └── api-gateway/          # API Gateway (8080) ✅
 ├── backend-services/         # Microservicios de Negocio
-│   ├── auth-service/         # Autenticación (8081)
+│   ├── auth-service/         # Autenticación JWT + RBAC (8081)
 │   ├── patient-service/      # Gestión de Pacientes (8082)
-│   └── clinical-service/     # Gestión Clínica (8083)
-├── Documentacion/            # Casos de uso y diagramas
+│   ├── clinical-service/     # Motor Médico - Triaje Manchester (8083)
+│   ├── lab-service/          # Laboratorio Clínico (8084)
+│   ├── pharmacy-service/     # Farmacia e Inventario (8085)
+│   └── billing-service/      # Facturación Interna (8086)
 ├── docker-compose.yml        # Orquestación de servicios
-└── .kiro/                    # Configuración de IA
+└── .kiro/                    # Configuración de IA (Kiro)
 ```
 
-## 🚀 Tecnologías
+## 🚀 Stack Tecnológico
 
 ### Frontend
-- **React 18** con TypeScript
+- **React 18** (sin TypeScript)
 - **Vite** como build tool
-- **TailwindCSS** para estilos
+- **Tailwind CSS** para estilos
 - **React Router** para navegación
-- **Axios** para peticiones HTTP
+- **Axios** para peticiones HTTP (con Service Abstraction + Mocks)
 
 ### Backend
+- **Java 17**
 - **Spring Boot 3.x**
 - **Spring Cloud** (Eureka, Gateway)
-- **Spring Data JPA** + Hibernate
-- **PostgreSQL 15**
-- **JWT** para autenticación
+- **PostgreSQL** (Monolito Lógico - Schema-per-Service)
+- **Redis** (Cache para slots de citas médicas)
+- **JWT** para autenticación stateless
 - **Maven** como build tool
 
+### Arquitectura de Código
+- **Hexagonal (Puertos y Adaptadores)**: Para `clinical-service` (lógica pesada)
+- **MVC (Capas)**: Para servicios CRUD simples
+
 ### DevOps
-- **Docker** y **Docker Compose**
+- **Docker Compose** (Monorepo)
 - **Git Flow** para control de versiones
 - **GitHub** como repositorio remoto
 
@@ -47,7 +56,8 @@ medflow-his/
 - **Java** 17+
 - **Maven** 3.8+
 - **Docker** y **Docker Compose**
-- **PostgreSQL** 15+ (si ejecutas sin Docker)
+- **PostgreSQL** (si ejecutas sin Docker)
+- **Redis** (para Clinical Service - slots de citas)
 - **Git**
 
 ## 🔧 Instalación y Ejecución
@@ -108,34 +118,97 @@ npm run dev
 
 ## 🌐 URLs de Acceso
 
-| Servicio | URL | Puerto |
-|----------|-----|--------|
-| Frontend | http://localhost:3000 | 3000 |
-| API Gateway | http://localhost:8080 | 8080 |
-| Eureka Dashboard | http://localhost:8761 | 8761 |
-| Auth Service | http://localhost:8081 | 8081 |
-| Patient Service | http://localhost:8082 | 8082 |
-| Clinical Service | http://localhost:8083 | 8083 |
-| PostgreSQL | localhost:5432 | 5432 |
+| Servicio | URL | Puerto | Estado |
+|----------|-----|--------|--------|
+| Frontend | http://localhost:3000 | 3000 | ⏳ |
+| API Gateway | http://localhost:8080 | 8080 | ✅ |
+| Eureka Dashboard | http://localhost:8761 | 8761 | ✅ |
+| Auth Service | http://localhost:8081 | 8081 | ⏳ |
+| Patient Service | http://localhost:8082 | 8082 | ⏳ |
+| Clinical Service | http://localhost:8083 | 8083 | ⏳ |
+| Lab Service | http://localhost:8084 | 8084 | ⏳ |
+| Pharmacy Service | http://localhost:8085 | 8085 | ⏳ |
+| Billing Service | http://localhost:8086 | 8086 | ⏳ |
+| PostgreSQL | localhost:5432 | 5432 | ⏳ |
+| Redis | localhost:6379 | 6379 | ⏳ |
 
 ## 📚 Documentación
 
+### Documentos Principales
+- **[MVP_CORE_SPECS.md](./MVP_CORE_SPECS.md)** - ⭐ Especificaciones Core del MVP (LEER PRIMERO)
 - [Git Flow Workflow](./GITFLOW.md)
+- [Arquitectura DDD](./ARCHITECTURE_DDD.md)
+- [Estado Actual](./CURRENT_STATUS.md)
+- [Contexto del Proyecto](./PROJECT_CONTEXT.md)
+
+### Documentación por Servicio
 - [Backend Cloud](./backend-cloud/README.md)
 - [Backend Services](./backend-services/README.md)
-- [Casos de Uso](./Documentacion/casos-de-uso/)
+- [Eureka Server](./backend-cloud/eureka-server/README.md)
+- [API Gateway](./backend-cloud/api-gateway/README.md)
 
-## 🔐 Roles y Permisos
+## 🔐 Roles y Permisos (RBAC)
 
-El sistema maneja los siguientes roles:
+El sistema maneja los siguientes roles con control de acceso basado en JWT:
 
-1. **Administrador**: Gestión completa del sistema
-2. **Admisión**: Registro de pacientes y activación de citas
-3. **Enfermería**: Captura de signos vitales
-4. **Doctor**: Consultas médicas y recetas
-5. **Laboratorio**: Gestión de muestras
-6. **Farmacia**: Dispensación de medicamentos
-7. **Caja**: Facturación
+| Rol | Código | Descripción |
+|-----|--------|-------------|
+| **Administrador** | `ADMIN` | Súper Usuario - Crea cuentas y asigna roles |
+| **Admisión** | `ADMISSION` | Registra pacientes, genera QR, gestiona citas |
+| **Signos Vitales** | `VITAL_SIGNS` | Captura signos vitales en sala de espera |
+| **Doctor** | `DOCTOR` | Triaje Manchester, consultas, recetas |
+| **Laboratorio** | `LABORATORY` | Gestiona muestras y sube resultados |
+| **Farmacia** | `PHARMACY` | Gestiona inventario y despacha medicamentos |
+| **Caja** | `CASHIER` | Procesa facturación interna |
+| **Paciente** | `PATIENT` | Ve su historial, recetas, laboratorios |
+
+### Autenticación
+- **Staff**: Login con credenciales asignadas por ADMIN
+- **Pacientes**: Login con Email/DPI + contraseña temporal (generada en Admisión)
+- **Mecanismo**: JWT Stateless (almacenado en localStorage)
+
+## 🗄️ Base de Datos
+
+### Estrategia: Monolito Lógico (Schema-per-Service)
+- **Motor**: PostgreSQL (Una única instancia)
+- **Estructura**: Esquemas aislados por dominio
+- **Regla Estricta**: ❌ CERO JOINs entre esquemas
+
+```sql
+CREATE SCHEMA auth_schema;
+CREATE SCHEMA patient_schema;
+CREATE SCHEMA clinical_schema;
+CREATE SCHEMA lab_schema;
+CREATE SCHEMA pharmacy_schema;
+CREATE SCHEMA billing_schema;
+```
+
+### Comunicación entre Servicios
+- ✅ Composición de APIs (llamadas HTTP)
+- ❌ NO JOINs directos entre esquemas
+
+## 🏗️ Arquitectura de Código
+
+### Hexagonal (Puertos y Adaptadores)
+**Uso**: Microservicios con lógica de negocio pesada
+
+**Ejemplo**: `clinical-service` (Triaje Manchester)
+
+### MVC (Capas)
+**Uso**: Microservicios CRUD simples
+
+**Ejemplo**: `patient-service`, `pharmacy-service`, `auth-service`
+
+## ❌ Características Descartadas (MVP)
+
+Para mantener el alcance del MVP manejable:
+
+- ❌ **Autenticación Biométrica** (Huella dactilar eliminada)
+- ❌ **Integración con SAT** (Facturación Electrónica FEL eliminada)
+- ❌ **Notificaciones Push** en tiempo real
+- ❌ **Dashboard de Analytics** avanzado
+
+La facturación será **solo interna** del hospital.
 
 ## 🌿 Git Flow
 
@@ -148,17 +221,6 @@ Este proyecto usa Git Flow para gestión de branches:
 - `hotfix/*`: Fixes urgentes en producción
 
 Ver [GITFLOW.md](./GITFLOW.md) para más detalles.
-
-## 🧪 Testing
-
-```bash
-# Backend (cada servicio)
-mvn test
-
-# Frontend
-cd frontend-medflow
-npm run test
-```
 
 ## 📦 Build para Producción
 
@@ -177,6 +239,40 @@ npm run build
 ### Docker Images
 ```bash
 docker-compose build
+```
+
+## 🧪 Testing
+
+```bash
+# Backend (cada servicio)
+mvn test
+
+# Frontend
+cd frontend-medflow
+npm run test
+```
+
+## 🤖 Flujo de Trabajo con IA (Kiro)
+
+### Estructura .kiro/
+```
+.kiro/
+├── specs/              # Especificaciones de features (paso a paso)
+├── steering/           # Reglas y estándares del proyecto
+└── hooks/              # Validaciones automáticas
+```
+
+### Service Abstraction (Frontend)
+Los servicios de Axios apuntan al Gateway pero devuelven **Mocks** hasta que el backend esté conectado:
+
+```javascript
+const USE_MOCK = true; // Cambiar a false cuando backend esté listo
+
+export const getPatient = async (id) => {
+  if (USE_MOCK) return mockPatient;
+  const response = await axios.get(`/api/patients/${id}`);
+  return response.data;
+};
 ```
 
 ## 🤝 Contribución
