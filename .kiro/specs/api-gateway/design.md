@@ -434,14 +434,20 @@ public class RateLimitBucket {
 
 El gateway NO expone endpoints propios (excepto actuator). Solo enruta:
 
-| Frontend Path | Gateway Path | Target Service | Target Port |
-|---------------|--------------|----------------|-------------|
-| /api/auth/login | /api/auth/login | auth-service | 8081 |
-| /api/patients/123 | /api/patients/123 | patient-service | 8082 |
-| /api/clinical/appointments | /api/clinical/appointments | clinical-service | 8083 |
-| /api/lab/orders | /api/lab/orders | lab-service | 8084 |
-| /api/pharmacy/medications | /api/pharmacy/medications | pharmacy-service | 8085 |
-| /api/billing/invoices | /api/billing/invoices | billing-service | 8086 |
+| Frontend Path | Gateway Path | Target Service | Target Port | Arquitectura | Base de Datos |
+|---------------|--------------|----------------|-------------|--------------|---------------|
+| /api/auth/login | /api/auth/login | auth-service | 8081 | MVC | auth_schema |
+| /api/patients/123 | /api/patients/123 | patient-service | 8082 | MVC | patient_schema |
+| /api/clinical/appointments | /api/clinical/appointments | clinical-service | 8083 | **Hexagonal** | clinical_schema |
+| /api/lab/orders | /api/lab/orders | lab-service | 8084 | MVC | lab_schema |
+| /api/pharmacy/medications | /api/pharmacy/medications | pharmacy-service | 8085 | MVC | pharmacy_schema |
+| /api/billing/invoices | /api/billing/invoices | billing-service | 8086 | MVC | billing_schema |
+
+**Nota**: 
+- Clinical Service usa Arquitectura Hexagonal debido a su lógica de negocio pesada (Triaje Manchester, cálculo de slots con Redis)
+- Todos los demás servicios usan arquitectura MVC (Capas) para CRUD simple
+- Base de datos: PostgreSQL con Schema-per-Service (Monolito Lógico)
+- **Regla estricta**: CERO JOINs entre esquemas - comunicación vía APIs HTTP
 
 ### 4.2 Request Headers (Added by Gateway)
 

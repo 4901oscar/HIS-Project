@@ -1,6 +1,17 @@
 # 📊 MedFlow HIS - Estado Actual del Proyecto
 
-**Última actualización**: Abril 10, 2026
+**Última actualización**: Abril 13, 2026
+
+## ⭐ Documento Maestro
+
+**[MVP_CORE_SPECS.md](./MVP_CORE_SPECS.md)** - Especificaciones Core del MVP (LEER PRIMERO)
+
+Este documento contiene:
+- Stack tecnológico real
+- Arquitectura de software (Hexagonal vs MVC)
+- Estrategia de base de datos (Schema-per-Service)
+- Roles y permisos (RBAC)
+- Características descartadas del MVP
 
 ## ✅ Completado
 
@@ -14,7 +25,8 @@
 - ✅ Git Flow implementado
 
 ### 2. Documentación
-- ✅ README.md principal
+- ✅ README.md principal actualizado
+- ✅ **MVP_CORE_SPECS.md** - Documento maestro con especificaciones reales
 - ✅ GITFLOW.md
 - ✅ ARCHITECTURE_DDD.md (arquitectura completa)
 - ✅ Documentación de cada capa
@@ -26,18 +38,29 @@
   - Perfiles: local, docker, test
   - Health checks
   - Dashboard funcional
-  - Documentación completa (README, QUICKSTART, VISUAL_GUIDE)
+  - Documentación completa (README, QUICKSTART)
+
+- ✅ **API Gateway** - IMPLEMENTADO
+  - Puerto 8080
+  - JWT Validation
+  - Routing dinámico con Eureka
+  - Rate Limiting (100 req/min)
+  - CORS configurado
+  - Error handling
+  - Documentación completa
 
 ## ⏳ En Progreso
 
-### API Gateway
-- Estado: **Spec Completo - Listo para Implementación**
-- Puerto: 8080
-- Spec: `.kiro/specs/api-gateway/`
-  - ✅ requirements.md (5 user stories, NFRs, business rules)
-  - ✅ design.md (7 components, architecture, security)
-  - ✅ tasks.md (11 phases, TDD approach, ~10 hours)
-- Siguiente paso: Comenzar implementación siguiendo tasks.md
+### Auth Service
+- Estado: **Siguiente en el Roadmap**
+- Puerto: 8081
+- Base de Datos: auth_schema
+- Arquitectura: MVC (CRUD simple)
+- Responsabilidades:
+  - Gestión de credenciales
+  - Login de staff y pacientes
+  - Emisión de JWT
+  - Gestión de roles (RBAC: 8 roles)
 
 ## 📋 Arquitectura Actual
 
@@ -65,55 +88,56 @@ medflow-his/
 | Servicio | Puerto | Estado | Base de Datos |
 |----------|--------|--------|---------------|
 | Discovery Server | 8761 | ✅ IMPLEMENTADO | N/A |
-| API Gateway | 8080 | ⏳ Pendiente | N/A |
+| API Gateway | 8080 | ✅ IMPLEMENTADO | N/A |
 
 ### Negocio
-| Servicio | Puerto | Estado | Base de Datos | Dominio |
-|----------|--------|--------|---------------|---------|
-| Auth Service | 8081 | ⏳ Pendiente | medflow_auth_db | Autenticación |
-| Patient Service | 8082 | ⏳ Pendiente | medflow_patient_db | Pacientes |
-| Clinical Service | 8083 | ⏳ Pendiente | medflow_clinical_db | Clínica |
-| Lab Service | 8084 | ⏳ Pendiente | medflow_lab_db | Laboratorio |
-| Pharmacy Service | 8085 | ⏳ Pendiente | medflow_pharmacy_db | Farmacia |
-| Billing Service | 8086 | ⏳ Pendiente | medflow_billing_db | Facturación |
+| Servicio | Puerto | Estado | Base de Datos | Arquitectura | Dominio |
+|----------|--------|--------|---------------|--------------|---------|
+| Auth Service | 8081 | ⏳ Siguiente | auth_schema | MVC | Autenticación + RBAC |
+| Patient Service | 8082 | ⏳ Pendiente | patient_schema | MVC | Pacientes + QR |
+| Clinical Service | 8083 | ⏳ Pendiente | clinical_schema | **Hexagonal** | Triaje Manchester + Citas |
+| Lab Service | 8084 | ⏳ Pendiente | lab_schema | MVC | Laboratorio |
+| Pharmacy Service | 8085 | ⏳ Pendiente | pharmacy_schema | MVC | Farmacia |
+| Billing Service | 8086 | ⏳ Pendiente | billing_schema | MVC | Facturación Interna |
 
 ## 🚀 Roadmap de Implementación
 
-### Fase 1: Infraestructura (En Progreso)
+### Fase 1: Infraestructura ✅ COMPLETADA
 - [x] Discovery Server (Eureka) ✅
-- [x] API Gateway Spec ✅ **← SPEC COMPLETO**
-- [ ] API Gateway Implementation ⏳ **← SIGUIENTE**
+- [x] API Gateway ✅
 
-### Fase 2: Servicios Core
-- [ ] Auth Service (JWT, RBAC)
-- [ ] Patient Service (Admisión, QR, Biométrico)
-- [ ] Clinical Service (Triaje, Citas, Consultas)
+### Fase 2: Servicios Core (En Progreso)
+- [ ] Auth Service (JWT, RBAC) ⏳ **← SIGUIENTE**
+- [ ] Patient Service (Admisión, QR)
+- [ ] Clinical Service (Triaje Manchester, Citas con Redis)
 
 ### Fase 3: Servicios Especializados
-- [ ] Lab Service (Muestras, Resultados)
+- [ ] Lab Service (Muestras, Resultados PDF)
 - [ ] Pharmacy Service (Inventario, Dispensación)
-- [ ] Billing Service (Facturación, SAT)
+- [ ] Billing Service (Facturación Interna)
 
 ### Fase 4: Integración
-- [ ] Frontend actualizado para usar API Gateway
-- [ ] Comunicación entre servicios
+- [ ] Frontend actualizado con Service Abstraction + Mocks
+- [ ] Comunicación entre servicios (HTTP, no JOINs)
 - [ ] Testing end-to-end
 
 ### Fase 5: Deployment
 - [ ] Docker Compose completo
+- [ ] Redis para Clinical Service
+- [ ] PostgreSQL con 6 esquemas
 - [ ] CI/CD pipeline
 - [ ] Monitoreo y logs
 
 ## 📊 Progreso General
 
 ```
-Infraestructura:     [████████░░] 50% (1/2)
-Servicios Core:      [░░░░░░░░░░]  0% (0/3)
-Servicios Especial:  [░░░░░░░░░░]  0% (0/3)
-Integración:         [░░░░░░░░░░]  0%
-Deployment:          [░░░░░░░░░░]  0%
+Infraestructura:     [██████████] 100% (2/2) ✅
+Servicios Core:      [░░░░░░░░░░]   0% (0/3)
+Servicios Especial:  [░░░░░░░░░░]   0% (0/3)
+Integración:         [░░░░░░░░░░]   0%
+Deployment:          [░░░░░░░░░░]   0%
 
-TOTAL:               [██░░░░░░░░] 12.5% (1/8)
+TOTAL:               [████░░░░░░] 25% (2/8)
 ```
 
 ## 🔧 Tecnologías Implementadas
@@ -121,9 +145,17 @@ TOTAL:               [██░░░░░░░░] 12.5% (1/8)
 ### Backend
 - ✅ Spring Boot 3.2.4
 - ✅ Spring Cloud 2023.0.1
+- ✅ Spring Cloud Gateway
 - ✅ Netflix Eureka Server
 - ✅ Java 17
 - ✅ Maven
+
+### Arquitectura
+- ✅ Microservicios
+- ✅ Service Discovery
+- ✅ API Gateway con JWT Validation
+- ✅ Rate Limiting
+- ✅ CORS
 
 ### DevOps
 - ✅ Docker
@@ -131,11 +163,10 @@ TOTAL:               [██░░░░░░░░] 12.5% (1/8)
 - ✅ Git Flow
 
 ### Pendientes
-- ⏳ Spring Cloud Gateway
-- ⏳ Spring Security + JWT
+- ⏳ Spring Security + JWT (Auth Service)
 - ⏳ Spring Data JPA
-- ⏳ PostgreSQL
-- ⏳ Redis (para Clinical Service)
+- ⏳ PostgreSQL (Schema-per-Service)
+- ⏳ Redis (para Clinical Service - slots de citas)
 
 ## 📝 Commits Recientes
 
@@ -190,59 +221,35 @@ f8072af - chore: restructure project to monorepo with microservices
 
 ## 🎯 Próximo Paso Inmediato
 
-### Implementar API Gateway (Siguiendo el Spec)
+### Implementar Auth Service
 
-**Estado del Spec:**
-- ✅ Requirements completo (5 user stories, NFRs, business rules)
-- ✅ Design completo (7 components, architecture diagrams)
-- ✅ Tasks completo (11 phases, TDD approach)
+**Responsabilidades**:
+- Gestión de credenciales (staff y pacientes)
+- Login con Email/DPI + contraseña
+- Emisión de tokens JWT
+- Gestión de 8 roles (RBAC):
+  - ADMIN, ADMISSION, VITAL_SIGNS, DOCTOR
+  - LABORATORY, PHARMACY, CASHIER, PATIENT
 
-**Metodología:**
+**Arquitectura**: MVC (CRUD simple)
+
+**Base de Datos**: auth_schema (PostgreSQL)
+
+**Endpoints principales**:
+```
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/refresh
+GET    /api/auth/validate
+GET    /api/auth/me
+```
+
+**Metodología**:
 - Seguir **Spec-Driven Design** (SDD)
 - Aplicar **Test-Driven Development** (TDD)
-- Ciclo Red-Green-Refactor para cada componente
+- Ciclo Red-Green-Refactor
 
-**Fases de Implementación (tasks.md):**
-1. Project Setup (30 min)
-2. JWT Validation - TDD (2 hours)
-3. Route Configuration - TDD (1 hour)
-4. Rate Limiting - TDD (2 hours)
-5. CORS Configuration (45 min)
-6. Error Handling (1 hour)
-7. Integration Testing (1.5 hours)
-8. Docker & Deployment (1 hour)
-9. Documentation (1 hour)
-10. Final Verification (1 hour)
-
-**Tiempo estimado total:** ~10 hours
-
-**¿Qué hará?**
-1. Recibir peticiones del frontend React
-2. Validar tokens JWT
-3. Enrutar a microservicios usando Eureka
-4. Implementar rate limiting (100 req/min)
-5. Manejar CORS
-
-**Rutas que configuraremos:**
-```
-/api/auth/**        → auth-service:8081
-/api/patients/**    → patient-service:8082
-/api/clinical/**    → clinical-service:8083
-/api/lab/**         → lab-service:8084
-/api/pharmacy/**    → pharmacy-service:8085
-/api/billing/**     → billing-service:8086
-```
-
-**Comando para comenzar:**
-```bash
-# Leer el spec completo
-cat .kiro/specs/api-gateway/requirements.md
-cat .kiro/specs/api-gateway/design.md
-cat .kiro/specs/api-gateway/tasks.md
-
-# Comenzar con Phase 1: Project Setup
-# Seguir tasks.md paso a paso
-```
+**Tiempo estimado**: ~8-10 hours
 
 ## 💡 Decisiones de Arquitectura
 
@@ -258,11 +265,27 @@ cat .kiro/specs/api-gateway/tasks.md
 - Escalabilidad independiente
 - Equipos pueden trabajar en paralelo
 
-### ¿Por qué Database per Service?
-- Aislamiento de datos
-- Cambios de esquema independientes
-- Fallas aisladas
-- Cumple con DDD
+### ¿Por qué Schema-per-Service (no Database-per-Service)?
+- **Ahorro de costos** para el MVP
+- Una única instancia de PostgreSQL
+- Esquemas aislados por dominio
+- **Regla estricta**: ❌ CERO JOINs entre esquemas
+- Comunicación vía APIs HTTP
+
+### ¿Por qué Hexagonal solo para Clinical Service?
+- Clinical Service tiene **lógica de negocio pesada**:
+  - Algoritmo de Triaje Manchester
+  - Cálculo de slots de citas con Redis
+  - Reglas de negocio complejas
+- Los demás servicios son **CRUD simples** → MVC es suficiente
+
+### ¿Qué características se descartaron?
+- ❌ Autenticación Biométrica (huella dactilar)
+- ❌ Integración con SAT (facturación electrónica FEL)
+- ❌ Notificaciones Push en tiempo real
+- ❌ Dashboard de Analytics avanzado
+
+**Razón**: Mantener el alcance del MVP manejable para graduación
 
 ## 🔗 Enlaces Útiles
 
