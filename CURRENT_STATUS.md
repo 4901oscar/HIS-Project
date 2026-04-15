@@ -49,18 +49,33 @@ Este documento contiene:
   - Error handling
   - Documentación completa
 
+## ✅ Completado (Continuación)
+
+### 4. Auth Service
+- ✅ **Auth Service** - IMPLEMENTADO
+  - Puerto 8081
+  - Base de Datos: auth_schema
+  - Arquitectura: MVC (CRUD simple)
+  - JWT generation y validation
+  - Login/logout/refresh/validate endpoints
+  - RBAC con 8 roles
+  - Rate limiting (5 intentos por minuto)
+  - Token blacklist para logout seguro
+  - Tests de integración (>80% coverage)
+  - Documentación completa (README, QUICKSTART)
+
 ## ⏳ En Progreso
 
-### Auth Service
+### Patient Service
 - Estado: **Siguiente en el Roadmap**
-- Puerto: 8081
-- Base de Datos: auth_schema
+- Puerto: 8082
+- Base de Datos: patient_schema
 - Arquitectura: MVC (CRUD simple)
 - Responsabilidades:
-  - Gestión de credenciales
-  - Login de staff y pacientes
-  - Emisión de JWT
-  - Gestión de roles (RBAC: 8 roles)
+  - Datos demográficos de pacientes
+  - Generación de acceso (Email/DPI + contraseña temporal)
+  - Generación de QR de identidad
+  - Búsqueda de pacientes
 
 ## 📋 Arquitectura Actual
 
@@ -93,8 +108,8 @@ medflow-his/
 ### Negocio
 | Servicio | Puerto | Estado | Base de Datos | Arquitectura | Dominio |
 |----------|--------|--------|---------------|--------------|---------|
-| Auth Service | 8081 | ⏳ Siguiente | auth_schema | MVC | Autenticación + RBAC |
-| Patient Service | 8082 | ⏳ Pendiente | patient_schema | MVC | Pacientes + QR |
+| Auth Service | 8081 | ✅ IMPLEMENTADO | auth_schema | MVC | Autenticación + RBAC |
+| Patient Service | 8082 | ⏳ Siguiente | patient_schema | MVC | Pacientes + QR |
 | Clinical Service | 8083 | ⏳ Pendiente | clinical_schema | **Hexagonal** | Triaje Manchester + Citas |
 | Lab Service | 8084 | ⏳ Pendiente | lab_schema | MVC | Laboratorio |
 | Pharmacy Service | 8085 | ⏳ Pendiente | pharmacy_schema | MVC | Farmacia |
@@ -107,8 +122,8 @@ medflow-his/
 - [x] API Gateway ✅
 
 ### Fase 2: Servicios Core (En Progreso)
-- [ ] Auth Service (JWT, RBAC) ⏳ **← SIGUIENTE**
-- [ ] Patient Service (Admisión, QR)
+- [x] Auth Service (JWT, RBAC) ✅ **COMPLETADO**
+- [ ] Patient Service (Admisión, QR) ⏳ **← SIGUIENTE**
 - [ ] Clinical Service (Triaje Manchester, Citas con Redis)
 
 ### Fase 3: Servicios Especializados
@@ -132,12 +147,12 @@ medflow-his/
 
 ```
 Infraestructura:     [██████████] 100% (2/2) ✅
-Servicios Core:      [░░░░░░░░░░]   0% (0/3)
+Servicios Core:      [███░░░░░░░]  33% (1/3)
 Servicios Especial:  [░░░░░░░░░░]   0% (0/3)
 Integración:         [░░░░░░░░░░]   0%
 Deployment:          [░░░░░░░░░░]   0%
 
-TOTAL:               [████░░░░░░] 25% (2/8)
+TOTAL:               [█████░░░░░] 37.5% (3/8)
 ```
 
 ## 🔧 Tecnologías Implementadas
@@ -171,11 +186,11 @@ TOTAL:               [████░░░░░░] 25% (2/8)
 ## 📝 Commits Recientes
 
 ```
-8ec78b6 - docs: complete API Gateway spec with requirements, design, and TDD tasks
-c6ed0b7 - docs(architecture): implement DDD architecture with 6 microservices
-a9cdf65 - docs(eureka): add comprehensive visual guides
-996f3ff - feat(eureka): implement Eureka Server for service discovery
-f8072af - chore: restructure project to monorepo with microservices
+5a4ab59 - Merge remote-tracking branch 'origin/develop' into develop
+ebb5911 - Merge feature/auth-service into develop
+f94ee8e - feat(auth-service): complete auth service implementation with JWT, RBAC, and rate limiting
+a1e3d41 - feat: implement auth service with JWT and RBAC
+9604676 - feat: implement API Gateway with JWT validation, rate limiting, and routing
 ```
 
 ## 🎓 Conceptos Implementados
@@ -221,27 +236,26 @@ f8072af - chore: restructure project to monorepo with microservices
 
 ## 🎯 Próximo Paso Inmediato
 
-### Implementar Auth Service
+### Implementar Patient Service
 
 **Responsabilidades**:
-- Gestión de credenciales (staff y pacientes)
-- Login con Email/DPI + contraseña
-- Emisión de tokens JWT
-- Gestión de 8 roles (RBAC):
-  - ADMIN, ADMISSION, VITAL_SIGNS, DOCTOR
-  - LABORATORY, PHARMACY, CASHIER, PATIENT
+- Datos demográficos de pacientes
+- Generación de acceso (Email/DPI + contraseña temporal)
+- Generación de QR de identidad
+- Búsqueda de pacientes
 
 **Arquitectura**: MVC (CRUD simple)
 
-**Base de Datos**: auth_schema (PostgreSQL)
+**Base de Datos**: patient_schema (PostgreSQL)
 
 **Endpoints principales**:
 ```
-POST   /api/auth/login
-POST   /api/auth/logout
-POST   /api/auth/refresh
-GET    /api/auth/validate
-GET    /api/auth/me
+POST   /api/patients
+GET    /api/patients/{id}
+GET    /api/patients/search?dpi={dpi}
+PUT    /api/patients/{id}
+POST   /api/patients/{id}/generate-qr
+POST   /api/patients/{id}/generate-access
 ```
 
 **Metodología**:
@@ -249,7 +263,12 @@ GET    /api/auth/me
 - Aplicar **Test-Driven Development** (TDD)
 - Ciclo Red-Green-Refactor
 
-**Tiempo estimado**: ~8-10 hours
+**Tiempo estimado**: ~6-8 hours
+
+**Estado del Spec**:
+- ✅ Requirements completos
+- ❌ Falta Design
+- ❌ Falta Tasks
 
 ## 💡 Decisiones de Arquitectura
 
