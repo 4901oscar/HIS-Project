@@ -1,0 +1,54 @@
+package com.medflow.patient.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
+/**
+ * Cliente HTTP para llamar al auth-service (CU-01).
+ * Crea la cuenta del paciente con contraseña temporal.
+ */
+@Component
+public class AuthServiceClient {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthServiceClient.class);
+
+    private final RestTemplate restTemplate;
+
+    @Value("${auth-service.url:http://localhost:8081}")
+    private String authServiceUrl;
+
+    public AuthServiceClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    /**
+     * Crea cuenta de paciente en auth-service.
+     * @return contraseña temporal generada, o null si falla.
+     */
+    public String createPatientAccount(String dpi, String email, String fullName) {
+        try {
+            Map<String, String> body = Map.of(
+                    "dpi", dpi,
+                    "email", email,
+                    "fullName", fullName
+            );
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    authServiceUrl + "/api/auth/internal/create-patient",
+                    body,
+                    Map.class
+            );
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return (String) response.getBody().get("temporaryPassword");
+            }
+        } catch (Exception ex) {
+            log.error("[AuthServiceClient] Error creando cuenta de paciente para DPI {}: {}", dpi, ex.getMessage());
+        }
+        return null;
+    }
+}

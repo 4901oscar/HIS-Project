@@ -49,3 +49,37 @@ INSERT INTO auth_schema.roles (name, description) VALUES
 ('CASHIER', 'Cajero'),
 ('PATIENT', 'Paciente')
 ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
+-- USUARIOS SEED (solo para desarrollo/demo)
+-- Cambiar contraseñas antes de producción
+-- ============================================================
+
+-- Admin: usuario=admin  contraseña=Admin1234
+-- Doctor: usuario=doctor  contraseña=Doctor1234
+-- Admisión: usuario=admision  contraseña=Admision1234
+INSERT INTO auth_schema.users (id, username, email, password, full_name, active)
+VALUES
+  (gen_random_uuid(), 'admin',    'admin@medflow.com',    '$2b$10$si.B4lmdLQ9.YuMQfd1/PuFRfBSgx9r0YjZyozn7F3WfL79b6WIRG', 'Administrador Sistema', true),
+  (gen_random_uuid(), 'doctor',   'doctor@medflow.com',   '$2b$10$pUPU.KlQtbc2UNC.ZU/fjulwLst.v.UImczXnPs4JFl0/iF2qI2fa', 'Dr. Juan Pérez',        true),
+  (gen_random_uuid(), 'admision', 'admision@medflow.com', '$2b$10$WOodPSQVE/.356GTOi1kG.pK2eW2J6syh0vXsHmSCgB20hhKqWQ4e', 'María López',           true)
+ON CONFLICT (username) DO NOTHING;
+
+-- Asignar roles a los usuarios seed
+INSERT INTO auth_schema.user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM auth_schema.users u, auth_schema.roles r
+WHERE u.username = 'admin'    AND r.name = 'ADMIN'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO auth_schema.user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM auth_schema.users u, auth_schema.roles r
+WHERE u.username = 'doctor'   AND r.name = 'DOCTOR'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO auth_schema.user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM auth_schema.users u, auth_schema.roles r
+WHERE u.username = 'admision' AND r.name = 'ADMISSION'
+ON CONFLICT DO NOTHING;
