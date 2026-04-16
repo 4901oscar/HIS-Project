@@ -1,81 +1,175 @@
 package com.medflow.auth.service;
 
+import com.medflow.auth.domain.Role;
+import com.medflow.auth.domain.RoleName;
+import com.medflow.auth.domain.User;
+import com.medflow.auth.dto.CreatePatientAccountRequest;
+import com.medflow.auth.dto.CreatePatientAccountResponse;
+import com.medflow.auth.dto.RegisterRequest;
+import com.medflow.auth.exception.EmailAlreadyExistsException;
+import com.medflow.auth.exception.InvalidActivationTokenException;
+import com.medflow.auth.exception.UsernameAlreadyExistsException;
+import com.medflow.auth.repository.RoleRepository;
 import com.medflow.auth.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Service for authentication operations.
- * 
- * <p>This service handles:
- * <ul>
- *   <li>User login with username/password validation</li>
- *   <li>JWT token generation for authenticated users</li>
- *   <li>Account status verification</li>
- *   <li>Token invalidation (logout)</li>
- * </ul>
- * 
- * @author MedFlow Team
- * @version 1.0.0
- * @since 2026-04-13
- */
+import java.security.SecureRandom;
+import java.util.Set;
+import java.util.UUID;
+
 @Service
 public class AuthService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklistService blacklistService;
-    
-    public AuthService(UserRepository userRepository, 
-                      JwtService jwtService, 
-                      PasswordEncoder passwordEncoder,
-                      TokenBlacklistService blacklistService) {
+    private final ActivationTokenService activationTokenService;
+
+    public AuthService(UserRepository userRepository,
+                       RoleRepository roleRepository,
+                       JwtService jwtService,
+                       PasswordEncoder passwordEncoder,
+                       TokenBlacklistService blacklistService,
+                       ActivationTokenService activationTokenService) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.blacklistService = blacklistService;
+        this.activationTokenService = activationTokenService;
     }
-    
+
     /**
-     * Authenticates a user with username and password.
-     * 
-     * @param username the username
-     * @param password the raw password
-     * @return JWT token string
-     * @throws RuntimeException if credentials are invalid or account is disabled
+     * CU-00.1: Login por username O correo electrónico.
      */
-    public String login(String username, String password) {
-        // 1. Find user by username
-        var user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-        
-        // 2. Verify password
+    public String login(String identifier, String password) {
+        var user = userRepository.findByUsername(identifier)
+                .or(() -> userRepository.findByEmail(identifier))
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("Invalid credentials");
         }
-        
-        // 3. Check if user is active
         if (!user.isActive()) {
             throw new RuntimeException("Account is disabled");
         }
-        
-        // 4. Generate JWT token
-        String token = jwtService.generateToken(user);
-        
-        // 5. Return the token
+        return jwtService.generateToken(user);
+    }
+
+    /**
+     * CU-00.2: Auto-registro de paciente desde el portal.
+     * Cuenta queda inactiva (active=false) hasta confirmar email.
+     * @return token de activación para incluir en el link del correo.
+     */
+    @Transactional
+    public String register(RegisterRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new EmailAlreadyExistsException(request.getEmail());
+        }
+        if (userRepository.findByUsername(request.getDpi()).isPresent()) {
+            throw new UsernameAlreadyExistsException(request.getDpi());
+        }
+
+        Role patientRole = roleRepository.findByName(RoleName.PATIENT)
+                .orElseThrow(() -> new RuntimeException("Rol PATIENT no encontrado en BD"));
+
+        User user = User.builder()
+                .username(request.getDpi())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName())
+                .active(false)
+                .roles(Set.of(patientRole))
+                .build();
+
+        User saved = userRepository.save(user);
+        String token = activationTokenService.generateToken(saved.getId().toString());
+
+        log.info("[CU-00.2] Registro pendiente de activación. Email: {}. Token: {}", request.getEmail(), token);
         return token;
     }
-    
+
     /**
-     * Logs out a user by adding their token to the blacklist.
-     * 
-     * <p>Once a token is blacklisted, it cannot be used for authentication
-     * even if it hasn't expired yet.
-     * 
-     * @param token the JWT token to invalidate
+     * CU-00.2: Activa la cuenta al hacer clic en el link del correo.
      */
+    @Transactional
+    public void activate(String token) {
+        String userId = activationTokenService.validateAndConsume(token);
+        if (userId == null) throw new InvalidActivationTokenException();
+
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        user.setActive(true);
+        userRepository.save(user);
+        log.info("[CU-00.2] Cuenta activada para: {}", user.getEmail());
+    }
+
+    /**
+     * CU-01: Admisión crea cuenta de paciente con contraseña temporal.
+     * Llamado por patient-service vía HTTP interno.
+     */
+    @Transactional
+    public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request) {
+        if (userRepository.findByUsername(request.getDpi()).isPresent()) {
+            throw new UsernameAlreadyExistsException(request.getDpi());
+        }
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new EmailAlreadyExistsException(request.getEmail());
+        }
+
+        Role patientRole = roleRepository.findByName(RoleName.PATIENT)
+                .orElseThrow(() -> new RuntimeException("Rol PATIENT no encontrado en BD"));
+
+        String tempPassword = generateTempPassword();
+
+        User user = User.builder()
+                .username(request.getDpi())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(tempPassword))
+                .fullName(request.getFullName())
+                .active(true)
+                .roles(Set.of(patientRole))
+                .build();
+
+        User saved = userRepository.save(user);
+        log.info("[CU-01] Cuenta paciente creada. DPI: {}", request.getDpi());
+
+        return new CreatePatientAccountResponse(
+                saved.getId().toString(),
+                saved.getUsername(),
+                tempPassword,
+                "Cuenta creada. Entregue la contraseña temporal al paciente."
+        );
+    }
+
+    /** Logout: invalida el token en la blacklist. */
     public void logout(String token) {
         blacklistService.addToBlacklist(token);
+    }
+
+    private String generateTempPassword() {
+        char[] arr = new char[8];
+        arr[0] = CHARS.charAt(RANDOM.nextInt(26));           // mayúscula
+        arr[1] = CHARS.charAt(26 + RANDOM.nextInt(26));      // minúscula
+        arr[2] = CHARS.charAt(52 + RANDOM.nextInt(10));      // número
+        for (int i = 3; i < 8; i++) {
+            arr[i] = CHARS.charAt(RANDOM.nextInt(CHARS.length()));
+        }
+        for (int i = arr.length - 1; i > 0; i--) {
+            int j = RANDOM.nextInt(i + 1);
+            char tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+        return new String(arr);
     }
 }

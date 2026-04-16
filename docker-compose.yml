@@ -15,14 +15,31 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     networks:
       - medflow-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medflow_user"]
+      test: ["CMD-SHELL", "pg_isready -U medflow_user -d medflow_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ============================================
+  # Email Testing Service (MailHog)
+  # ============================================
+  # mailhog:
+  #   image: mailhog/mailhog:latest
+  #   container_name: medflow-mailhog
+  #   ports:
+  #     - "1025:1025"
+  #     - "8025:8025"
+  #   networks:
+  #     - medflow-network
+  #   healthcheck:
+  #     test: ["CMD", "echo", "ok"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
   # ============================================
   # Spring Cloud Infrastructure
   # ============================================
@@ -107,14 +124,19 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_patient_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=patient_schema
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - AUTH_SERVICE_URL=http://auth-service:8081
     depends_on:
       postgres:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      # mailhog:                        
+      #   condition: service_started
     networks:
       - medflow-network
     healthcheck:
