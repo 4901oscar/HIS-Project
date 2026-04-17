@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/medflow_db?currentSchema=clinical_schema
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+services:
+  patient-service:
+    url: http://patient-service:8082
+  pharmacy-service:
+    url: http://pharmacy-service:8085
+  lab-service:
+    url: http://lab-service:8084
