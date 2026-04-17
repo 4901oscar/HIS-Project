@@ -1,14 +1,7 @@
-# ============================================
-# Patient Appointment Scheduling Service Configuration
-# ============================================
-
 spring:
   application:
     name: patient-service
-  
-  # ============================================
-  # PostgreSQL Database Configuration
-  # ============================================
+
   datasource:
     url: jdbc:postgresql://localhost:5432/medflow_db?currentSchema=patient_schema
     username: ${DB_USERNAME:medflow_user}
@@ -20,10 +13,7 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-  
-  # ============================================
-  # JPA/Hibernate Configuration
-  # ============================================
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -37,61 +27,21 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
-  
-  # ============================================
-  # Flyway Database Migration Configuration
-  # ============================================
+
   flyway:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
     schemas: patient_schema
     default-schema: patient_schema
-  
-  # ============================================
-  # JavaMail SMTP Configuration
-  # ============================================
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
-    default-encoding: UTF-8
-  
-  # ============================================
-  # Async Task Execution Configuration
-  # ============================================
-  task:
-    execution:
-      pool:
-        core-size: 5
-        max-size: 10
-        queue-capacity: 100
-        keep-alive: 60s
-      thread-name-prefix: async-email-
+    ignore-missing-migrations: true
 
-# ============================================
-# Server Configuration
-# ============================================
 server:
   port: 8082
   error:
     include-message: always
     include-binding-errors: always
 
-# ============================================
-# Eureka Client Configuration
-# ============================================
 eureka:
   client:
     service-url:
@@ -105,41 +55,11 @@ eureka:
     lease-renewal-interval-in-seconds: 30
     lease-expiration-duration-in-seconds: 90
 
-# ============================================
-# Custom Appointment Configuration Properties
-# ============================================
-appointment:
-  payment:
-    amount: 150.00
-    currency: GTQ
-  qr:
-    validity:
-      before-minutes: 60
-      after-minutes: 30
-    image:
-      width: 300
-      height: 300
-  availability:
-    max-appointments-per-doctor-per-hour: 2
-    working-hours:
-      start: "06:00"
-      end: "20:00"
-    default-days-ahead: 30
-  email:
-    from: ${EMAIL_FROM:noreply@medflow.com}
-    subject: "Confirmación de Cita - MedFlow HIS"
-    retry:
-      max-attempts: 3
-      backoff-delay: 2000
-
-# ============================================
-# Actuator Configuration (Health Checks)
-# ============================================
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
@@ -151,19 +71,13 @@ management:
     readinessstate:
       enabled: true
 
-# ============================================
-# Logging Configuration
-# ============================================
 logging:
   level:
     com.medflow.patient: DEBUG
     org.springframework.web: INFO
-    org.springframework.mail: DEBUG
     org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 auth-service:
   url: ${AUTH_SERVICE_URL:http://localhost:8081}

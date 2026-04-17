@@ -5,10 +5,11 @@
 
 import { useState } from 'react';
 import type { FC, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import type { LoginCredentials } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
+import axios from 'axios';
 
 const LoginPage: FC = () => {
   const navigate = useNavigate();
@@ -28,16 +29,10 @@ const LoginPage: FC = () => {
 
     try {
       const response = await login(credentials);
-      
-      // Actualizar el contexto de autenticación
       setUser(response.user);
-      
-      // Login exitoso - redirigir según el rol del usuario
-      console.log('Login successful:', response.user);
-      
-      // Determinar la ruta según el rol
+
       const roleRoutes: Record<string, string> = {
-        'ADMINISTRATOR': '/administrator',
+        'ADMIN': '/administrator',
         'ADMISSION': '/admission',
         'VITAL_SIGNS': '/vitals',
         'DOCTOR': '/doctor',
@@ -46,10 +41,17 @@ const LoginPage: FC = () => {
         'CASHIER': '/cashier',
       };
 
-      const redirectPath = roleRoutes[response.user.role] || '/dashboard';
+      const primaryRole = response.user.roles[0] ?? '';
+      const redirectPath = roleRoutes[primaryRole] || '/dashboard';
       navigate(redirectPath);
-    } catch {
-      setError('Invalid username or password');
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setError('Usuario o contraseña incorrectos.');
+      } else if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setError('Demasiados intentos. Espera un momento e intenta de nuevo.');
+      } else {
+        setError('Error al conectar con el servidor. Intenta más tarde.');
+      }
       setCredentials({ ...credentials, password: '' });
     } finally {
       setIsLoading(false);
@@ -89,8 +91,8 @@ const LoginPage: FC = () => {
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Employee Login</h2>
-            <p className="text-gray-600 text-sm">Enter your credentials to access the system</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Inicio de sesión</h2>
+            <p className="text-gray-600 text-sm">Ingresa tus credenciales para acceder al sistema</p>
           </div>
 
           {/* Error Message */}
@@ -125,7 +127,7 @@ const LoginPage: FC = () => {
                   required
                   autoComplete="username"
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors"
-                  placeholder="Enter your username"
+                  placeholder="Usuario o correo electrónico"
                 />
               </div>
             </div>
@@ -150,7 +152,7 @@ const LoginPage: FC = () => {
                   required
                   autoComplete="current-password"
                   className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors"
-                  placeholder="Enter your password"
+                  placeholder="Contraseña"
                 />
                 <button
                   type="button"
@@ -178,11 +180,9 @@ const LoginPage: FC = () => {
                   type="checkbox"
                   className="h-4 w-4 text-medin-cyan border-gray-300 rounded focus:ring-medin-cyan"
                 />
-                <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                <span className="ml-2 text-sm text-gray-600">Recordarme</span>
               </label>
-              <a href="#" className="text-sm text-medin-cyan hover:text-medin-blue font-medium">
-                Forgot password?
-              </a>
+              <span className="text-sm text-gray-400">¿Olvidaste tu contraseña?</span>
             </div>
 
             {/* Submit Button */}
@@ -197,34 +197,24 @@ const LoginPage: FC = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Signing in...</span>
+                  <span>Ingresando...</span>
                 </>
               ) : (
-                <span>Sign In</span>
+                <span>Ingresar</span>
               )}
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs font-semibold text-gray-700 mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-xs text-gray-600">
-              <p><strong>Admin:</strong> admin / password</p>
-              <p><strong>Admission:</strong> admission / password</p>
-              <p><strong>Doctor:</strong> doctor / password</p>
-              <p><strong>Nurse:</strong> nurse / password</p>
-            </div>
-          </div>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            ¿Eres paciente y no tienes cuenta?{' '}
+            <Link to="/register" className="text-medin-cyan hover:text-medin-blue font-medium">
+              Regístrate aquí
+            </Link>
+          </p>
         </div>
 
-        {/* Footer */}
         <div className="text-center mt-6">
-          <p className="text-gray-400 text-xs">
-            © 2026 MedFlow. All rights reserved.
-          </p>
-          <p className="text-gray-500 text-xs mt-1">
-            Authorized personnel only. Unauthorized access is prohibited.
-          </p>
+          <p className="text-gray-400 text-xs">© 2026 MedFlow. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

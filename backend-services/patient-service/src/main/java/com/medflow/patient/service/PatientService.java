@@ -63,11 +63,13 @@ public class PatientService {
         Patient saved = patientRepository.save(patient);
 
         // Crear cuenta en auth-service (CU-01: envía usuario + contraseña temporal)
-        String tempPassword = authServiceClient.createPatientAccount(
+        AuthServiceClient.PatientAccountResult account = authServiceClient.createPatientAccount(
                 saved.getDpi(), saved.getEmail(), saved.getFullName());
 
-        if (tempPassword != null) {
-            log.info("[CU-01] Cuenta creada para paciente DPI:{}. Contraseña temporal: {}", saved.getDpi(), tempPassword);
+        if (account != null) {
+            saved.setAuthUserId(account.authUserId());
+            saved = patientRepository.save(saved);
+            log.info("[CU-01] Cuenta creada para paciente DPI:{}. authUserId: {}", saved.getDpi(), account.authUserId());
         } else {
             log.warn("[CU-01] No se pudo crear cuenta en auth-service para DPI:{}", saved.getDpi());
         }

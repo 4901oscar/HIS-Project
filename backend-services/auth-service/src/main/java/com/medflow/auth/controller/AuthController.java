@@ -59,11 +59,11 @@ public class AuthController {
     /** CU-00.2: Auto-registro de paciente desde el portal web. */
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
-        String activationToken = authService.register(request);
-        log.info("[CU-00.2] Usuario registrado. Token de activación generado para: {}", request.getEmail());
+        authService.register(request);
+        log.info("[CU-00.2] Usuario registrado. Email: {}", request.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new RegisterResponse(
-                        "Registro exitoso. Revisa tu correo para activar tu cuenta.",
+                        "Cuenta creada exitosamente. Ya puedes iniciar sesión.",
                         request.getEmail()
                 ));
     }

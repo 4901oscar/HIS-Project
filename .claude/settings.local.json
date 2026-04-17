@@ -3,7 +3,9 @@
     "allow": [
       "Bash(ls *)",
       "Bash(python3 *)",
-      "Bash(py *)"
+      "Bash(py *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
     ]
   }
 }

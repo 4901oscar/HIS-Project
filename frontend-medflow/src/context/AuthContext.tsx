@@ -1,50 +1,28 @@
-/**
- * AuthContext - Contexto global de autenticación
- * Gestiona el estado de autenticación del usuario en toda la aplicación
- */
-
 import { createContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
-import type { FC } from 'react';
+import type { ReactNode, FC } from 'react';
+import type { AuthUser } from '../services/authService';
 import { getCurrentUser, isAuthenticated, logout as logoutService } from '../services/authService';
 
-interface User {
-  id: string;
-  username: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasRole: (role: string) => boolean;
   logout: () => void;
-  setUser: (user: User | null) => void;
+  setUser: (user: AuthUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar si hay sesión activa al cargar
-    const checkAuth = () => {
-      if (isAuthenticated()) {
-        const userData = getCurrentUser();
-        setUser(userData);
-      }
-      setIsLoading(false);
-    };
-
-    checkAuth();
+    if (isAuthenticated()) {
+      setUser(getCurrentUser());
+    }
+    setIsLoading(false);
   }, []);
 
   const logout = () => {
@@ -52,15 +30,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    logout,
-    setUser,
-  };
+  const hasRole = (role: string) =>
+    !!user?.roles?.includes(role) || !!user?.roles?.includes('ADMIN');
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, hasRole, logout, setUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthContext;
