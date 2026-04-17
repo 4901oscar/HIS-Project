@@ -25,6 +25,24 @@ services:
       retries: 5
 
   # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: medflow-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  # ============================================
   # Email Testing Service (MailHog)
   # ============================================
   # mailhog:
@@ -155,13 +173,22 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_clinical_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=clinical_schema
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SERVICES_PATIENT_SERVICE_URL=http://patient-service:8082
+      - SERVICES_PHARMACY_SERVICE_URL=http://pharmacy-service:8085
+      - SERVICES_LAB_SERVICE_URL=http://lab-service:8084
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      patient-service:
         condition: service_healthy
     networks:
       - medflow-network
@@ -282,4 +309,6 @@ networks:
 # ============================================
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local

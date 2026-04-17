@@ -2,7 +2,11 @@
 
 Sistema de Información Hospitalaria (HIS) basado en microservicios con arquitectura Spring Cloud y frontend React.
 
+**✅ BACKEND LISTO PARA INTEGRACIÓN FRONTEND**
+
 **MVP para Graduación** - Sistema integral que cubre todo el flujo de atención médica hospitalaria.
+
+📄 **[Guía de Integración Frontend](./FRONTEND_INTEGRATION_GUIDE.md)** - Empieza aquí para conectar el frontend
 
 ## 🏗️ Arquitectura
 
@@ -62,24 +66,42 @@ medflow-his/
 
 ## 🔧 Instalación y Ejecución
 
-### Opción 1: Con Docker (Recomendado)
+### 🚀 Inicio Rápido (Recomendado)
 
 ```bash
 # Clonar el repositorio
 git clone https://github.com/4901oscar/HIS-Project.git
 cd HIS-Project
 
-# Levantar todos los servicios
+# Opción 1: Script automatizado (Linux/Mac)
+chmod +x start-services.sh
+./start-services.sh
+
+# Opción 2: Script automatizado (Windows PowerShell)
+.\start-services.ps1
+
+# Opción 3: Docker Compose manual
 docker-compose up -d
-
-# Ver logs
-docker-compose logs -f
-
-# Detener servicios
-docker-compose down
 ```
 
-### Opción 2: Desarrollo Local
+Los scripts automáticos:
+- ✅ Verifican que Docker esté corriendo
+- ✅ Inician todos los servicios
+- ✅ Esperan a que estén listos (health checks)
+- ✅ Muestran URLs y comandos de prueba
+
+### Verificar que Todo Funciona
+
+```bash
+# Ver servicios registrados en Eureka
+open http://localhost:8761
+
+# Probar API (requiere jq instalado)
+chmod +x test-api.sh
+./test-api.sh
+```
+
+### Opción Avanzada: Desarrollo Local
 
 #### Backend
 
@@ -120,32 +142,121 @@ npm run dev
 
 | Servicio | URL | Puerto | Estado |
 |----------|-----|--------|--------|
-| Frontend | http://localhost:3000 | 3000 | ⏳ |
-| API Gateway | http://localhost:8080 | 8080 | ✅ |
-| Eureka Dashboard | http://localhost:8761 | 8761 | ✅ |
-| Auth Service | http://localhost:8081 | 8081 | ⏳ |
-| Patient Service | http://localhost:8082 | 8082 | ⏳ |
-| Clinical Service | http://localhost:8083 | 8083 | ⏳ |
-| Lab Service | http://localhost:8084 | 8084 | ⏳ |
-| Pharmacy Service | http://localhost:8085 | 8085 | ⏳ |
-| Billing Service | http://localhost:8086 | 8086 | ⏳ |
-| PostgreSQL | localhost:5432 | 5432 | ⏳ |
-| Redis | localhost:6379 | 6379 | ⏳ |
+| Frontend | http://localhost:3000 | 3000 | ⏳ Pendiente |
+| **API Gateway** | http://localhost:8080 | 8080 | ✅ **LISTO** |
+| **Eureka Dashboard** | http://localhost:8761 | 8761 | ✅ **LISTO** |
+| **Auth Service** | http://localhost:8081 | 8081 | ✅ **LISTO** |
+| **Patient Service** | http://localhost:8082 | 8082 | ✅ **LISTO** |
+| **Clinical Service** | http://localhost:8083 | 8083 | ✅ **LISTO** (70%) |
+| Lab Service | http://localhost:8084 | 8084 | ⚠️ Stub |
+| Pharmacy Service | http://localhost:8085 | 8085 | ⚠️ Stub |
+| Billing Service | http://localhost:8086 | 8086 | ⚠️ Stub |
+| PostgreSQL | localhost:5432 | 5432 | ✅ Configurado |
+| Redis | localhost:6379 | 6379 | ✅ Configurado |
+
+**Nota**: Los servicios marcados como "Stub" tienen implementaciones básicas que permiten que Clinical Service funcione correctamente.
 
 ## 📚 Documentación
 
-### Documentos Principales
-- **[MVP_CORE_SPECS.md](./MVP_CORE_SPECS.md)** - ⭐ Especificaciones Core del MVP (LEER PRIMERO)
+### 🎯 Documentos Principales (LEER EN ORDEN)
+
+1. **[FRONTEND_INTEGRATION_GUIDE.md](./FRONTEND_INTEGRATION_GUIDE.md)** - ⭐ **NUEVO** - Guía completa para integración frontend
+   - Endpoints disponibles con ejemplos
+   - Flujo de autenticación
+   - Configuración de Axios
+   - Plan de pruebas
+   - Troubleshooting
+
+2. **[CURRENT_STATUS.md](./CURRENT_STATUS.md)** - Estado actual del proyecto (actualizado)
+   - Servicios implementados
+   - Progreso de tareas
+   - Próximos pasos
+
+3. **[MVP_CORE_SPECS.md](./MVP_CORE_SPECS.md)** - Especificaciones Core del MVP
+   - Stack tecnológico
+   - Arquitectura de software
+   - Roles y permisos
+
+### Documentación Técnica
 - [Git Flow Workflow](./GITFLOW.md)
 - [Arquitectura DDD](./ARCHITECTURE_DDD.md)
-- [Estado Actual](./CURRENT_STATUS.md)
 - [Contexto del Proyecto](./PROJECT_CONTEXT.md)
 
 ### Documentación por Servicio
-- [Backend Cloud](./backend-cloud/README.md)
-- [Backend Services](./backend-services/README.md)
 - [Eureka Server](./backend-cloud/eureka-server/README.md)
 - [API Gateway](./backend-cloud/api-gateway/README.md)
+- [Auth Service](./backend-services/auth-service/README.md)
+- [Clinical Service](./backend-services/clinical-service/README.md)
+
+## 🚀 Endpoints Disponibles para Frontend
+
+### Base URL
+```
+http://localhost:8080/api
+```
+
+### Servicios Implementados
+
+#### 1. Auth Service (`/api/auth/**`) ✅
+- `POST /api/auth/login` - Login con JWT
+- `POST /api/auth/register` - Registro de usuarios
+- `POST /api/auth/logout` - Logout
+- `POST /api/auth/refresh` - Refresh token
+
+#### 2. Patient Service (`/api/patients/**`) ✅
+- `POST /api/patients` - Crear paciente (CU-01)
+- `GET /api/patients/{id}` - Obtener por ID
+- `GET /api/patients/dpi/{dpi}` - Buscar por DPI
+- `GET /api/patients/search?query={query}` - Búsqueda general
+- `PUT /api/patients/{id}` - Actualizar paciente
+
+#### 3. Clinical Service (`/api/clinical/**`) ✅
+- `POST /api/clinical/vital-signs` - Registrar signos vitales (CU-02)
+- `POST /api/clinical/triage` - Realizar triage Manchester (CU-03)
+- `GET /api/clinical/appointments/slots` - Consultar slots disponibles (CU-04)
+- `POST /api/clinical/appointments` - Crear cita (CU-04)
+- `PUT /api/clinical/appointments/{id}/activate` - Activar cita
+- `DELETE /api/clinical/appointments/{id}` - Cancelar cita
+- `POST /api/clinical/consultations` - Registrar consulta (CU-05)
+- `POST /api/clinical/prescriptions` - Generar receta (CU-06)
+
+**Ver ejemplos completos en**: [FRONTEND_INTEGRATION_GUIDE.md](./FRONTEND_INTEGRATION_GUIDE.md)
+
+## 🔐 Autenticación
+
+### Flujo de Login
+
+```javascript
+// 1. Login
+const response = await fetch('http://localhost:8080/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'admin123'
+  })
+});
+
+const { token, user } = await response.json();
+
+// 2. Usar token en peticiones subsecuentes
+const patients = await fetch('http://localhost:8080/api/patients', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+### Headers Requeridos
+
+```javascript
+{
+  'Authorization': 'Bearer {jwt_token}',      // Obligatorio
+  'Content-Type': 'application/json',         // Para POST/PUT
+  'X-User-Id': '{user_id}'                    // Requerido por Clinical Service
+}
+```
 
 ## 🔐 Roles y Permisos (RBAC)
 
@@ -309,5 +420,7 @@ Para reportar issues o solicitar features, usa el sistema de Issues de GitHub.
 
 ---
 
+**✅ El backend está listo para integración frontend. Consulta [FRONTEND_INTEGRATION_GUIDE.md](./FRONTEND_INTEGRATION_GUIDE.md) para empezar.** 🚀
+
 **Versión**: 1.0.0  
-**Última actualización**: Abril 2026
+**Última actualización**: Abril 16, 2026

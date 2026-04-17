@@ -1,0 +1,46 @@
+package com.medframe.clinical.infrastructure.persistence.adapter;
+
+import com.medframe.clinical.domain.model.Appointment;
+import com.medframe.clinical.domain.port.out.AppointmentRepository;
+import com.medframe.clinical.infrastructure.persistence.repository.JpaAppointmentRepository;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Adapter that implements the AppointmentRepository output port using JPA.
+ */
+@Component
+public class AppointmentRepositoryAdapter implements AppointmentRepository {
+
+    private final JpaAppointmentRepository jpaRepository;
+    private final AppointmentMapper mapper;
+
+    public AppointmentRepositoryAdapter(JpaAppointmentRepository jpaRepository, AppointmentMapper mapper) {
+        this.jpaRepository = jpaRepository;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public Appointment save(Appointment appointment) {
+        var entity = mapper.toEntity(appointment);
+        var saved = jpaRepository.save(entity);
+        return mapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Appointment> findById(String id) {
+        return jpaRepository.findById(id)
+                .map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Appointment> findByDoctorIdAndDate(String doctorId, LocalDate date) {
+        return jpaRepository.findByDoctorIdAndAppointmentDate(doctorId, date).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+}
