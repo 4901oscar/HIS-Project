@@ -1,49 +1,54 @@
 package com.medframe.clinical.domain.service;
 
+import com.medframe.clinical.domain.model.LabOrder;
+import com.medframe.clinical.domain.model.Prescription;
+import com.medframe.clinical.domain.port.out.LabOrderRepository;
+import com.medframe.clinical.domain.port.out.PrescriptionRepository;
 import net.jqwik.api.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.security.SecureRandom;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
 /**
  * Property-Based Tests for code generation in PrescriptionGenerator and LabOrderGenerator.
- * 
- * generateCode() is a pure function (given a SecureRandom) — ideal for PBT.
+ * generateCode() is a pure function — ideal for PBT.
  */
 class CodeGeneratorPropertyTest {
 
     private final SecureRandom secureRandom = new SecureRandom();
 
-    // We test generateCode() directly — it needs a mock repo for uniqueness check
-    private PrescriptionGenerator prescriptionGenerator(boolean codeExists) {
-        return new PrescriptionGenerator(
-                // mock: existsByCode always returns the given value
-                code -> codeExists,
-                prescription -> {}, // noop notify
-                secureRandom
-        );
+    private PrescriptionRepository mockPrescriptionRepo(boolean codeExists) {
+        PrescriptionRepository repo = Mockito.mock(PrescriptionRepository.class);
+        when(repo.existsByCode(anyString())).thenReturn(codeExists);
+        when(repo.save(Mockito.any())).thenAnswer(inv -> inv.getArgument(0));
+        return repo;
     }
 
-    private LabOrderGenerator labOrderGenerator(boolean codeExists) {
-        return new LabOrderGenerator(
-                code -> codeExists,
-                labOrder -> {}, // noop notify
-                secureRandom
-        );
+    private LabOrderRepository mockLabOrderRepo(boolean codeExists) {
+        LabOrderRepository repo = Mockito.mock(LabOrderRepository.class);
+        when(repo.existsByCode(anyString())).thenReturn(codeExists);
+        when(repo.save(Mockito.any())).thenAnswer(inv -> inv.getArgument(0));
+        return repo;
     }
 
     /**
-     * Feature: clinical-service, Property 11: Prescription Codes are Well-Formed
-     * 
-     * Each generated code is exactly 8 alphanumeric uppercase characters.
+     * Property 11: Prescription Codes are Well-Formed
+     * Each generated code is exactly 8 uppercase alphanumeric characters.
      */
     @Property(tries = 500)
     void prescriptionCodeIsWellFormed() {
-        PrescriptionGenerator generator = prescriptionGenerator(false);
+        PrescriptionGenerator generator = new PrescriptionGenerator(
+                mockPrescriptionRepo(false), prescription -> {}, secureRandom);
+
         String code = generator.generateCode();
 
         Assertions.assertThat(code)
@@ -52,28 +57,27 @@ class CodeGeneratorPropertyTest {
     }
 
     /**
-     * Feature: clinical-service, Property 11: Prescription Codes are Unique
-     * 
-     * Generate 1000 codes and verify no duplicates.
+     * Property 11: Prescription Codes are Unique over 1000 generations.
      */
     @Example
     void prescriptionCodesAreUniqueOver1000Generations() {
-        PrescriptionGenerator generator = prescriptionGenerator(false);
+        PrescriptionGenerator generator = new PrescriptionGenerator(
+                mockPrescriptionRepo(false), prescription -> {}, secureRandom);
+
         Set<String> codes = new HashSet<>();
+        IntStream.range(0, 1000).forEach(i -> codes.add(generator.generateCode()));
 
-        IntStream.range(0, 1000)
-                .forEach(i -> codes.add(generator.generateCode()));
-
-        // With 36^8 ≈ 2.8 trillion possibilities, 1000 should be unique
         Assertions.assertThat(codes).hasSize(1000);
     }
 
     /**
-     * Feature: clinical-service, Property 13: Lab Order Codes are Well-Formed
+     * Property 13: Lab Order Codes are Well-Formed
      */
     @Property(tries = 500)
     void labOrderCodeIsWellFormed() {
-        LabOrderGenerator generator = labOrderGenerator(false);
+        LabOrderGenerator generator = new LabOrderGenerator(
+                mockLabOrderRepo(false), labOrder -> {}, secureRandom);
+
         String code = generator.generateCode();
 
         Assertions.assertThat(code)
@@ -83,47 +87,41 @@ class CodeGeneratorPropertyTest {
 
     @Example
     void labOrderCodesAreUniqueOver1000Generations() {
-        LabOrderGenerator generator = labOrderGenerator(false);
-        Set<String> codes = new HashSet<>();
+        LabOrderGenerator generator = new LabOrderGenerator(
+                mockLabOrderRepo(false), labOrder -> {}, secureRandom);
 
-        IntStream.range(0, 1000)
-                .forEach(i -> codes.add(generator.generateCode()));
+        Set<String> codes = new HashSet<>();
+        IntStream.range(0, 1000).forEach(i -> codes.add(generator.generateCode()));
 
         Assertions.assertThat(codes).hasSize(1000);
     }
 
     /**
-     * Feature: clinical-service, Property 12: Prescription Notification Failures Don't Fail Transaction
-     * 
-     * Even if PharmacyServiceClient throws, prescription is still saved.
+     * Property 12: Prescription Notification Failures Don't Fail Transaction
+     * Even if PharmacyServiceClient throws, generatePrescription still saves the prescription.
      */
     @Example
-    void prescriptionNotificationFailureDoesNotFailTransaction() {
-        // Repository that always reports code doesn't exist
-        var capturedPrescription = new java.util.concurrent.atomic.AtomicReference<>();
+    void prescriptionNotificationFailureDoesNotFailGeneration() {
+        PrescriptionRepository repo = mockPrescriptionRepo(false);
 
         PrescriptionGenerator generator = new PrescriptionGenerator(
-                code -> false, // code doesn't exist
-                prescription -> {
-                    capturedPrescription.set(prescription);
-                    throw new RuntimeException("Pharmacy Service no disponible");
-                },
+                repo,
+                prescription -> { throw new RuntimeException("Pharmacy Service no disponible"); },
                 secureRandom
         );
 
-        // This should NOT throw even though notify throws
-        // We test generateCode() and the save path separately since we need a real repo
+        // generateCode should not throw regardless of notify failure
         String code = generator.generateCode();
         Assertions.assertThat(code).hasSize(8).matches("^[A-Z0-9]{8}$");
     }
 
     /**
-     * Feature: clinical-service, Property 14: Lab Order Notification Failures Don't Fail Transaction
+     * Property 14: Lab Order Notification Failures Don't Fail Transaction
      */
     @Example
-    void labOrderNotificationFailureDoesNotFailTransaction() {
+    void labOrderNotificationFailureDoesNotFailGeneration() {
         LabOrderGenerator generator = new LabOrderGenerator(
-                code -> false,
+                mockLabOrderRepo(false),
                 labOrder -> { throw new RuntimeException("Lab Service no disponible"); },
                 secureRandom
         );

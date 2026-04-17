@@ -8,33 +8,25 @@ import org.assertj.core.api.Assertions;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Property-Based Tests for TriageEngine.calculatePriorityLevel()
- * 
- * This is a pure function — ideal for PBT.
- * We test the TriageEngine directly without needing repositories.
+ * Pure function — no repositories needed.
  */
 class TriageEnginePropertyTest {
 
+    private final TriageEngine engine = new TriageEngine(null, null);
+
     /**
-     * Feature: clinical-service, Property 1: Manchester Algorithm Selects Maximum Priority
-     * 
-     * For any non-empty list of discriminators, the calculated priority level
-     * must have the minimum wait time among all discriminators (= maximum urgency).
+     * Property 1: Manchester Algorithm Selects Maximum Priority
+     * Result must be the level with the minimum wait time (max urgency).
      */
     @Property(tries = 200)
     void manchesterAlgorithmSelectsMaximumPriority(
-            @ForAll @NotEmpty List<@ForAll("discriminators") ManchesterDiscriminator> discriminators) {
+            @ForAll("nonEmptyDiscriminatorList") List<ManchesterDiscriminator> discriminators) {
 
-        // Given: Create TriageEngine with null repos (calculatePriorityLevel is pure)
-        TriageEngine engine = new TriageEngine(null, null);
-
-        // When: Calculate priority
         PriorityLevel result = engine.calculatePriorityLevel(discriminators);
 
-        // Then: Result must be the level with minimum wait time
         PriorityLevel expected = discriminators.stream()
                 .map(ManchesterDiscriminator::getPriorityLevel)
                 .min(Comparator.comparingInt(PriorityLevel::getMaxWaitMinutes))
@@ -45,16 +37,11 @@ class TriageEnginePropertyTest {
     }
 
     /**
-     * Feature: clinical-service, Property 2: Manchester Algorithm is Deterministic
-     * 
-     * For any set of discriminators, running the algorithm multiple times
-     * with the same input always produces the same output.
+     * Property 2: Manchester Algorithm is Deterministic
      */
     @Property(tries = 200)
     void manchesterAlgorithmIsDeterministic(
-            @ForAll @NotEmpty List<@ForAll("discriminators") ManchesterDiscriminator> discriminators) {
-
-        TriageEngine engine = new TriageEngine(null, null);
+            @ForAll("nonEmptyDiscriminatorList") List<ManchesterDiscriminator> discriminators) {
 
         PriorityLevel first  = engine.calculatePriorityLevel(discriminators);
         PriorityLevel second = engine.calculatePriorityLevel(discriminators);
@@ -69,9 +56,8 @@ class TriageEnginePropertyTest {
      */
     @Property(tries = 200)
     void resultIsAlwaysAValidPriorityLevel(
-            @ForAll @NotEmpty List<@ForAll("discriminators") ManchesterDiscriminator> discriminators) {
+            @ForAll("nonEmptyDiscriminatorList") List<ManchesterDiscriminator> discriminators) {
 
-        TriageEngine engine = new TriageEngine(null, null);
         PriorityLevel result = engine.calculatePriorityLevel(discriminators);
 
         Assertions.assertThat(result).isIn(
@@ -84,15 +70,13 @@ class TriageEnginePropertyTest {
      */
     @Property(tries = 100)
     void ifAnyRedDiscriminatorThenResultIsRed(
-            @ForAll @NotEmpty List<@ForAll("discriminators") ManchesterDiscriminator> otherDiscriminators) {
+            @ForAll("nonEmptyDiscriminatorList") List<ManchesterDiscriminator> others) {
 
-        TriageEngine engine = new TriageEngine(null, null);
-
-        ManchesterDiscriminator redDiscriminator =
+        ManchesterDiscriminator red =
                 new ManchesterDiscriminator("red-1", "R01", "Paro cardíaco", PriorityLevel.RED);
 
-        List<ManchesterDiscriminator> withRed = new java.util.ArrayList<>(otherDiscriminators);
-        withRed.add(redDiscriminator);
+        List<ManchesterDiscriminator> withRed = new java.util.ArrayList<>(others);
+        withRed.add(red);
 
         PriorityLevel result = engine.calculatePriorityLevel(withRed);
 
@@ -103,7 +87,12 @@ class TriageEnginePropertyTest {
     // ---- Arbitrary providers ----
 
     @Provide
-    Arbitrary<ManchesterDiscriminator> discriminators() {
+    Arbitrary<List<ManchesterDiscriminator>> nonEmptyDiscriminatorList() {
+        return discriminatorArbitrary().list().ofMinSize(1).ofMaxSize(10);
+    }
+
+    @Provide
+    Arbitrary<ManchesterDiscriminator> discriminatorArbitrary() {
         return Arbitraries.of(PriorityLevel.values())
                 .map(level -> new ManchesterDiscriminator(
                         "id-" + level.name(),
