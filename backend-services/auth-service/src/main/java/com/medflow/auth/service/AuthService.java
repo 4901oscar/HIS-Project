@@ -83,20 +83,20 @@ public class AuthService {
         Role patientRole = roleRepository.findByName(RoleName.PATIENT)
                 .orElseThrow(() -> new RuntimeException("Rol PATIENT no encontrado en BD"));
 
+        String fullName = buildFullName(request);
+
         User user = User.builder()
                 .username(request.getDpi())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .active(false)
+                .fullName(fullName)
+                .active(true)
                 .roles(Set.of(patientRole))
                 .build();
 
-        User saved = userRepository.save(user);
-        String token = activationTokenService.generateToken(saved.getId().toString());
-
-        log.info("[CU-00.2] Registro pendiente de activación. Email: {}. Token: {}", request.getEmail(), token);
-        return token;
+        userRepository.save(user);
+        log.info("[CU-00.2] Cuenta creada y activa. Email: {}", request.getEmail());
+        return null;
     }
 
     /**
@@ -156,6 +156,16 @@ public class AuthService {
     /** Logout: invalida el token en la blacklist. */
     public void logout(String token) {
         blacklistService.addToBlacklist(token);
+    }
+
+    private String buildFullName(RegisterRequest request) {
+        StringBuilder sb = new StringBuilder(request.getFirstName());
+        if (request.getSecondName() != null && !request.getSecondName().isBlank())
+            sb.append(" ").append(request.getSecondName());
+        sb.append(" ").append(request.getFirstLastName());
+        if (request.getSecondLastName() != null && !request.getSecondLastName().isBlank())
+            sb.append(" ").append(request.getSecondLastName());
+        return sb.toString();
     }
 
     private String generateTempPassword() {

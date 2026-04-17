@@ -88,8 +88,8 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
 
   // Valores por defecto si no hay usuario
-  const userRole = user?.role || 'ADMISSION';
-  const userName = user?.name || 'Staff Member';
+  const userRole = user?.roles?.[0] || 'ADMISSION';
+  const userName = user?.fullName || 'Staff Member';
 
   // Filtrar menú según rol
   const filteredMenu = menuItems.filter((item) =>

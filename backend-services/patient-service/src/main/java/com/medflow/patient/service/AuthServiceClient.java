@@ -18,6 +18,8 @@ public class AuthServiceClient {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceClient.class);
 
+    public record PatientAccountResult(String authUserId, String temporaryPassword) {}
+
     private final RestTemplate restTemplate;
 
     @Value("${auth-service.url:http://localhost:8081}")
@@ -29,9 +31,9 @@ public class AuthServiceClient {
 
     /**
      * Crea cuenta de paciente en auth-service.
-     * @return contraseña temporal generada, o null si falla.
+     * @return resultado con authUserId y contraseña temporal, o null si falla.
      */
-    public String createPatientAccount(String dpi, String email, String fullName) {
+    public PatientAccountResult createPatientAccount(String dpi, String email, String fullName) {
         try {
             Map<String, String> body = Map.of(
                     "dpi", dpi,
@@ -44,7 +46,10 @@ public class AuthServiceClient {
                     Map.class
             );
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("temporaryPassword");
+                Map<?, ?> resBody = response.getBody();
+                String userId = (String) resBody.get("userId");
+                String tempPassword = (String) resBody.get("temporaryPassword");
+                return new PatientAccountResult(userId, tempPassword);
             }
         } catch (Exception ex) {
             log.error("[AuthServiceClient] Error creando cuenta de paciente para DPI {}: {}", dpi, ex.getMessage());

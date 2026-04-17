@@ -20,6 +20,7 @@ public class PatientResponse {
     private String municipality;
     private String zone;
     private String address;
+    private String authUserId;
     private boolean active;
 
     public static PatientResponse from(Patient p) {
@@ -38,6 +39,7 @@ public class PatientResponse {
         r.setMunicipality(p.getMunicipality());
         r.setZone(p.getZone());
         r.setAddress(p.getAddress());
+        r.setAuthUserId(p.getAuthUserId());
         r.setActive(p.isActive());
         return r;
     }

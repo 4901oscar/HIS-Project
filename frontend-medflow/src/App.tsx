@@ -7,6 +7,8 @@ import './App.css';
 import HomePage from './pages/HomePage';
 import AppointmentPage from './pages/AppointmentPage';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ActivateAccountPage from './pages/ActivateAccountPage';
 
 // Páginas protegidas
 import DashboardPage from './pages/DashboardPage';
@@ -27,6 +29,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/appointment" element={<AppointmentPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/activate" element={<ActivateAccountPage />} />
 
           {/* Dashboard - Todas las rutas protegidas */}
           <Route

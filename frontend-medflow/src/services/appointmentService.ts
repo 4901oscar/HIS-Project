@@ -3,11 +3,6 @@
  * PLACEHOLDER MODE: Mock data hasta que el backend esté disponible
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import axios from 'axios';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const API_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080';
 
 // Mock data para desarrollo
 const mockAppointments = [

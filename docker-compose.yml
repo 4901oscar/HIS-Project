@@ -288,7 +288,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:8080
+      - VITE_API_GATEWAY_URL=http://localhost:8080
     depends_on:
       - api-gateway
     networks:
