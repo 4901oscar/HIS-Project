@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:medflow_db}
+    username: ${DB_USER:medflow_user}
+    password: ${DB_PASSWORD:medflow_pass}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+
+logging:
+  level:
+    com.medflow.pharmacy: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN

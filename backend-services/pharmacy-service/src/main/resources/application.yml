@@ -1,0 +1,58 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: pharmacy-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/medflow_db
+    username: medflow_user
+    password: medflow_pass
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: pharmacy_schema
+        format_sql: true
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    schemas: pharmacy_schema
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.medflow.pharmacy: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -237,7 +237,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_pharmacy_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=pharmacy_schema
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
     depends_on:
