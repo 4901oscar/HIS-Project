@@ -1,0 +1,44 @@
+package com.medflow.lab.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "lab_results", schema = "lab_schema")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class LabResult {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @Column(name = "order_id", nullable = false, length = 36)
+    private String orderId;
+
+    @Column(name = "patient_id", nullable = false, length = 36)
+    private String patientId;
+
+    @Column(name = "result_file_path", nullable = false, length = 500)
+    private String resultFilePath;
+
+    @Column(name = "uploaded_at", nullable = false)
+    private LocalDateTime uploadedAt;
+
+    @Column(name = "uploaded_by", nullable = false, length = 36)
+    private String uploadedBy;
+
+    @PrePersist
+    protected void onCreate() {
+        if (uploadedAt == null) {
+            uploadedAt = LocalDateTime.now();
+        }
+    }
+}
