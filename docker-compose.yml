@@ -208,9 +208,10 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_lab_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=lab_schema
       - SPRING_DATASOURCE_USERNAME=medflow_user
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - LAB_RESULTS_PATH=/app/lab-results
     depends_on:
       postgres:
         condition: service_healthy
@@ -218,6 +219,8 @@ services:
         condition: service_healthy
     networks:
       - medflow-network
+    volumes:
+      - lab_results:/app/lab-results
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
       interval: 30s
@@ -311,4 +314,6 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  lab_results:
     driver: local
