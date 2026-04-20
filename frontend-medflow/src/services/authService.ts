@@ -1,15 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080';
-
-const api = axios.create({ baseURL: API_URL });
-
-// Adjunta el token en cada request si existe
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+import api from '../api';
 
 export interface LoginCredentials {
   username: string;
@@ -74,9 +63,7 @@ export const logout = async (): Promise<void> => {
   }
 };
 
-export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem('auth_token');
-};
+export const isAuthenticated = (): boolean => !!localStorage.getItem('auth_token');
 
 export const getCurrentUser = (): AuthUser | null => {
   const data = localStorage.getItem('user_data');

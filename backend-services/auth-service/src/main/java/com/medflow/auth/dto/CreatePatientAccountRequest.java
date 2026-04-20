@@ -2,6 +2,7 @@ package com.medflow.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -16,6 +17,16 @@ public class CreatePatientAccountRequest {
     @Email(message = "Formato de correo inválido")
     private String email;
 
-    @NotBlank(message = "El nombre completo es requerido")
-    private String fullName;
+    @NotBlank(message = "El primer nombre es requerido")
+    private String firstName;
+
+    private String secondName;
+
+    @NotBlank(message = "El primer apellido es requerido")
+    private String firstLastName;
+
+    private String secondLastName;
+
+    @Pattern(regexp = "\\d{8}", message = "El teléfono debe tener 8 dígitos")
+    private String phone;
 }

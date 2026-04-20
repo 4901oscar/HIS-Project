@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { register } from '../services/authService';
 import type { RegisterData } from '../services/authService';
 import { validateDPI } from '../utils/validateDPI';
+import { Navbar } from '../components';
 import axios from 'axios';
 
 interface FormState extends RegisterData {
@@ -114,6 +115,8 @@ const RegisterPage: FC = () => {
   // --- Éxito ---
   if (success) {
     return (
+      <>
+      <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-medin-navy via-medin-navy to-medin-blue flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center">
           <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -133,11 +136,14 @@ const RegisterPage: FC = () => {
           </Link>
         </div>
       </div>
+      </>
     );
   }
 
   // --- Formulario ---
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen bg-gradient-to-br from-medin-navy via-medin-navy to-medin-blue flex items-center justify-center p-4 py-10">
       <div className="absolute top-20 left-20 w-64 h-64 bg-medin-cyan opacity-10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-20 w-96 h-96 bg-medin-blue opacity-10 rounded-full blur-3xl" />
@@ -152,7 +158,7 @@ const RegisterPage: FC = () => {
               <span className="text-medin-cyan">Flow</span>
             </h1>
           </div>
-          <p className="text-gray-300 text-sm">Hospital Information System</p>
+          <p className="text-gray-300 text-sm">Sistema de Información Hospitalaria</p>
         </div>
 
         {/* Card */}
@@ -373,6 +379,7 @@ const RegisterPage: FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

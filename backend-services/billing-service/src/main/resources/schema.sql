@@ -41,6 +41,28 @@ CREATE TABLE IF NOT EXISTS billing_schema.payments (
     CONSTRAINT chk_amount_positive CHECK (amount >= 0)
 );
 
+-- Service Items Catalog Table
+CREATE TABLE IF NOT EXISTS billing_schema.service_items (
+    id VARCHAR(36) PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    description VARCHAR(500),
+    category VARCHAR(50) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE INDEX IF NOT EXISTS idx_service_items_code ON billing_schema.service_items(code);
+CREATE INDEX IF NOT EXISTS idx_service_items_category ON billing_schema.service_items(category);
+
+INSERT INTO billing_schema.service_items (id, code, name, description, category, price, active) VALUES
+  (gen_random_uuid(), 'CONS-GEN', 'Consulta General', 'Consulta médica general', 'CONSULTATION', 150.00, true),
+  (gen_random_uuid(), 'CONS-ESP', 'Consulta Especialista', 'Consulta con médico especialista', 'CONSULTATION', 250.00, true),
+  (gen_random_uuid(), 'LAB-HEM', 'Hemograma Completo', 'Examen de sangre completo', 'LABORATORY', 75.00, true),
+  (gen_random_uuid(), 'LAB-GLU', 'Glucosa en Ayunas', 'Examen de glucosa', 'LABORATORY', 40.00, true),
+  (gen_random_uuid(), 'MED-GEN', 'Medicamento Genérico', 'Dispensación de medicamento genérico', 'MEDICATION', 25.00, true)
+ON CONFLICT (code) DO NOTHING;
+
 -- Indexes for Performance
 CREATE INDEX IF NOT EXISTS idx_invoices_patient ON billing_schema.invoices(patient_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON billing_schema.invoices(status);

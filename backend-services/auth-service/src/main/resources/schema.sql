@@ -11,7 +11,11 @@ CREATE TABLE IF NOT EXISTS auth_schema.users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    full_name VARCHAR(200),
+    first_name VARCHAR(50) NOT NULL,
+    second_name VARCHAR(50),
+    first_last_name VARCHAR(50) NOT NULL,
+    second_last_name VARCHAR(50),
+    phone VARCHAR(15),
     active BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -58,11 +62,11 @@ ON CONFLICT (name) DO NOTHING;
 -- Admin: usuario=admin  contraseña=Admin1234
 -- Doctor: usuario=doctor  contraseña=Doctor1234
 -- Admisión: usuario=admision  contraseña=Admision1234
-INSERT INTO auth_schema.users (id, username, email, password, full_name, active)
+INSERT INTO auth_schema.users (id, username, email, password, first_name, first_last_name, active)
 VALUES
-  (gen_random_uuid(), 'admin',    'admin@medflow.com',    '$2b$10$si.B4lmdLQ9.YuMQfd1/PuFRfBSgx9r0YjZyozn7F3WfL79b6WIRG', 'Administrador Sistema', true),
-  (gen_random_uuid(), 'doctor',   'doctor@medflow.com',   '$2b$10$pUPU.KlQtbc2UNC.ZU/fjulwLst.v.UImczXnPs4JFl0/iF2qI2fa', 'Dr. Juan Pérez',        true),
-  (gen_random_uuid(), 'admision', 'admision@medflow.com', '$2b$10$WOodPSQVE/.356GTOi1kG.pK2eW2J6syh0vXsHmSCgB20hhKqWQ4e', 'María López',           true)
+  (gen_random_uuid(), 'admin',    'admin@medflow.com',    '$2b$10$si.B4lmdLQ9.YuMQfd1/PuFRfBSgx9r0YjZyozn7F3WfL79b6WIRG', 'Administrador', 'Sistema', true),
+  (gen_random_uuid(), 'doctor',   'doctor@medflow.com',   '$2b$10$pUPU.KlQtbc2UNC.ZU/fjulwLst.v.UImczXnPs4JFl0/iF2qI2fa', 'Juan',          'Pérez',   true),
+  (gen_random_uuid(), 'admision', 'admision@medflow.com', '$2b$10$WOodPSQVE/.356GTOi1kG.pK2eW2J6syh0vXsHmSCgB20hhKqWQ4e', 'María',         'López',   true)
 ON CONFLICT (username) DO NOTHING;
 
 -- Asignar roles a los usuarios seed

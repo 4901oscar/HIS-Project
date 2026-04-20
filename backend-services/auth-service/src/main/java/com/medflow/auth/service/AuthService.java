@@ -34,24 +34,24 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklistService blacklistService;
     private final ActivationTokenService activationTokenService;
+    private final EmailService emailService;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder,
                        TokenBlacklistService blacklistService,
-                       ActivationTokenService activationTokenService) {
+                       ActivationTokenService activationTokenService,
+                       EmailService emailService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.blacklistService = blacklistService;
         this.activationTokenService = activationTokenService;
+        this.emailService = emailService;
     }
 
-    /**
-     * CU-00.1: Login por username O correo electrónico.
-     */
     public String login(String identifier, String password) {
         var user = userRepository.findByUsername(identifier)
                 .or(() -> userRepository.findByEmail(identifier))
@@ -66,11 +66,6 @@ public class AuthService {
         return jwtService.generateToken(user);
     }
 
-    /**
-     * CU-00.2: Auto-registro de paciente desde el portal.
-     * Cuenta queda inactiva (active=false) hasta confirmar email.
-     * @return token de activación para incluir en el link del correo.
-     */
     @Transactional
     public String register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -83,25 +78,27 @@ public class AuthService {
         Role patientRole = roleRepository.findByName(RoleName.PATIENT)
                 .orElseThrow(() -> new RuntimeException("Rol PATIENT no encontrado en BD"));
 
-        String fullName = buildFullName(request);
-
         User user = User.builder()
                 .username(request.getDpi())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .fullName(fullName)
-                .active(true)
+                .firstName(request.getFirstName())
+                .secondName(request.getSecondName())
+                .firstLastName(request.getFirstLastName())
+                .secondLastName(request.getSecondLastName())
+                .phone(request.getPhone())
+                .active(false)
                 .roles(Set.of(patientRole))
                 .build();
 
-        userRepository.save(user);
-        log.info("[CU-00.2] Cuenta creada y activa. Email: {}", request.getEmail());
-        return null;
+        User saved = userRepository.save(user);
+        String token = activationTokenService.generateToken(saved.getId().toString());
+        emailService.sendActivationEmail(saved.getEmail(), saved.getFirstName(), token);
+
+        log.info("[CU-00.2] Cuenta creada, pendiente activacion. Email: {}", request.getEmail());
+        return token;
     }
 
-    /**
-     * CU-00.2: Activa la cuenta al hacer clic en el link del correo.
-     */
     @Transactional
     public void activate(String token) {
         String userId = activationTokenService.validateAndConsume(token);
@@ -115,10 +112,6 @@ public class AuthService {
         log.info("[CU-00.2] Cuenta activada para: {}", user.getEmail());
     }
 
-    /**
-     * CU-01: Admisión crea cuenta de paciente con contraseña temporal.
-     * Llamado por patient-service vía HTTP interno.
-     */
     @Transactional
     public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request) {
         if (userRepository.findByUsername(request.getDpi()).isPresent()) {
@@ -137,42 +130,39 @@ public class AuthService {
                 .username(request.getDpi())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(tempPassword))
-                .fullName(request.getFullName())
+                .firstName(request.getFirstName())
+                .secondName(request.getSecondName())
+                .firstLastName(request.getFirstLastName())
+                .secondLastName(request.getSecondLastName())
+                .phone(request.getPhone())
                 .active(true)
                 .roles(Set.of(patientRole))
                 .build();
 
         User saved = userRepository.save(user);
+        emailService.sendTempPasswordEmail(
+                saved.getEmail(), saved.getFirstName(),
+                saved.getUsername(), tempPassword);
+
         log.info("[CU-01] Cuenta paciente creada. DPI: {}", request.getDpi());
 
         return new CreatePatientAccountResponse(
                 saved.getId().toString(),
                 saved.getUsername(),
                 tempPassword,
-                "Cuenta creada. Entregue la contraseña temporal al paciente."
+                "Cuenta creada. Se envio la contrasena temporal al correo del paciente."
         );
     }
 
-    /** Logout: invalida el token en la blacklist. */
     public void logout(String token) {
         blacklistService.addToBlacklist(token);
     }
 
-    private String buildFullName(RegisterRequest request) {
-        StringBuilder sb = new StringBuilder(request.getFirstName());
-        if (request.getSecondName() != null && !request.getSecondName().isBlank())
-            sb.append(" ").append(request.getSecondName());
-        sb.append(" ").append(request.getFirstLastName());
-        if (request.getSecondLastName() != null && !request.getSecondLastName().isBlank())
-            sb.append(" ").append(request.getSecondLastName());
-        return sb.toString();
-    }
-
     private String generateTempPassword() {
         char[] arr = new char[8];
-        arr[0] = CHARS.charAt(RANDOM.nextInt(26));           // mayúscula
-        arr[1] = CHARS.charAt(26 + RANDOM.nextInt(26));      // minúscula
-        arr[2] = CHARS.charAt(52 + RANDOM.nextInt(10));      // número
+        arr[0] = CHARS.charAt(RANDOM.nextInt(26));
+        arr[1] = CHARS.charAt(26 + RANDOM.nextInt(26));
+        arr[2] = CHARS.charAt(52 + RANDOM.nextInt(10));
         for (int i = 3; i < 8; i++) {
             arr[i] = CHARS.charAt(RANDOM.nextInt(CHARS.length()));
         }

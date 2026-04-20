@@ -5,11 +5,13 @@
 
 import { useState } from 'react';
 import type { FC } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import logo from '/icono.svg';
 
 const Navbar: FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  const hideNav = pathname === '/login' || pathname === '/register';
 
   return (
     <header className="w-full">
@@ -65,34 +67,34 @@ const Navbar: FC = () => {
       </div>
 
       {/* Main Navigation */}
-      <nav className="bg-medin-navy py-4 px-4 md:px-6">
+      {!hideNav && <nav className="bg-medin-navy py-4 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Navigation Links - Desktop */}
           <ul className="hidden md:flex items-center gap-4 lg:gap-8">
             <li>
               <Link to="/" className="text-white hover:text-medin-cyan transition-colors font-medium">
-                Home
+                Inicio
               </Link>
             </li>
             <li>
-              <Link to="/about" className="text-white hover:text-medin-cyan transition-colors font-medium">
-                About us
-              </Link>
+              <span className="text-gray-500 font-medium cursor-not-allowed" title="Próximamente">
+                Nosotros
+              </span>
             </li>
             <li>
-              <Link to="/services" className="text-white hover:text-medin-cyan transition-colors font-medium">
-                Services
-              </Link>
+              <span className="text-gray-500 font-medium cursor-not-allowed" title="Próximamente">
+                Servicios
+              </span>
             </li>
             <li>
-              <Link to="/news" className="text-white hover:text-medin-cyan transition-colors font-medium">
-                News
-              </Link>
+              <span className="text-gray-500 font-medium cursor-not-allowed" title="Próximamente">
+                Noticias
+              </span>
             </li>
             <li>
-              <Link to="/contact" className="text-white hover:text-medin-cyan transition-colors font-medium">
-                Contact
-              </Link>
+              <span className="text-gray-500 font-medium cursor-not-allowed" title="Próximamente">
+                Contacto
+              </span>
             </li>
           </ul>
 
@@ -115,15 +117,20 @@ const Navbar: FC = () => {
 
           {/* Action Buttons - Both Mobile and Desktop */}
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Login Button */}
             <Link
               to="/login"
               className="px-3 md:px-4 lg:px-6 py-2 bg-medin-navy border-2 border-medin-cyan text-medin-cyan rounded-full font-semibold hover:bg-medin-cyan hover:text-medin-navy transition-colors text-xs md:text-sm lg:text-base"
             >
               Iniciar Sesión
             </Link>
-            
-            {/* Appointment Button */}
+
+            <Link
+              to="/register"
+              className="px-3 md:px-4 lg:px-6 py-2 bg-medin-navy border-2 border-white text-white rounded-full font-semibold hover:bg-white hover:text-medin-navy transition-colors text-xs md:text-sm lg:text-base"
+            >
+              Registrar
+            </Link>
+
             <Link
               to="/appointment"
               className="px-3 md:px-4 lg:px-6 py-2 bg-medin-blue text-medin-navy rounded-full font-semibold hover:bg-medin-blue-light transition-colors text-xs md:text-sm lg:text-base"
@@ -143,58 +150,40 @@ const Navbar: FC = () => {
                   className="block text-white hover:text-medin-cyan transition-colors font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Home
+                  Inicio
                 </Link>
               </li>
-              <li>
+              <li><span className="block text-gray-500 font-medium py-2">Nosotros</span></li>
+              <li><span className="block text-gray-500 font-medium py-2">Servicios</span></li>
+              <li><span className="block text-gray-500 font-medium py-2">Noticias</span></li>
+              <li><span className="block text-gray-500 font-medium py-2">Contacto</span></li>
+              <li className="pt-2 border-t border-white/20 flex flex-col gap-2">
                 <Link
-                  to="/about"
-                  className="block text-white hover:text-medin-cyan transition-colors font-medium py-2"
+                  to="/login"
+                  className="block text-center px-4 py-2 border-2 border-medin-cyan text-medin-cyan rounded-full font-semibold hover:bg-medin-cyan hover:text-medin-navy transition-colors text-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  About us
+                  Iniciar Sesión
                 </Link>
-              </li>
-              <li>
                 <Link
-                  to="/services"
-                  className="block text-white hover:text-medin-cyan transition-colors font-medium py-2"
+                  to="/register"
+                  className="block text-center px-4 py-2 border-2 border-white text-white rounded-full font-semibold hover:bg-white hover:text-medin-navy transition-colors text-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Services
+                  Registrar
                 </Link>
-              </li>
-              <li>
                 <Link
-                  to="/doctors"
-                  className="block text-white hover:text-medin-cyan transition-colors font-medium py-2"
+                  to="/appointment"
+                  className="block text-center px-4 py-2 bg-medin-blue text-medin-navy rounded-full font-semibold transition-colors text-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Doctors
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/news"
-                  className="block text-white hover:text-medin-cyan transition-colors font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  News
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/contact"
-                  className="block text-white hover:text-medin-cyan transition-colors font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Contact
+                  Agendar Cita
                 </Link>
               </li>
             </ul>
           </div>
         )}
-      </nav>
+      </nav>}
     </header>
   );
 };

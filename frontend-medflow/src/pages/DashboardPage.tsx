@@ -11,9 +11,9 @@ const DashboardPage: FC = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Panel Principal</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Welcome to MedFlow Hospital Information System
+            Bienvenido al Sistema de Información Hospitalaria MedFlow
           </p>
         </div>
 
@@ -22,7 +22,7 @@ const DashboardPage: FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Patients</p>
+                <p className="text-sm font-medium text-gray-600">Total de Pacientes</p>
                 <p className="text-2xl font-bold text-gray-900">1,234</p>
               </div>
               <div className="h-12 w-12 bg-medin-cyan/10 rounded-full flex items-center justify-center">
@@ -36,7 +36,7 @@ const DashboardPage: FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Appointments Today</p>
+                <p className="text-sm font-medium text-gray-600">Citas de Hoy</p>
                 <p className="text-2xl font-bold text-gray-900">56</p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -50,7 +50,7 @@ const DashboardPage: FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pending Results</p>
+                <p className="text-sm font-medium text-gray-600">Resultados Pendientes</p>
                 <p className="text-2xl font-bold text-gray-900">12</p>
               </div>
               <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -64,7 +64,7 @@ const DashboardPage: FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Staff Online</p>
+                <p className="text-sm font-medium text-gray-600">Personal Conectado</p>
                 <p className="text-2xl font-bold text-gray-900">28</p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -78,23 +78,23 @@ const DashboardPage: FC = () => {
 
         {/* Quick Actions */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-medin-cyan hover:bg-medin-cyan/5 transition-colors text-left">
-              <p className="font-medium text-gray-900">New Patient</p>
-              <p className="text-sm text-gray-600">Register new patient</p>
+              <p className="font-medium text-gray-900">Nuevo Paciente</p>
+              <p className="text-sm text-gray-600">Registrar nuevo paciente</p>
             </button>
             <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-medin-cyan hover:bg-medin-cyan/5 transition-colors text-left">
-              <p className="font-medium text-gray-900">Schedule Appointment</p>
-              <p className="text-sm text-gray-600">Book new appointment</p>
+              <p className="font-medium text-gray-900">Agendar Cita</p>
+              <p className="text-sm text-gray-600">Reservar nueva cita</p>
             </button>
             <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-medin-cyan hover:bg-medin-cyan/5 transition-colors text-left">
-              <p className="font-medium text-gray-900">View Records</p>
-              <p className="text-sm text-gray-600">Access patient files</p>
+              <p className="font-medium text-gray-900">Ver Expedientes</p>
+              <p className="text-sm text-gray-600">Acceder a archivos del paciente</p>
             </button>
             <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-medin-cyan hover:bg-medin-cyan/5 transition-colors text-left">
-              <p className="font-medium text-gray-900">Reports</p>
-              <p className="text-sm text-gray-600">Generate reports</p>
+              <p className="font-medium text-gray-900">Reportes</p>
+              <p className="text-sm text-gray-600">Generar reportes</p>
             </button>
           </div>
         </div>

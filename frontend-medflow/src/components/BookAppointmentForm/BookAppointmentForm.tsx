@@ -1,248 +1,124 @@
-/**
- * BookAppointmentForm - Formulario para agendar citas
- */
-
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent, FC } from 'react';
-import type { AppointmentFormData } from '../../types/appointment';
+import { useAuth } from '../../hooks/useAuth';
+import { createAppointment } from '../../services/appointmentService';
 
 interface BookAppointmentFormProps {
   onSuccess?: (message: string) => void;
   onError?: (message: string) => void;
 }
 
-const BookAppointmentForm: FC<BookAppointmentFormProps> = ({ onSuccess, onError }) => {
-  const [formData, setFormData] = useState<AppointmentFormData>({
-    dpi: '' as unknown as number, // Inicialmente vacío, se convertirá a número
-    nit: '' as unknown as number, // Inicialmente vacío, se convertirá a número
-    name: '',
-    gender: '',
-    email: '',
-    phone: '',
-    date: '',
-    time: '',
-    message: '',
-  });
+const TIME_SLOTS = [
+  '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00',
+];
 
+const formatTime = (t: string) => {
+  const [h] = t.split(':').map(Number);
+  return h < 12 ? `${t} AM` : `${h === 12 ? 12 : h - 12}:00 PM`;
+};
+
+const BookAppointmentForm: FC<BookAppointmentFormProps> = ({ onSuccess, onError }) => {
+  const { user } = useAuth();
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [motivo, setMotivo] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Limpiar error cuando el usuario empieza a escribir
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
-  };
-
-  const validateForm = (): boolean => {
+  const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.dpi) newErrors.dpi = 'DPI is required';
-    if (!formData.nit) newErrors.nit = 'NIT is required';
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
-    if (!formData.date) newErrors.date = 'Date is required';
-    if (!formData.time) newErrors.time = 'Time is required';
-    
-
+    if (!date) newErrors.date = 'Selecciona una fecha';
+    if (!time) newErrors.time = 'Selecciona una hora';
+    if (!motivo.trim()) newErrors.motivo = 'Describe el motivo de la consulta';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      onError?.('Please fill all required fields');
-      return;
-    }
+    if (!validate()) return;
 
     setIsLoading(true);
-
     try {
-      // Simulación - aquí iría la llamada al servicio
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      onSuccess?.('Appointment booked successfully!');
-      
-      // Resetear formulario
-      setFormData({
-        dpi: 0,
-        nit: 0,
-        name: '',
-        gender: '',
-        email: '',
-        phone: '',
-        date: '',
-        time: '',
-        message: '',
-      });
+      await createAppointment({ patientId: user!.id, doctorId: '', appointmentDate: `${date}T${time}:00`, appointmentTime: time, notes: motivo });
+      onSuccess?.('¡Cita agendada exitosamente! Pronto recibirás confirmación.');
+      setDate('');
+      setTime('');
+      setMotivo('');
+      setErrors({});
     } catch {
-      onError?.('Error booking appointment');
+      onError?.('No se pudo agendar la cita. Intenta de nuevo más tarde.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fieldClass = (field: string) =>
+    `w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan${errors[field] ? ' ring-2 ring-red-500' : ''}`;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* DPI and NIT Row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <input
-            type="number"
-            name="dpi"
-            value={formData.dpi}
-            onChange={handleChange}
-            placeholder="DPI"
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.dpi ? 'ring-2 ring-red-500' : ''
-            }`}
-          />
-        </div>
-        <div>
-          <input
-            type="number"
-            name="nit"
-            value={formData.nit}
-            onChange={handleChange}
-            placeholder="NIT"
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.nit ? 'ring-2 ring-red-500' : ''
-            }`}
-          />
-        </div>
-      </div>
-
-      {/* Name and Gender Row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Name"
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.name ? 'ring-2 ring-red-500' : ''
-            }`}
-          />
-        </div>
-        <div>
-          <select
-            name="gender"
-            value={formData.gender}
-            onChange={handleChange}
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.gender ? 'ring-2 ring-red-500' : ''
-            } ${!formData.gender ? 'text-gray-400' : ''}`}
-          >
-            <option value="">Gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Email and Phone Row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.email ? 'ring-2 ring-red-500' : ''
-            }`}
-          />
-        </div>
-        <div>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="Phone"
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.phone ? 'ring-2 ring-red-500' : ''
-            }`}
-          />
-        </div>
-      </div>
-
-      {/* Date and Time Row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <select
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.date ? 'ring-2 ring-red-500' : ''
-            } ${!formData.date ? 'text-gray-400' : ''}`}
-          >
-            <option value="">Date</option>
-            <option value="2026-03-06">March 6, 2026</option>
-            <option value="2026-03-07">March 7, 2026</option>
-            <option value="2026-03-08">March 8, 2026</option>
-            <option value="2026-03-09">March 9, 2026</option>
-            <option value="2026-03-10">March 10, 2026</option>
-          </select>
-        </div>
-        <div>
-          <select
-            name="time"
-            value={formData.time}
-            onChange={handleChange}
-            className={`w-full px-4 py-3 bg-medin-navy border-0 text-white focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-              errors.time ? 'ring-2 ring-red-500' : ''
-            } ${!formData.time ? 'text-gray-400' : ''}`}
-          >
-            <option value="">Time</option>
-            <option value="09:00">09:00 AM</option>
-            <option value="10:00">10:00 AM</option>
-            <option value="11:00">11:00 AM</option>
-            <option value="14:00">02:00 PM</option>
-            <option value="15:00">03:00 PM</option>
-            <option value="16:00">04:00 PM</option>
-          </select>
-        </div>
-      </div>
-
-      
-
-      {/* Message */}
+      {/* Fecha */}
       <div>
-        <textarea
-          name="message"
-          value={formData.message}
-          onChange={handleChange}
-          placeholder="Message"
-          rows={4}
-          className="w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan resize-none"
+        <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de la cita</label>
+        <input
+          type="date"
+          value={date}
+          min={today}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            setDate(e.target.value);
+            if (errors.date) setErrors(prev => ({ ...prev, date: '' }));
+          }}
+          className={fieldClass('date')}
         />
+        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
       </div>
 
-      {/* Submit Button */}
+      {/* Hora */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+        <select
+          value={time}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+            setTime(e.target.value);
+            if (errors.time) setErrors(prev => ({ ...prev, time: '' }));
+          }}
+          className={`${fieldClass('time')}${!time ? ' text-gray-400' : ''}`}
+        >
+          <option value="">Selecciona una hora</option>
+          {TIME_SLOTS.map(t => (
+            <option key={t} value={t}>{formatTime(t)}</option>
+          ))}
+        </select>
+        {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time}</p>}
+      </div>
+
+      {/* Motivo */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Motivo de consulta</label>
+        <textarea
+          value={motivo}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
+            setMotivo(e.target.value);
+            if (errors.motivo) setErrors(prev => ({ ...prev, motivo: '' }));
+          }}
+          placeholder="Describe brevemente tus síntomas o el motivo de tu cita..."
+          rows={5}
+          className={`${fieldClass('motivo')} resize-none`}
+        />
+        {errors.motivo && <p className="text-red-500 text-xs mt-1">{errors.motivo}</p>}
+      </div>
+
       <button
         type="submit"
         disabled={isLoading}
         className="w-full py-3 bg-medin-blue text-medin-navy font-semibold hover:bg-medin-blue-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'SUBMITTING...' : 'SUBMIT'}
+        {isLoading ? 'ENVIANDO...' : 'AGENDAR CITA'}
       </button>
     </form>
   );

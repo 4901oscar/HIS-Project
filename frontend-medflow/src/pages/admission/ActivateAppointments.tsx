@@ -1,246 +1,341 @@
-/**
- * ActivateAppointments - Vista de Admisión para Activar Citas
- */
-
-import { useState, useEffect } from 'react';
-import type { FC } from 'react';
+import { useState } from 'react';
+import type { FC, FormEvent } from 'react';
 import { MainLayout } from '../../components/Layout';
-import { 
-  MagnifyingGlassIcon, 
+import {
+  MagnifyingGlassIcon,
+  UserPlusIcon,
   CheckCircleIcon,
-  ClockIcon,
-  XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { getAppointments, activateAppointment } from '../../services/appointmentService';
+import { createPatient, searchPatients } from '../../services/patientService';
+import type { PatientResponse, CreatePatientRequest } from '../../services/patientService';
+import { activateAppointment } from '../../services/appointmentService';
+import axios from 'axios';
 
-interface Appointment {
-  id: string;
-  patientName: string;
-  patientDPI: string;
-  date: string;
-  time: string;
-  status: 'PENDING' | 'ACTIVATED' | 'CANCELLED';
-  doctor?: string;
-  specialty?: string;
-}
+type Tab = 'register' | 'activate';
+
+const emptyForm: CreatePatientRequest = {
+  dpi: '',
+  nit: '',
+  firstName: '',
+  secondName: '',
+  firstLastName: '',
+  secondLastName: '',
+  birthDate: '',
+  gender: 'MALE',
+  email: '',
+  phone: '',
+  department: '',
+  municipality: '',
+  zone: '',
+  address: '',
+};
 
 const ActivateAppointments: FC = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('register');
 
-  useEffect(() => {
-    loadAppointments();
-  }, []);
+  // ── Registro de paciente ──────────────────────────────────────────────────
+  const [form, setForm] = useState<CreatePatientRequest>(emptyForm);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regSuccess, setRegSuccess] = useState<PatientResponse | null>(null);
+  const [regError, setRegError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Filtrar citas por búsqueda
-    if (searchTerm.trim() === '') {
-      setFilteredAppointments(appointments);
-    } else {
-      const filtered = appointments.filter(
-        (apt) =>
-          apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          apt.patientDPI.includes(searchTerm) ||
-          apt.id.includes(searchTerm)
-      );
-      setFilteredAppointments(filtered);
-    }
-  }, [searchTerm, appointments]);
-
-  const loadAppointments = async () => {
-    setLoading(true);
-    try {
-      const data = await getAppointments();
-      setAppointments(data as Appointment[]);
-      setFilteredAppointments(data as Appointment[]);
-    } catch {
-      setErrorMessage('Error loading appointments');
-    } finally {
-      setLoading(false);
-    }
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleActivate = async (appointmentId: string) => {
+  const handleRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setRegLoading(true);
+    setRegError(null);
+    setRegSuccess(null);
     try {
-      const result = await activateAppointment(appointmentId) as { status: number; data: { message: string } };
-      
-      if (result.status === 200) {
-        // Actualizar lista
-        setAppointments((prev) =>
-          prev.map((apt) =>
-            apt.id === appointmentId ? { ...apt, status: 'ACTIVATED' as const } : apt
-          )
-        );
-        
-        setSuccessMessage(`Appointment ${appointmentId} activated successfully`);
-        setTimeout(() => setSuccessMessage(null), 3000);
+      const patient = await createPatient(form);
+      setRegSuccess(patient);
+      setForm(emptyForm);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message || err.response?.data?.error || 'Error al registrar paciente';
+        setRegError(msg);
+      } else {
+        setRegError('Error al conectar con el servidor');
       }
-    } catch {
-      setErrorMessage('Error activating appointment');
-      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setRegLoading(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'PENDING':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            <ClockIcon className="h-4 w-4 mr-1" />
-            Pending
-          </span>
-        );
-      case 'ACTIVATED':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <CheckCircleIcon className="h-4 w-4 mr-1" />
-            Activated
-          </span>
-        );
-      case 'CANCELLED':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            <XCircleIcon className="h-4 w-4 mr-1" />
-            Cancelled
-          </span>
-        );
-      default:
-        return null;
+  // ── Activar cita ──────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<PatientResponse[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientResponse | null>(null);
+  const [appointmentId, setAppointmentId] = useState('');
+  const [actLoading, setActLoading] = useState(false);
+  const [actSuccess, setActSuccess] = useState<string | null>(null);
+  const [actError, setActError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchResults([]);
+    setSelectedPatient(null);
+    try {
+      const results = await searchPatients(searchQuery);
+      setSearchResults(results);
+    } catch {
+      setActError('Error al buscar paciente');
+    } finally {
+      setSearching(false);
     }
   };
+
+  const handleActivate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!appointmentId.trim()) return;
+    setActLoading(true);
+    setActError(null);
+    setActSuccess(null);
+    try {
+      await activateAppointment(appointmentId.trim());
+      setActSuccess(`Cita ${appointmentId.trim()} activada exitosamente`);
+      setAppointmentId('');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message || 'Error al activar la cita';
+        setActError(msg);
+      } else {
+        setActError('Error al conectar con el servidor');
+      }
+    } finally {
+      setActLoading(false);
+    }
+  };
+
+  const inputClass =
+    'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm';
+  const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
 
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Activate Appointments</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Review and activate pending patient appointments
-            </p>
-          </div>
-          <button
-            onClick={loadAppointments}
-            className="mt-4 sm:mt-0 px-4 py-2 bg-medin-navy text-white rounded-lg hover:bg-medin-navy/90 transition-colors"
-          >
-            Refresh
-          </button>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Admisión</h2>
+          <p className="mt-1 text-sm text-gray-600">Registro de pacientes y activación de citas</p>
         </div>
 
-          {/* Messages */}
-        {successMessage && (
-          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-            {successMessage}
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setTab('register')}
+              className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                tab === 'register'
+                  ? 'border-medin-cyan text-medin-cyan'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <UserPlusIcon className="h-4 w-4" />
+              Registrar Paciente
+            </button>
+            <button
+              onClick={() => setTab('activate')}
+              className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                tab === 'activate'
+                  ? 'border-medin-cyan text-medin-cyan'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <CheckCircleIcon className="h-4 w-4" />
+              Activar Cita
+            </button>
+          </nav>
+        </div>
+
+        {/* ── Tab: Registrar Paciente ── */}
+        {tab === 'register' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Datos del Paciente</h3>
+
+            {regSuccess && (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-800 font-medium">Paciente registrado exitosamente</p>
+                <p className="text-green-700 text-sm mt-1">
+                  ID: <span className="font-mono">{regSuccess.id}</span> — {regSuccess.fullName}
+                </p>
+                <p className="text-green-700 text-sm">DPI: {regSuccess.dpi}</p>
+              </div>
+            )}
+
+            {regError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                {regError}
+              </div>
+            )}
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>DPI <span className="text-red-500">*</span></label>
+                  <input name="dpi" value={form.dpi} onChange={handleFormChange} required maxLength={13} minLength={13} placeholder="13 dígitos" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>NIT</label>
+                  <input name="nit" value={form.nit} onChange={handleFormChange} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Primer Nombre <span className="text-red-500">*</span></label>
+                  <input name="firstName" value={form.firstName} onChange={handleFormChange} required className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Segundo Nombre</label>
+                  <input name="secondName" value={form.secondName} onChange={handleFormChange} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Primer Apellido <span className="text-red-500">*</span></label>
+                  <input name="firstLastName" value={form.firstLastName} onChange={handleFormChange} required className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Segundo Apellido</label>
+                  <input name="secondLastName" value={form.secondLastName} onChange={handleFormChange} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Fecha de Nacimiento <span className="text-red-500">*</span></label>
+                  <input type="date" name="birthDate" value={form.birthDate} onChange={handleFormChange} required className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Género <span className="text-red-500">*</span></label>
+                  <select name="gender" value={form.gender} onChange={handleFormChange} required className={inputClass}>
+                    <option value="MALE">Masculino</option>
+                    <option value="FEMALE">Femenino</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Correo Electrónico <span className="text-red-500">*</span></label>
+                  <input type="email" name="email" value={form.email} onChange={handleFormChange} required className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Teléfono <span className="text-red-500">*</span></label>
+                  <input name="phone" value={form.phone} onChange={handleFormChange} required maxLength={8} minLength={8} placeholder="8 dígitos" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Departamento</label>
+                  <input name="department" value={form.department} onChange={handleFormChange} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Municipio</label>
+                  <input name="municipality" value={form.municipality} onChange={handleFormChange} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Zona</label>
+                  <input name="zone" value={form.zone} onChange={handleFormChange} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Dirección</label>
+                  <input name="address" value={form.address} onChange={handleFormChange} className={inputClass} />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={regLoading}
+                  className="px-6 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {regLoading ? 'Registrando...' : 'Registrar Paciente'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
-        {errorMessage && (
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-            {errorMessage}
+
+        {/* ── Tab: Activar Cita ── */}
+        {tab === 'activate' && (
+          <div className="space-y-4">
+            {/* Buscar paciente */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Buscar Paciente</h3>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre, DPI o correo..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm"
+                  />
+                </div>
+                <button
+                  onClick={handleSearch}
+                  disabled={searching}
+                  className="px-4 py-2 bg-medin-navy text-white rounded-lg hover:bg-medin-navy/90 text-sm disabled:opacity-50"
+                >
+                  {searching ? 'Buscando...' : 'Buscar'}
+                </button>
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="mt-3 divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                  {searchResults.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setSelectedPatient(p); setSearchResults([]); }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <p className="font-medium text-gray-900 text-sm">{p.fullName}</p>
+                      <p className="text-xs text-gray-500">DPI: {p.dpi} — {p.email}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {selectedPatient && (
+                <div className="mt-3 p-3 bg-medin-cyan/10 border border-medin-cyan/30 rounded-lg">
+                  <p className="font-medium text-gray-900 text-sm">{selectedPatient.fullName}</p>
+                  <p className="text-xs text-gray-600">DPI: {selectedPatient.dpi}</p>
+                  <p className="text-xs text-gray-600">ID: <span className="font-mono">{selectedPatient.id}</span></p>
+                </div>
+              )}
+            </div>
+
+            {/* Activar cita */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Activar Cita por ID</h3>
+
+              {actSuccess && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+                  {actSuccess}
+                </div>
+              )}
+              {actError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                  {actError}
+                </div>
+              )}
+
+              <form onSubmit={handleActivate} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="ID de la cita (UUID)"
+                  value={appointmentId}
+                  onChange={(e) => setAppointmentId(e.target.value)}
+                  required
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={actLoading}
+                  className="px-5 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-sm disabled:opacity-50 flex items-center gap-1"
+                >
+                  <CheckCircleIcon className="h-4 w-4" />
+                  {actLoading ? 'Activando...' : 'Activar'}
+                </button>
+              </form>
+            </div>
           </div>
         )}
-
-        {/* Search Bar */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by patient name, DPI, or appointment ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        {/* Appointments Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent"></div>
-              <p className="mt-4 text-gray-600">Loading appointments...</p>
-            </div>
-          ) : filteredAppointments.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              No appointments found
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Appointment ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Patient
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    DPI
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Doctor / Specialty
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAppointments.map((appointment) => (
-                  <tr key={appointment.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {appointment.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {appointment.patientName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {appointment.patientDPI}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <div>{appointment.date}</div>
-                      <div className="text-xs text-gray-500">{appointment.time}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <div>{appointment.doctor || 'Not assigned'}</div>
-                      <div className="text-xs text-gray-500">{appointment.specialty || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(appointment.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {appointment.status === 'PENDING' && (
-                        <button
-                          onClick={() => handleActivate(appointment.id)}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-medin-cyan hover:bg-medin-cyan/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medin-cyan"
-                        >
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
-                          Activate
-                        </button>
-                      )}
-                      {appointment.status === 'ACTIVATED' && (
-                        <span className="text-green-600 text-xs">✓ Active</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          )}
-        </div>
       </div>
     </MainLayout>
   );

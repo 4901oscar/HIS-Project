@@ -5,14 +5,16 @@
 
 import { useState } from 'react';
 import type { FC, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import type { LoginCredentials } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
+import { Navbar } from '../components';
 import axios from 'axios';
 
 const LoginPage: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuth();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     username: '',
@@ -39,10 +41,12 @@ const LoginPage: FC = () => {
         'LABORATORY': '/lab',
         'PHARMACY': '/pharmacy',
         'CASHIER': '/cashier',
+        'PATIENT': '/patient',
       };
 
+      const from = (location.state as { from?: string })?.from;
       const primaryRole = response.user.roles[0] ?? '';
-      const redirectPath = roleRoutes[primaryRole] || '/dashboard';
+      const redirectPath = from ?? roleRoutes[primaryRole] ?? '/dashboard';
       navigate(redirectPath);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
@@ -69,25 +73,14 @@ const LoginPage: FC = () => {
   };
 
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen bg-gradient-to-br from-medin-navy via-medin-navy to-medin-blue flex items-center justify-center p-4">
       {/* Decorative circles */}
       <div className="absolute top-20 left-20 w-64 h-64 bg-medin-cyan opacity-10 rounded-full blur-3xl"></div>
       <div className="absolute bottom-20 right-20 w-96 h-96 bg-medin-blue opacity-10 rounded-full blur-3xl"></div>
 
-      <div className="relative w-full max-w-md">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <img src="/icono.svg" alt="MedFlow" className="h-16 w-auto" />
-            <h1 className="text-4xl font-bold">
-              <span className="text-white">Med</span>
-              <span className="text-medin-cyan">Flow</span>
-            </h1>
-          </div>
-          <p className="text-gray-300 text-sm">Hospital Information System</p>
-          <p className="text-medin-cyan text-xs mt-2">Staff Access Only</p>
-        </div>
-
+      <div className="relative w-full max-w-md">      
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="mb-6">
@@ -110,7 +103,7 @@ const LoginPage: FC = () => {
             {/* Username */}
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+                Usuario <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -135,7 +128,7 @@ const LoginPage: FC = () => {
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+                Contraseña <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -218,6 +211,7 @@ const LoginPage: FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

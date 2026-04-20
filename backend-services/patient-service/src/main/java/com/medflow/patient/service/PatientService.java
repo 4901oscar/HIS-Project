@@ -64,7 +64,10 @@ public class PatientService {
 
         // Crear cuenta en auth-service (CU-01: envía usuario + contraseña temporal)
         AuthServiceClient.PatientAccountResult account = authServiceClient.createPatientAccount(
-                saved.getDpi(), saved.getEmail(), saved.getFullName());
+                saved.getDpi(), saved.getEmail(),
+                saved.getFirstName(), saved.getSecondName(),
+                saved.getFirstLastName(), saved.getSecondLastName(),
+                saved.getPhone());
 
         if (account != null) {
             saved.setAuthUserId(account.authUserId());
