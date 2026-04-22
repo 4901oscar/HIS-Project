@@ -1,7 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC, FormEvent } from 'react';
 import { MainLayout } from '../../components/Layout';
 import { MagnifyingGlassIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { listDoctorAppointments } from '../../services/appointmentService';
+import type { AppointmentResponse } from '../../services/appointmentService';
+
+const STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: 'Agendada',
+  ACTIVE: 'Activa',
+  COMPLETED: 'Completada',
+  CANCELLED: 'Cancelada',
+};
+const STATUS_COLOR: Record<string, string> = {
+  SCHEDULED: 'bg-blue-100 text-blue-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  COMPLETED: 'bg-gray-100 text-gray-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+};
 import { searchPatients } from '../../services/patientService';
 import type { PatientResponse } from '../../services/patientService';
 import {
@@ -16,6 +31,17 @@ type Step = 'patient' | 'consultation' | 'orders';
 
 const DoctorConsultation: FC = () => {
   const [step, setStep] = useState<Step>('patient');
+
+  // ── Mis citas asignadas ───────────────────────────────────────────────────
+  const [myAppointments, setMyAppointments] = useState<AppointmentResponse[]>([]);
+  const [apptLoading, setApptLoading] = useState(true);
+
+  useEffect(() => {
+    listDoctorAppointments()
+      .then(setMyAppointments)
+      .catch(() => {})
+      .finally(() => setApptLoading(false));
+  }, []);
 
   // ── Búsqueda de paciente ──────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
@@ -171,6 +197,50 @@ const DoctorConsultation: FC = () => {
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{error}</div>
         )}
+
+        {/* ── Mis citas ── */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">Mis Citas Asignadas</h3>
+          {apptLoading ? (
+            <div className="text-center py-4">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-medin-cyan border-t-transparent"></div>
+            </div>
+          ) : myAppointments.length === 0 ? (
+            <p className="text-gray-500 text-sm">No tienes citas asignadas.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+                    <th className="pb-2 pr-4">Fecha</th>
+                    <th className="pb-2 pr-4">Hora</th>
+                    <th className="pb-2 pr-4">Estado</th>
+                    <th className="pb-2 pr-4">Motivo</th>
+                    <th className="pb-2">ID Paciente</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {myAppointments
+                    .slice()
+                    .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
+                    .map((appt) => (
+                      <tr key={appt.id} className="hover:bg-gray-50">
+                        <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentDate}</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentTime.substring(0, 5)}</td>
+                        <td className="py-2 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                            {STATUS_LABEL[appt.status] ?? appt.status}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4 max-w-xs truncate">{appt.notes ?? '—'}</td>
+                        <td className="py-2 font-mono text-xs">{appt.patientId}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* ── Step 1: Seleccionar paciente ── */}
         <div className="bg-white rounded-lg shadow p-6">

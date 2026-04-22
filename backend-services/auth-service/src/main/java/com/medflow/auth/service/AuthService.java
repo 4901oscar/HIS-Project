@@ -87,16 +87,13 @@ public class AuthService {
                 .firstLastName(request.getFirstLastName())
                 .secondLastName(request.getSecondLastName())
                 .phone(request.getPhone())
-                .active(false)
+                .active(true)
                 .roles(Set.of(patientRole))
                 .build();
 
         User saved = userRepository.save(user);
-        String token = activationTokenService.generateToken(saved.getId().toString());
-        emailService.sendActivationEmail(saved.getEmail(), saved.getFirstName(), token);
-
-        log.info("[CU-00.2] Cuenta creada, pendiente activacion. Email: {}", request.getEmail());
-        return token;
+        log.info("[CU-00.2] Cuenta creada y activada automaticamente. Email: {}", request.getEmail());
+        return null;
     }
 
     @Transactional

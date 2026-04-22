@@ -12,12 +12,13 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AppointmentResponse {
-    
+
     private String id;
     private String patientId;
     private String doctorId;
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
     private String status;
+    private String notes;
     private LocalDateTime createdAt;
 }

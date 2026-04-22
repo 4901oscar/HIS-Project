@@ -37,22 +37,30 @@ public class AppointmentManager {
         this.patientServiceClient = patientServiceClient;
     }
 
-    /**
-     * Generate all possible daily slots (pure function — no external dependencies).
-     * Returns 18 slots: 08:00, 08:30, 09:00, ..., 16:30
-     */
     public List<LocalTime> generateDailySlots() {
+        return generateSlots(START_TIME, END_TIME);
+    }
+
+    private List<LocalTime> generateSlots(LocalTime start, LocalTime end) {
         List<LocalTime> slots = new ArrayList<>();
-        LocalTime current = START_TIME;
-        while (current.isBefore(END_TIME)) {
-            slots.add(current);
-            current = current.plusMinutes(SLOT_DURATION_MINUTES);
+        int startMin = start.getHour() * 60 + start.getMinute();
+        int endMin   = end.getHour()   * 60 + end.getMinute();
+        if (endMin == 0) endMin = 24 * 60;
+        if (endMin <= startMin) endMin += 24 * 60;
+        for (int m = startMin; m < endMin; m += SLOT_DURATION_MINUTES) {
+            int actual = m % (24 * 60);
+            slots.add(LocalTime.of(actual / 60, actual % 60));
         }
         return slots;
     }
 
     public List<LocalTime> findAvailableSlots(String doctorId, LocalDate date) {
-        List<LocalTime> allSlots = generateDailySlots();
+        return findAvailableSlots(doctorId, date, START_TIME, END_TIME);
+    }
+
+    public List<LocalTime> findAvailableSlots(String doctorId, LocalDate date,
+                                               LocalTime shiftStart, LocalTime shiftEnd) {
+        List<LocalTime> allSlots = generateSlots(shiftStart, shiftEnd);
         Set<LocalTime> occupied = slotCache.getOccupiedSlots(doctorId, date);
         allSlots.removeIf(occupied::contains);
         return allSlots;
@@ -61,9 +69,18 @@ public class AppointmentManager {
     public Appointment createAppointment(String patientId, String doctorId,
                                           LocalDate date, LocalTime time,
                                           String notes, String createdBy) {
+        return createAppointment(patientId, doctorId, date, time, notes, createdBy, false);
+    }
 
-        // 1. Validate patient exists (HTTP call)
-        patientServiceClient.validatePatientExists(patientId);
+    public Appointment createAppointment(String patientId, String doctorId,
+                                          LocalDate date, LocalTime time,
+                                          String notes, String createdBy,
+                                          boolean skipPatientValidation) {
+
+        // 1. Validate patient exists (HTTP call) — skipped when patient books for themselves (JWT proves identity)
+        if (!skipPatientValidation) {
+            patientServiceClient.validatePatientExists(patientId);
+        }
 
         // 2. Reserve slot in Redis atomically
         boolean reserved = slotCache.reserveSlot(doctorId, date, time);

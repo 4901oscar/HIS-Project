@@ -55,11 +55,12 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 };
 
 export const logout = async (): Promise<void> => {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_data');
   try {
     await api.post('/api/auth/logout');
-  } finally {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
+  } catch {
+    // ignore — token already cleared locally
   }
 };
 

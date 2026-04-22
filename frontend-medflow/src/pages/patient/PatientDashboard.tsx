@@ -5,6 +5,21 @@ import { useAuth } from '../../hooks/useAuth';
 import { getPatientByDpi } from '../../services/patientService';
 import { getMedicalHistory } from '../../services/clinicalService';
 import type { MedicalHistoryResponse } from '../../services/clinicalService';
+import { listMyAppointments } from '../../services/appointmentService';
+import type { AppointmentResponse } from '../../services/appointmentService';
+
+const STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: 'Agendada',
+  ACTIVE: 'Activa',
+  COMPLETED: 'Completada',
+  CANCELLED: 'Cancelada',
+};
+const STATUS_COLOR: Record<string, string> = {
+  SCHEDULED: 'bg-blue-100 text-blue-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  COMPLETED: 'bg-gray-100 text-gray-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+};
 
 const PatientDashboard: FC = () => {
   const { user, logout } = useAuth();
@@ -12,7 +27,17 @@ const PatientDashboard: FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sinHistorial, setSinHistorial] = useState(false);
-  const [activeTab, setActiveTab] = useState<'consultations' | 'vitals' | 'prescriptions' | 'labs'>('consultations');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'consultations' | 'vitals' | 'prescriptions' | 'labs'>('appointments');
+
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [apptLoading, setApptLoading] = useState(true);
+
+  useEffect(() => {
+    listMyAppointments()
+      .then(setAppointments)
+      .catch(() => {})
+      .finally(() => setApptLoading(false));
+  }, []);
 
   useEffect(() => {
     if (user?.username) {
@@ -47,6 +72,7 @@ const PatientDashboard: FC = () => {
   };
 
   const tabs = [
+    { key: 'appointments', label: 'Mis Citas' },
     { key: 'consultations', label: 'Consultas' },
     { key: 'vitals', label: 'Signos Vitales' },
     { key: 'prescriptions', label: 'Recetas' },
@@ -74,156 +100,185 @@ const PatientDashboard: FC = () => {
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-6">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-          Mi Historial Clínico
+          Mi Panel de Salud
         </h2>
 
-        {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent"></div>
-            <p className="mt-3 text-gray-500 text-sm">Cargando historial...</p>
+        {/* Tabs — always visible */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-6 overflow-x-auto">
+            {tabs.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === key ? 'border-medin-cyan text-medin-cyan' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* ── Mis Citas ── */}
+        {activeTab === 'appointments' && (
+          <div className="space-y-3">
+            {apptLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
+              </div>
+            ) : appointments.length === 0 ? (
+              <p className="text-gray-500 text-sm">No tienes citas registradas.</p>
+            ) : (
+              appointments
+                .slice()
+                .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
+                .map((appt) => (
+                  <div key={appt.id} className="bg-white rounded-lg shadow p-4 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">
+                        {appt.appointmentDate} — {appt.appointmentTime.substring(0, 5)}
+                      </p>
+                      {appt.notes && <p className="text-sm text-gray-600 mt-1">{appt.notes}</p>}
+                      <p className="text-xs text-gray-400 mt-1 font-mono">ID: {appt.id}</p>
+                    </div>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                      {STATUS_LABEL[appt.status] ?? appt.status}
+                    </span>
+                  </div>
+                ))
+            )}
           </div>
         )}
 
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm mb-4">{error}</div>
-        )}
-
-        {sinHistorial && !loading && (
-          <div className="text-center py-16">
-            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-gray-700 font-medium mb-1">Sin historial clínico</h3>
-            <p className="text-gray-500 text-sm">Aún no tienes consultas, signos vitales ni resultados registrados.</p>
-          </div>
-        )}
-
-        {history && (
+        {/* ── Historial clínico tabs ── */}
+        {activeTab !== 'appointments' && (
           <>
-            {/* Tabs */}
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="-mb-px flex space-x-6 overflow-x-auto">
-                {tabs.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setActiveTab(key)}
-                    className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                      activeTab === key ? 'border-medin-cyan text-medin-cyan' : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Consultas */}
-            {activeTab === 'consultations' && (
-              <div className="space-y-3">
-                {history.consultations.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Sin consultas registradas</p>
-                ) : history.consultations.map((c) => (
-                  <div key={c.id} className="bg-white rounded-lg shadow p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="font-semibold text-gray-900">{c.primaryDiagnosis}</p>
-                      <span className="text-xs text-gray-400">{new Date(c.consultationDate).toLocaleDateString('es-GT')}</span>
-                    </div>
-                    <p className="text-sm text-gray-700"><span className="font-medium">Motivo:</span> {c.chiefComplaint}</p>
-                    {c.secondaryDiagnoses?.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Dx secundarios: {c.secondaryDiagnoses.join(', ')}</p>
-                    )}
-                  </div>
-                ))}
+            {loading && (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent"></div>
+                <p className="mt-3 text-gray-500 text-sm">Cargando historial...</p>
               </div>
             )}
 
-            {/* Signos Vitales */}
-            {activeTab === 'vitals' && (
-              <div className="space-y-3">
-                {history.vitalSigns.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Sin registros de signos vitales</p>
-                ) : history.vitalSigns.map((v) => (
-                  <div key={v.id} className="bg-white rounded-lg shadow p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="font-semibold text-gray-900 text-sm">Registro de signos vitales</p>
-                      <span className="text-xs text-gray-400">{new Date(v.recordedAt).toLocaleString('es-GT')}</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                      <div className="bg-gray-50 rounded p-2 text-center">
-                        <p className="text-xs text-gray-500">TA</p>
-                        <p className="font-semibold">{v.systolicPressure}/{v.diastolicPressure}</p>
-                        <p className="text-xs text-gray-400">mmHg</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2 text-center">
-                        <p className="text-xs text-gray-500">FC</p>
-                        <p className="font-semibold">{v.heartRate}</p>
-                        <p className="text-xs text-gray-400">lpm</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2 text-center">
-                        <p className="text-xs text-gray-500">Temp</p>
-                        <p className="font-semibold">{v.temperature}</p>
-                        <p className="text-xs text-gray-400">°C</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2 text-center">
-                        <p className="text-xs text-gray-500">SpO2</p>
-                        <p className="font-semibold">{v.oxygenSaturation}%</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm mb-4">{error}</div>
+            )}
+
+            {sinHistorial && !loading && (
+              <div className="text-center py-16">
+                <p className="text-gray-500 text-sm">Aún no tienes consultas, signos vitales ni resultados registrados.</p>
               </div>
             )}
 
-            {/* Recetas */}
-            {activeTab === 'prescriptions' && (
-              <div className="space-y-3">
-                {history.prescriptions.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Sin recetas registradas</p>
-                ) : history.prescriptions.map((rx) => (
-                  <div key={rx.id} className="bg-white rounded-lg shadow p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-mono text-sm font-semibold text-gray-900">{rx.prescriptionCode}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${rx.status === 'DISPENSED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {rx.status === 'DISPENSED' ? 'Dispensada' : 'Pendiente'}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {rx.medications.map((m, i) => (
-                        <p key={i} className="text-sm text-gray-700">
-                          <span className="font-medium">{m.name}</span> — {m.dosage}, {m.frequency}, {m.durationDays} días
-                        </p>
-                      ))}
-                    </div>
+            {history && (
+              <>
+                {/* Consultas */}
+                {activeTab === 'consultations' && (
+                  <div className="space-y-3">
+                    {history.consultations.length === 0 ? (
+                      <p className="text-gray-500 text-sm">Sin consultas registradas</p>
+                    ) : history.consultations.map((c) => (
+                      <div key={c.id} className="bg-white rounded-lg shadow p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-semibold text-gray-900">{c.primaryDiagnosis}</p>
+                          <span className="text-xs text-gray-400">{new Date(c.consultationDate).toLocaleDateString('es-GT')}</span>
+                        </div>
+                        <p className="text-sm text-gray-700"><span className="font-medium">Motivo:</span> {c.chiefComplaint}</p>
+                        {c.secondaryDiagnoses?.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">Dx secundarios: {c.secondaryDiagnoses.join(', ')}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Laboratorio */}
-            {activeTab === 'labs' && (
-              <div className="space-y-3">
-                {history.labOrders.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Sin órdenes de laboratorio</p>
-                ) : history.labOrders.map((lab) => (
-                  <div key={lab.id} className="bg-white rounded-lg shadow p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-mono text-sm font-semibold text-gray-900">{lab.orderCode}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${lab.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : lab.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {lab.status === 'COMPLETED' ? 'Completado' : lab.status === 'IN_PROGRESS' ? 'En proceso' : 'Pendiente'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {lab.testNames.map((t, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{t}</span>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">{new Date(lab.orderedAt).toLocaleDateString('es-GT')}</p>
+                {/* Signos Vitales */}
+                {activeTab === 'vitals' && (
+                  <div className="space-y-3">
+                    {history.vitalSigns.length === 0 ? (
+                      <p className="text-gray-500 text-sm">Sin registros de signos vitales</p>
+                    ) : history.vitalSigns.map((v) => (
+                      <div key={v.id} className="bg-white rounded-lg shadow p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-semibold text-gray-900 text-sm">Registro de signos vitales</p>
+                          <span className="text-xs text-gray-400">{new Date(v.recordedAt).toLocaleString('es-GT')}</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                          <div className="bg-gray-50 rounded p-2 text-center">
+                            <p className="text-xs text-gray-500">TA</p>
+                            <p className="font-semibold">{v.systolicPressure}/{v.diastolicPressure}</p>
+                            <p className="text-xs text-gray-400">mmHg</p>
+                          </div>
+                          <div className="bg-gray-50 rounded p-2 text-center">
+                            <p className="text-xs text-gray-500">FC</p>
+                            <p className="font-semibold">{v.heartRate}</p>
+                            <p className="text-xs text-gray-400">lpm</p>
+                          </div>
+                          <div className="bg-gray-50 rounded p-2 text-center">
+                            <p className="text-xs text-gray-500">Temp</p>
+                            <p className="font-semibold">{v.temperature}</p>
+                            <p className="text-xs text-gray-400">°C</p>
+                          </div>
+                          <div className="bg-gray-50 rounded p-2 text-center">
+                            <p className="text-xs text-gray-500">SpO2</p>
+                            <p className="font-semibold">{v.oxygenSaturation}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+
+                {/* Recetas */}
+                {activeTab === 'prescriptions' && (
+                  <div className="space-y-3">
+                    {history.prescriptions.length === 0 ? (
+                      <p className="text-gray-500 text-sm">Sin recetas registradas</p>
+                    ) : history.prescriptions.map((rx) => (
+                      <div key={rx.id} className="bg-white rounded-lg shadow p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-mono text-sm font-semibold text-gray-900">{rx.prescriptionCode}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${rx.status === 'DISPENSED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {rx.status === 'DISPENSED' ? 'Dispensada' : 'Pendiente'}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          {rx.medications.map((m, i) => (
+                            <p key={i} className="text-sm text-gray-700">
+                              <span className="font-medium">{m.name}</span> — {m.dosage}, {m.frequency}, {m.durationDays} días
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Laboratorio */}
+                {activeTab === 'labs' && (
+                  <div className="space-y-3">
+                    {history.labOrders.length === 0 ? (
+                      <p className="text-gray-500 text-sm">Sin órdenes de laboratorio</p>
+                    ) : history.labOrders.map((lab) => (
+                      <div key={lab.id} className="bg-white rounded-lg shadow p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-mono text-sm font-semibold text-gray-900">{lab.orderCode}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${lab.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : lab.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {lab.status === 'COMPLETED' ? 'Completado' : lab.status === 'IN_PROGRESS' ? 'En proceso' : 'Pendiente'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {lab.testNames.map((t, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{t}</span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">{new Date(lab.orderedAt).toLocaleDateString('es-GT')}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

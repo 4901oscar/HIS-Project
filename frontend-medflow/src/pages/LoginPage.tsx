@@ -41,7 +41,7 @@ const LoginPage: FC = () => {
         'LABORATORY': '/lab',
         'PHARMACY': '/pharmacy',
         'CASHIER': '/cashier',
-        'PATIENT': '/patient',
+        'PATIENT': '/',
       };
 
       const from = (location.state as { from?: string })?.from;

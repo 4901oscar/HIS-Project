@@ -2,26 +2,16 @@
  * AppointmentPage - Página para agendar citas
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { FC } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import BookAppointmentForm from '../components/BookAppointmentForm/BookAppointmentForm';
 import ScheduleHours from '../components/ScheduleHours/ScheduleHours';
 import Footer from '../components/Footer/Footer';
-import { useAuth } from '../hooks/useAuth';
 
 const AppointmentPage: FC = () => {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: '/payment' } });
-    }
-  }, [isAuthenticated, navigate]);
 
   const handleSuccess = (message: string) => {
     setSuccessMessage(message);
@@ -64,7 +54,7 @@ const AppointmentPage: FC = () => {
                   Agendar una cita
                 </h2>
                 <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
-                  Selecciona fecha, hora y describe brevemente el motivo de tu consulta. Debes iniciar sesión para continuar.
+                  Selecciona fecha, hora y describe brevemente el motivo de tu consulta.
                 </p>
               </div>
 

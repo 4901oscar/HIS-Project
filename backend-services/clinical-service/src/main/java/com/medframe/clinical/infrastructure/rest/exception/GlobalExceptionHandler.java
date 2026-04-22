@@ -113,6 +113,45 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
     
+    @ExceptionHandler(DoctorNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleDoctorNotFound(
+            DoctorNotFoundException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    
+    @ExceptionHandler(InvalidShiftDurationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidShiftDuration(
+            InvalidShiftDurationException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    @ExceptionHandler(NoAvailableDoctorException.class)
+    public ResponseEntity<ErrorResponse> handleNoAvailableDoctor(
+            NoAvailableDoctorException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.UNPROCESSABLE_ENTITY.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+    
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorized(
             UnauthorizedException ex) {

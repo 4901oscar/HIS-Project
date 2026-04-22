@@ -1,17 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC, FormEvent } from 'react';
 import { MainLayout } from '../../components/Layout';
 import {
   MagnifyingGlassIcon,
   UserPlusIcon,
   CheckCircleIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { createPatient, searchPatients } from '../../services/patientService';
 import type { PatientResponse, CreatePatientRequest } from '../../services/patientService';
-import { activateAppointment } from '../../services/appointmentService';
+import { activateAppointment, listAllAppointments } from '../../services/appointmentService';
+import type { AppointmentResponse } from '../../services/appointmentService';
 import axios from 'axios';
 
-type Tab = 'register' | 'activate';
+type Tab = 'register' | 'activate' | 'list';
+
+const STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: 'Agendada',
+  ACTIVE: 'Activa',
+  COMPLETED: 'Completada',
+  CANCELLED: 'Cancelada',
+};
+const STATUS_COLOR: Record<string, string> = {
+  SCHEDULED: 'bg-blue-100 text-blue-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  COMPLETED: 'bg-gray-100 text-gray-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+};
 
 const emptyForm: CreatePatientRequest = {
   dpi: '',
@@ -32,6 +47,21 @@ const emptyForm: CreatePatientRequest = {
 
 const ActivateAppointments: FC = () => {
   const [tab, setTab] = useState<Tab>('register');
+
+  // ── Lista de citas ────────────────────────────────────────────────────────
+  const [allAppointments, setAllAppointments] = useState<AppointmentResponse[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listLoaded, setListLoaded] = useState(false);
+
+  useEffect(() => {
+    if (tab === 'list' && !listLoaded) {
+      setListLoading(true);
+      listAllAppointments()
+        .then(setAllAppointments)
+        .catch(() => {})
+        .finally(() => { setListLoading(false); setListLoaded(true); });
+    }
+  }, [tab, listLoaded]);
 
   // ── Registro de paciente ──────────────────────────────────────────────────
   const [form, setForm] = useState<CreatePatientRequest>(emptyForm);
@@ -148,6 +178,17 @@ const ActivateAppointments: FC = () => {
               <CheckCircleIcon className="h-4 w-4" />
               Activar Cita
             </button>
+            <button
+              onClick={() => setTab('list')}
+              className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                tab === 'list'
+                  ? 'border-medin-cyan text-medin-cyan'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <CalendarDaysIcon className="h-4 w-4" />
+              Ver Citas
+            </button>
           </nav>
         </div>
 
@@ -246,6 +287,62 @@ const ActivateAppointments: FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* ── Tab: Ver Citas ── */}
+        {tab === 'list' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Todas las Citas</h3>
+              <button
+                onClick={() => { setListLoaded(false); }}
+                className="text-xs text-medin-cyan hover:underline"
+              >
+                Actualizar
+              </button>
+            </div>
+            {listLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
+              </div>
+            ) : allAppointments.length === 0 ? (
+              <p className="text-gray-500 text-sm">No hay citas registradas.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="pb-2 pr-4">Fecha</th>
+                      <th className="pb-2 pr-4">Hora</th>
+                      <th className="pb-2 pr-4">Estado</th>
+                      <th className="pb-2 pr-4">Motivo</th>
+                      <th className="pb-2 pr-4">ID Paciente</th>
+                      <th className="pb-2">ID Cita</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {allAppointments
+                      .slice()
+                      .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
+                      .map((appt) => (
+                        <tr key={appt.id} className="hover:bg-gray-50">
+                          <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentDate}</td>
+                          <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentTime.substring(0, 5)}</td>
+                          <td className="py-2 pr-4">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                              {STATUS_LABEL[appt.status] ?? appt.status}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-4 max-w-xs truncate">{appt.notes ?? '—'}</td>
+                          <td className="py-2 pr-4 font-mono text-xs">{appt.patientId}</td>
+                          <td className="py-2 font-mono text-xs">{appt.id}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
