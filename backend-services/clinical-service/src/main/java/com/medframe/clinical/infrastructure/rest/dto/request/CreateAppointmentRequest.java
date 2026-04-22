@@ -15,9 +15,6 @@ import java.time.LocalTime;
 @AllArgsConstructor
 public class CreateAppointmentRequest {
     
-    @NotBlank(message = "Patient ID es requerido")
-    private String patientId;
-    
     // Optional: If null, automatic doctor assignment will be used
     private String doctorId;
     

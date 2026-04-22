@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ChangeEvent, FormEvent, FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { createAppointment, getAvailableSlotsForDate, holdSlot, releaseHold } from '../../services/appointmentService';
+import { getAvailableSlotsForDate, holdSlot, releaseHold } from '../../services/appointmentService';
 import { listActiveDoctors, getDoctorDaysOff, type Doctor, type DayOff } from '../../services/doctorService';
 
 const HOLD_DURATION_SECONDS = 600; // 10 minutes
@@ -32,10 +32,8 @@ const consumePendingBooking = (): { date: string; time: string } | null => {
   try { return JSON.parse(raw); } catch { return null; }
 };
 
-interface BookAppointmentFormProps {
-  onSuccess?: (message: string) => void;
-  onError?: (message: string) => void;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface BookAppointmentFormProps {}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -182,8 +180,8 @@ const Calendar: FC<CalendarProps> = ({ selected, onSelect, isBlocked }) => {
 
 // ── Main form ─────────────────────────────────────────────────────────────────
 
-const BookAppointmentForm: FC<BookAppointmentFormProps> = ({ onSuccess, onError }) => {
-  const { user, isAuthenticated } = useAuth();
+const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const sessionId = useMemo(() => getSessionId(), []);
 
@@ -202,7 +200,6 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = ({ onSuccess, onError 
   const [selectedTime, setSelectedTime] = useState(pending?.time ?? '');
   const [motivo, setMotivo] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
 
   // ── hold state ──
   const [holdSecondsLeft, setHoldSecondsLeft] = useState(0);
@@ -349,25 +346,15 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = ({ onSuccess, onError 
       return;
     }
     if (!validate()) return;
-    setIsLoading(true);
-    try {
-      await createAppointment({
-        patientId: user!.id,
-        appointmentDate: date,
-        appointmentTime: selectedTime,
+    stopTimer();
+    navigate('/payment', {
+      state: {
+        date,
+        time: selectedTime,
         notes: motivo.trim(),
         sessionId,
-      });
-      stopTimer();
-      onSuccess?.(
-        `¡Cita agendada para el ${date} a las ${fmt(selectedTime)}! Se te asignará un doctor automáticamente.`
-      );
-      setDate(''); setAvailableSlots([]); setSelectedTime(''); setMotivo(''); setErrors({});
-    } catch (err: any) {
-      onError?.(err.response?.data?.message ?? 'No se pudo agendar la cita. Intenta de nuevo más tarde.');
-    } finally {
-      setIsLoading(false);
-    }
+      },
+    });
   };
 
   const inputClass = (field: string) =>
@@ -457,10 +444,9 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = ({ onSuccess, onError 
 
       <button
         type="submit"
-        disabled={isLoading}
-        className="w-full py-3 bg-medin-blue text-medin-navy font-semibold hover:bg-medin-blue-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-3 bg-medin-blue text-medin-navy font-semibold hover:bg-medin-blue-light transition-colors"
       >
-        {isLoading ? 'ENVIANDO...' : 'AGENDAR CITA'}
+        AGENDAR CITA
       </button>
     </form>
   );

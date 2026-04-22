@@ -106,9 +106,8 @@ public class AppointmentController {
         
         // Check if doctorId is provided (manual selection) or null (automatic assignment)
         if (request.getDoctorId() != null && !request.getDoctorId().trim().isEmpty()) {
-            // Manual doctor selection (backward compatibility)
             appointment = manageAppointmentUseCase.createAppointment(
-                request.getPatientId(),
+                userId,
                 request.getDoctorId(),
                 request.getAppointmentDate(),
                 request.getAppointmentTime(),
@@ -116,9 +115,8 @@ public class AppointmentController {
                 userId
             );
         } else {
-            // Automatic doctor assignment
             appointment = manageAppointmentUseCase.createAppointmentWithAutoAssignment(
-                request.getPatientId(),
+                userId,
                 request.getAppointmentDate(),
                 request.getAppointmentTime(),
                 request.getNotes(),

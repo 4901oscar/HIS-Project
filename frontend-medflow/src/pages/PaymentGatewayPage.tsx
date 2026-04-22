@@ -1,26 +1,64 @@
 import { useState, useEffect } from 'react';
 import type { FC, ChangeEvent, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { useAuth } from '../hooks/useAuth';
+import { getServiceItems, createInvoice, processPayment } from '../services/billingService';
+import type { InvoiceResponse } from '../services/billingService';
+import { createAppointment, releaseHold } from '../services/appointmentService';
 
-const APPOINTMENT_FEE = 'Q 150.00';
+interface PaymentLocationState {
+  date: string;
+  time: string;
+  notes: string;
+  sessionId: string;
+}
+
+const fmt12 = (t: string) => {
+  const [h, m] = t.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const dh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${dh}:${String(m).padStart(2, '0')} ${period}`;
+};
 
 const PaymentGatewayPage: FC = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as PaymentLocationState | null;
+
+  const [feePrice, setFeePrice] = useState<number | null>(null);
+  const [feeDescription, setFeeDescription] = useState('Consulta médica general');
+  const [loadingFee, setLoadingFee] = useState(true);
 
   const [card, setCard] = useState({ number: '', name: '', expiry: '', cvv: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [paid, setPaid] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: '/payment' } });
     }
   }, [isAuthenticated, navigate]);
+
+  // Fetch consultation fee from service catalog
+  useEffect(() => {
+    getServiceItems('CONSULTATION')
+      .then(items => {
+        const active = items.find(i => i.active);
+        if (active) {
+          setFeePrice(active.price);
+          setFeeDescription(active.name);
+        } else {
+          setFeePrice(150);
+        }
+      })
+      .catch(() => setFeePrice(150))
+      .finally(() => setLoadingFee(false));
+  }, []);
 
   const formatCardNumber = (val: string) =>
     val.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
@@ -52,39 +90,89 @@ const PaymentGatewayPage: FC = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || feePrice === null || !state) return;
     setIsLoading(true);
-    await new Promise(r => setTimeout(r, 2000));
-    setIsLoading(false);
-    setPaid(true);
+    setPaymentError(null);
+    try {
+      // 1. Create the appointment (only after payment is confirmed)
+      await createAppointment({
+        appointmentDate: state.date,
+        appointmentTime: state.time,
+        notes: state.notes,
+        sessionId: state.sessionId,
+      });
+      // 2. Create invoice
+      const inv = await createInvoice(user!.id, [
+        { type: 'CONSULTATION', description: feeDescription, quantity: 1, unitPrice: feePrice },
+      ]);
+      // 3. Process payment (simulated card → CARD method)
+      await processPayment(inv.id, feePrice, 'CARD');
+      // 4. Release the slot hold (createAppointment already does this, but ensure cleanup)
+      releaseHold(state.sessionId).catch(() => {});
+      setInvoice(inv);
+    } catch {
+      setPaymentError('No se pudo procesar el pago o reservar la cita. Intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inputClass = (field: string) =>
     `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan transition-colors${errors[field] ? ' border-red-400 bg-red-50' : ' border-gray-300'}`;
 
-  if (paid) {
+  const feeLabel = feePrice !== null ? `Q ${feePrice.toFixed(2)}` : '...';
+
+  // ── Success screen ──────────────────────────────────────────────────────────
+  if (invoice) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Navbar />
         <main className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center max-w-md">
+          <div className="text-center max-w-md w-full">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Pago confirmado!</h2>
-            <p className="text-gray-600 mb-2">
-              Se realizó un cargo de <span className="font-semibold text-medin-navy">{APPOINTMENT_FEE}</span> a tu tarjeta.
+            <p className="text-gray-500 text-sm mb-6">
+              Hola, <span className="font-medium text-medin-navy">{user?.fullName}</span>. Tu cita ha sido registrada.
             </p>
-            <p className="text-gray-500 text-sm mb-8">
-              Bienvenido, <span className="font-medium">{user?.fullName}</span>. Ahora puedes agendar tu cita.
-            </p>
+
+            {/* Resumen de cita y pago */}
+            <div className="bg-medin-navy text-white rounded-xl p-5 mb-6 text-left space-y-3">
+              {state && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Fecha</span>
+                    <span className="font-medium">{state.date}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Hora</span>
+                    <span className="font-medium">{fmt12(state.time)}</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-2" />
+                </>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Factura</span>
+                <span className="font-mono font-medium text-medin-cyan">{invoice.invoiceNumber}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Concepto</span>
+                <span className="font-medium">{feeDescription}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400 text-sm">Total pagado</span>
+                <span className="text-medin-cyan font-bold text-lg">{feeLabel}</span>
+              </div>
+            </div>
+
             <button
-              onClick={() => navigate('/appointment')}
-              className="px-8 py-3 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors"
+              onClick={() => navigate('/patient-dashboard')}
+              className="w-full py-3 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors"
             >
-              Agendar mi cita
+              Ver mis citas
             </button>
           </div>
         </main>
@@ -93,6 +181,7 @@ const PaymentGatewayPage: FC = () => {
     );
   }
 
+  // ── Payment form ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
@@ -100,18 +189,36 @@ const PaymentGatewayPage: FC = () => {
       <section className="bg-gradient-to-r from-gray-100 to-blue-50 py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <h1 className="text-3xl md:text-4xl font-bold text-medin-navy">Pasarela de Pago</h1>
-          <p className="text-gray-600 mt-2 text-sm">Completa el pago para continuar con tu cita</p>
+          <p className="text-gray-600 mt-2 text-sm">Completa el pago para confirmar tu cita</p>
         </div>
       </section>
 
       <main className="flex-1 py-10 px-4">
-        <div className="max-w-md mx-auto">
-          {/* Resumen */}
-          <div className="bg-medin-navy text-white rounded-xl p-5 mb-6">
+        <div className="max-w-md mx-auto space-y-6">
+
+          {/* Resumen de la cita */}
+          <div className="bg-medin-navy text-white rounded-xl p-5">
+            {state && (
+              <div className="flex justify-between text-sm mb-3">
+                <span className="text-gray-400">Cita agendada</span>
+                <span className="font-medium">{state.date} — {fmt12(state.time)}</span>
+              </div>
+            )}
             <p className="text-gray-300 text-sm mb-1">Monto a pagar</p>
-            <p className="text-3xl font-bold text-medin-cyan">{APPOINTMENT_FEE}</p>
-            <p className="text-gray-400 text-xs mt-2">Consulta médica general — MedFlow Hospital</p>
+            {loadingFee ? (
+              <p className="text-2xl font-bold text-medin-cyan animate-pulse">Cargando...</p>
+            ) : (
+              <p className="text-3xl font-bold text-medin-cyan">{feeLabel}</p>
+            )}
+            <p className="text-gray-400 text-xs mt-2">{feeDescription} — MedFlow Hospital</p>
           </div>
+
+          {/* Error de pago */}
+          {paymentError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{paymentError}</p>
+            </div>
+          )}
 
           {/* Formulario de tarjeta */}
           <form onSubmit={handleSubmit} className="space-y-4 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
@@ -168,7 +275,7 @@ const PaymentGatewayPage: FC = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || loadingFee}
               className="w-full py-3 mt-2 bg-medin-cyan text-medin-navy font-bold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
@@ -184,7 +291,7 @@ const PaymentGatewayPage: FC = () => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
-                  Pagar {APPOINTMENT_FEE}
+                  Pagar {feeLabel}
                 </>
               )}
             </button>

@@ -1,7 +1,6 @@
 import api from '../api';
 
 export interface AppointmentRequest {
-  patientId: string;
   doctorId?: string;
   appointmentDate: string;
   appointmentTime: string;

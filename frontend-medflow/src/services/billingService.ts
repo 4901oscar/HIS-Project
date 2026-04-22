@@ -1,6 +1,23 @@
 import api from '../api';
 
 export type ChargeType = 'CONSULTATION' | 'LABORATORY' | 'MEDICATION' | 'OTHER';
+
+export interface ServiceItemResponse {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  active: boolean;
+}
+
+export const getServiceItems = async (category?: string): Promise<ServiceItemResponse[]> => {
+  const response = await api.get<ServiceItemResponse[]>('/api/billing/services', {
+    params: category ? { category } : undefined,
+  });
+  return response.data;
+};
 export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER';
 export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 
