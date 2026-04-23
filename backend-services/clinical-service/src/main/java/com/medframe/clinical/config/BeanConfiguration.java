@@ -44,8 +44,11 @@ public class BeanConfiguration {
     @Bean
     public AppointmentManager appointmentManager(AppointmentRepository appointmentRepository,
                                                   AppointmentSlotCache slotCache,
-                                                  PatientServiceClient patientServiceClient) {
-        return new AppointmentManager(appointmentRepository, slotCache, patientServiceClient);
+                                                  PatientServiceClient patientServiceClient,
+                                                  QRCodeGenerator qrGenerator,
+                                                  AppointmentEmailSender emailSender) {
+        return new AppointmentManager(appointmentRepository, slotCache, patientServiceClient, 
+                                       qrGenerator, emailSender);
     }
 
     @Bean

@@ -1,8 +1,10 @@
 package com.medframe.clinical.domain.port.in;
 
 import com.medframe.clinical.domain.model.Appointment;
+import com.medframe.clinical.domain.model.ScanResult;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -43,6 +45,15 @@ public interface ManageAppointmentUseCase {
     
     void activateAppointment(String appointmentId);
     void cancelAppointment(String appointmentId);
+
+    /**
+     * Scans a QR code and validates/activates the appointment based on time window.
+     * 
+     * @param appointmentId the appointment ID from QR code
+     * @param scanTime the time when QR was scanned
+     * @return ScanResult with status (EARLY, ACTIVE, MISSED) and message
+     */
+    ScanResult scanAndActivateAppointment(String appointmentId, LocalDateTime scanTime);
 
     /**
      * Temporarily holds a (date, time) slot for 10 minutes.

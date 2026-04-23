@@ -44,6 +44,35 @@ public class EmailService {
                 buildEmployeeHtml(firstName, username, tempPassword, frontendUrl + "/login"));
     }
 
+    @Async
+    public void sendAppointmentConfirmationEmail(String toEmail, String firstName,
+                                                 String appointmentDate, String appointmentTime,
+                                                 String doctorName, String invoiceNumber,
+                                                 String qrCodeBase64, String notes,
+                                                 String validFromTime, String validUntilTime) {
+        try {
+            MimeMessage msg = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
+            
+            helper.setFrom(fromAddress, "MedFlow HIS");
+            helper.setTo(toEmail);
+            helper.setSubject("Confirmación de Cita — MedFlow HIS");
+            
+            String htmlBody = buildAppointmentConfirmationHtml(
+                firstName, appointmentDate, appointmentTime, doctorName,
+                invoiceNumber, qrCodeBase64, notes, validFromTime, validUntilTime);
+            
+            helper.setText(htmlBody, true);
+            
+            mailSender.send(msg);
+            log.info("[Email] Confirmación de cita enviada a {}", toEmail);
+            
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            log.error("[Email] Error al enviar confirmación de cita a {}: {}", 
+                      toEmail, e.getMessage());
+        }
+    }
+
     private void send(String to, String subject, String htmlBody) {
         try {
             MimeMessage msg = mailSender.createMimeMessage();
@@ -121,6 +150,51 @@ public class EmailService {
             + "<div style=\"text-align:center;\"><a href=\"" + loginUrl + "\" style=\"display:inline-block;background:#00d4e8;color:#0f4c75;font-weight:bold;font-size:15px;padding:14px 32px;border-radius:6px;text-decoration:none;\">Acceder al sistema</a></div>"
             + "</td></tr>"
             + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS &middot; Correo autom\u00e1tico.</p></td></tr>"
+            + "</table></td></tr></table></body></html>";
+    }
+
+    private String buildAppointmentConfirmationHtml(String firstName, String appointmentDate,
+                                                    String appointmentTime, String doctorName,
+                                                    String invoiceNumber, String qrCodeBase64,
+                                                    String notes, String validFromTime,
+                                                    String validUntilTime) {
+        String notesSection = (notes != null && !notes.isBlank()) 
+            ? "<p style=\"color:#444;line-height:1.6;margin:16px 0 0;\"><strong>Notas:</strong> " 
+              + notes + "</p>"
+            : "";
+        
+        return "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"></head>"
+            + "<body style=\"margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;\">"
+            + "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f6f8;padding:40px 0;\">"
+            + "<tr><td align=\"center\">"
+            + "<table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);\">"
+            + "<tr><td style=\"background:#0f4c75;padding:28px 40px;\">"
+            + "<h1 style=\"margin:0;color:#00d4e8;font-size:22px;letter-spacing:1px;\">MedFlow HIS</h1>"
+            + "<p style=\"margin:4px 0 0;color:#b0d4e8;font-size:12px;\">Sistema de Información Hospitalaria</p></td></tr>"
+            + "<tr><td style=\"padding:36px 40px;\">"
+            + "<h2 style=\"margin:0 0 16px;color:#1a1a2e;font-size:20px;\">¡Cita confirmada, " + firstName + "! 🎉</h2>"
+            + "<p style=\"color:#444;line-height:1.6;margin:0 0 24px;\">Tu cita ha sido agendada exitosamente. A continuación los detalles:</p>"
+            + "<table style=\"background:#f0faff;border:1px solid #b8e4f0;border-radius:6px;width:100%;margin:0 0 24px;\">"
+            + "<tr><td style=\"padding:14px 20px;\"><p style=\"margin:0 0 6px;color:#555;font-size:13px;\"><strong>📅 Fecha:</strong></p>"
+            + "<p style=\"margin:0;font-size:16px;color:#0f4c75;font-weight:bold;\">" + appointmentDate + "</p></td></tr>"
+            + "<tr><td style=\"padding:0 20px 14px;\"><p style=\"margin:0 0 6px;color:#555;font-size:13px;\"><strong>🕐 Hora:</strong></p>"
+            + "<p style=\"margin:0;font-size:16px;color:#0f4c75;font-weight:bold;\">" + appointmentTime + "</p></td></tr>"
+            + "<tr><td style=\"padding:0 20px 14px;\"><p style=\"margin:0 0 6px;color:#555;font-size:13px;\"><strong>👨‍⚕️ Doctor:</strong></p>"
+            + "<p style=\"margin:0;font-size:16px;color:#0f4c75;font-weight:bold;\">" + doctorName + "</p></td></tr>"
+            + "<tr><td style=\"padding:0 20px 14px;\"><p style=\"margin:0 0 6px;color:#555;font-size:13px;\"><strong>📄 Factura:</strong></p>"
+            + "<p style=\"margin:0;font-family:monospace;font-size:14px;color:#0f4c75;font-weight:bold;\">" + invoiceNumber + "</p></td></tr>"
+            + "</table>"
+            + notesSection
+            + "<div style=\"text-align:center;margin:24px 0;\">"
+            + "<p style=\"color:#555;font-size:14px;margin:0 0 12px;\"><strong>Tu código QR de confirmación:</strong></p>"
+            + "<img src=\"data:image/png;base64," + qrCodeBase64 + "\" alt=\"QR Code\" style=\"width:200px;height:200px;border:2px solid #00d4e8;border-radius:8px;\"/>"
+            + "<p style=\"color:#e74c3c;font-size:13px;margin:12px 0 0;\">⏰ QR válido desde <strong>" + validFromTime + "</strong> hasta <strong>" + validUntilTime + "</strong></p>"
+            + "<p style=\"color:#888;font-size:12px;margin:8px 0 0;\">Presenta este código en recepción el día de tu cita</p>"
+            + "</div>"
+            + "</td></tr>"
+            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\">"
+            + "<p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS &middot; Correo automático.</p>"
+            + "</td></tr>"
             + "</table></td></tr></table></body></html>";
     }
 }

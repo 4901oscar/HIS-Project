@@ -3,12 +3,17 @@ package com.medframe.clinical.infrastructure.rest.controller;
 import com.medframe.clinical.application.usecase.ManageAppointmentUseCaseImpl;
 import com.medframe.clinical.domain.model.Appointment;
 import com.medframe.clinical.domain.port.in.ManageAppointmentUseCase;
+import com.medframe.clinical.domain.port.out.DoctorRepository;
+import com.medframe.clinical.domain.port.out.PatientServiceClient;
+import com.medframe.clinical.domain.service.AppointmentManager;
+import com.medframe.clinical.infrastructure.client.dto.PatientDTO;
 import com.medframe.clinical.infrastructure.rest.dto.request.CreateAppointmentRequest;
 import com.medframe.clinical.infrastructure.rest.dto.request.HoldSlotRequest;
 import com.medframe.clinical.infrastructure.rest.dto.response.AppointmentResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.AvailableSlotsResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,16 +21,26 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/clinical/appointments")
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 public class AppointmentController {
     
     private final ManageAppointmentUseCase manageAppointmentUseCase;
+    private final AppointmentManager appointmentManager;
+    private final PatientServiceClient patientServiceClient;
+    private final DoctorRepository doctorRepository;
+    
+    private static final DateTimeFormatter INVOICE_TIMESTAMP_FORMATTER = 
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     
     /** All appointments — ADMISSION / ADMIN. */
     @GetMapping
@@ -101,38 +116,75 @@ public class AppointmentController {
     public ResponseEntity<AppointmentResponse> createAppointment(
             @Valid @RequestBody CreateAppointmentRequest request,
             @RequestHeader("X-User-Id") String userId) {
-        
+
+        // 1. Fetch patient info for email (graceful degradation on failure)
+        String patientEmail = "no-email@medflow.com";
+        String patientFirstName = "Paciente";
+        try {
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(userId);
+            patientEmail = patient.getEmail();
+            patientFirstName = patient.getFirstName();
+        } catch (Exception e) {
+            log.warn("No se pudo obtener info del paciente para el correo: {}", e.getMessage());
+        }
+
+        // 2. Create appointment (manual or auto-assignment) — exactly once
         Appointment appointment;
-        
-        // Check if doctorId is provided (manual selection) or null (automatic assignment)
         if (request.getDoctorId() != null && !request.getDoctorId().trim().isEmpty()) {
-            appointment = manageAppointmentUseCase.createAppointment(
-                userId,
-                request.getDoctorId(),
-                request.getAppointmentDate(),
-                request.getAppointmentTime(),
-                request.getNotes(),
-                userId
-            );
+            appointment = appointmentManager.createAppointment(
+                userId, request.getDoctorId(),
+                request.getAppointmentDate(), request.getAppointmentTime(),
+                request.getNotes(), userId, true);
         } else {
             appointment = manageAppointmentUseCase.createAppointmentWithAutoAssignment(
                 userId,
-                request.getAppointmentDate(),
-                request.getAppointmentTime(),
-                request.getNotes(),
-                userId
-            );
+                request.getAppointmentDate(), request.getAppointmentTime(),
+                request.getNotes(), userId);
         }
-        
-        // Release the temporary hold if the client provided a session ID
+
+        // 3. Release slot hold if provided
         if (request.getSessionId() != null && !request.getSessionId().isBlank()) {
             manageAppointmentUseCase.releaseHold(request.getSessionId());
         }
 
-        AppointmentResponse response = mapToResponse(appointment);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        // 4. Resolve doctor name from repository (fallback to placeholder)
+        String doctorName = doctorRepository.findById(appointment.getDoctorId())
+                .map(d -> "Dr. " + d.getName())
+                .orElse("Dr. Asignado");
+
+        // 5. Attach QR code and send confirmation email (graceful — never blocks the response)
+        String invoiceNumber = generateInvoiceNumber();
+        appointmentManager.attachQRAndNotify(appointment, patientEmail, patientFirstName, doctorName, invoiceNumber);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapToResponse(appointment));
     }
     
+    /**
+     * Generates a unique invoice number using timestamp format.
+     * Format: INV-yyyyMMddHHmmss (e.g., INV-20260422143025)
+     */
+    private String generateInvoiceNumber() {
+        return "INV-" + java.time.LocalDateTime.now().format(INVOICE_TIMESTAMP_FORMATTER);
+    }
+    
+    /** QR scan — validates time window and activates the appointment if within window. */
+    @PostMapping("/{id}/scan")
+    public ResponseEntity<Map<String, Object>> scanAppointment(@PathVariable String id) {
+        com.medframe.clinical.domain.model.ScanResult result =
+                appointmentManager.validateAndActivateAppointment(id, LocalDateTime.now());
+        Appointment appt = result.getAppointment();
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("status", result.getStatus().name());
+        body.put("message", result.getMessage());
+        body.put("appointmentId", appt.getId());
+        body.put("patientId", appt.getPatientId());
+        body.put("doctorId", appt.getDoctorId());
+        body.put("date", appt.getAppointmentDate().toString());
+        body.put("time", appt.getAppointmentTime().toString());
+        body.put("appointmentStatus", appt.getStatus().name());
+        return ResponseEntity.ok(body);
+    }
+
     @PutMapping("/{id}/activate")
     public ResponseEntity<Void> activateAppointment(@PathVariable String id) {
         manageAppointmentUseCase.activateAppointment(id);
@@ -154,7 +206,8 @@ public class AppointmentController {
             appointment.getAppointmentTime(),
             appointment.getStatus().name(),
             appointment.getNotes(),
-            appointment.getCreatedAt()
+            appointment.getCreatedAt(),
+            appointment.getQrCodeBase64()  // Include QR code if generated
         );
     }
 }

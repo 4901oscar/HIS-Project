@@ -15,6 +15,14 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 5
+        queue-capacity: 100
+        thread-name-prefix: async-email-
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -67,6 +75,19 @@ services:
     url: ${PHARMACY_SERVICE_URL:http://localhost:8085}
   lab-service:
     url: ${LAB_SERVICE_URL:http://localhost:8084}
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 2000
+        readTimeout: 5000
+        loggerLevel: basic
+      auth-service:
+        connectTimeout: 2000
+        readTimeout: 5000
 
 resilience4j:
   circuitbreaker:

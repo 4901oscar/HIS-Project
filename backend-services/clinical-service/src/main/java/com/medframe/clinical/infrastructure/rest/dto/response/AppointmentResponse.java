@@ -21,4 +21,5 @@ public class AppointmentResponse {
     private String status;
     private String notes;
     private LocalDateTime createdAt;
+    private String qrCodeBase64;  // NEW: QR code for appointment confirmation
 }

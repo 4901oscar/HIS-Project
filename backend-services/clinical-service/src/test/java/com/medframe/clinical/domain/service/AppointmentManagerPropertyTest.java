@@ -15,7 +15,7 @@ import java.util.List;
  */
 class AppointmentManagerPropertyTest {
 
-    private final AppointmentManager manager = new AppointmentManager(null, null, null);
+    private final AppointmentManager manager = new AppointmentManager(null, null, null, null, null);
 
     /**
      * Feature: clinical-service, Property 6: Daily Slots Generation Produces Exactly 18 Slots

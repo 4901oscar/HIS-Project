@@ -17,6 +17,7 @@ export interface AppointmentResponse {
   status: string;
   notes?: string;
   createdAt: string;
+  qrCodeBase64?: string;  // NEW: QR code for appointment confirmation
 }
 
 export interface AvailableSlotsResponse {
@@ -84,6 +85,24 @@ export const listMyAppointments = async (): Promise<AppointmentResponse[]> => {
 
 export const listDoctorAppointments = async (): Promise<AppointmentResponse[]> => {
   const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments/doctor');
+  return response.data;
+};
+
+export type ScanStatus = 'EARLY' | 'ACTIVE' | 'MISSED';
+
+export interface ScanResult {
+  status: ScanStatus;
+  message: string;
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  date: string;
+  time: string;
+  appointmentStatus: string;
+}
+
+export const scanAppointment = async (id: string): Promise<ScanResult> => {
+  const response = await api.post<ScanResult>(`/api/clinical/appointments/${id}/scan`);
   return response.data;
 };
 

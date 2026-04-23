@@ -4,6 +4,7 @@ import com.medframe.clinical.application.service.PermissionValidator;
 import com.medframe.clinical.domain.exception.AppointmentNotFoundException;
 import com.medframe.clinical.domain.model.Appointment;
 import com.medframe.clinical.domain.model.Doctor;
+import com.medframe.clinical.domain.model.ScanResult;
 import com.medframe.clinical.domain.port.in.ManageAppointmentUseCase;
 import com.medframe.clinical.domain.port.out.AppointmentRepository;
 import com.medframe.clinical.domain.port.out.AppointmentSlotCache;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -192,6 +194,21 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     @Override
     public void releaseHold(String sessionId) {
         slotCache.releaseTimeSlotHold(sessionId);
+    }
+
+    /**
+     * Scans a QR code and validates/activates the appointment based on time window.
+     * No permission validation required - this is typically called by reception systems.
+     * 
+     * @param appointmentId The appointment ID from QR code
+     * @param scanTime The time when QR was scanned
+     * @return ScanResult with status (EARLY, ACTIVE, MISSED) and message
+     * @throws AppointmentNotFoundException if appointment doesn't exist
+     */
+    @Override
+    public ScanResult scanAndActivateAppointment(String appointmentId, LocalDateTime scanTime) {
+        // No permission validation - QR scanning is open to reception systems
+        return appointmentManager.validateAndActivateAppointment(appointmentId, scanTime);
     }
 
     @Override

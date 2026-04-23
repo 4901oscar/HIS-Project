@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getServiceItems, createInvoice, processPayment } from '../services/billingService';
 import type { InvoiceResponse } from '../services/billingService';
 import { createAppointment, releaseHold } from '../services/appointmentService';
+import type { AppointmentResponse } from '../services/appointmentService';
 
 interface PaymentLocationState {
   date: string;
@@ -20,6 +21,52 @@ const fmt12 = (t: string) => {
   const period = h < 12 ? 'AM' : 'PM';
   const dh = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${dh}:${String(m).padStart(2, '0')} ${period}`;
+};
+
+/**
+ * Calculates the time window for QR code validity.
+ * @param appointmentTime Time in HH:mm:ss format
+ * @returns Object with validFrom and validUntil in 12-hour format
+ */
+const calculateTimeWindow = (appointmentTime: string): { validFrom: string; validUntil: string } => {
+  const [hours, minutes] = appointmentTime.split(':').map(Number);
+  
+  // Calculate validFrom (15 minutes before)
+  let fromMinutes = hours * 60 + minutes - 15;
+  if (fromMinutes < 0) fromMinutes += 24 * 60;
+  const fromHours = Math.floor(fromMinutes / 60) % 24;
+  const fromMins = fromMinutes % 60;
+  
+  // Calculate validUntil (60 minutes after)
+  let untilMinutes = hours * 60 + minutes + 60;
+  const untilHours = Math.floor(untilMinutes / 60) % 24;
+  const untilMins = untilMinutes % 60;
+  
+  // Format to 12-hour
+  const formatTime = (h: number, m: number) => {
+    const period = h < 12 ? 'AM' : 'PM';
+    const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${displayHour}:${String(m).padStart(2, '0')} ${period}`;
+  };
+  
+  return {
+    validFrom: formatTime(fromHours, fromMins),
+    validUntil: formatTime(untilHours, untilMins),
+  };
+};
+
+/**
+ * Downloads the QR code as a PNG file.
+ * @param qrCodeBase64 Base64-encoded QR code image
+ * @param appointmentId Appointment ID for filename
+ */
+const downloadQR = (qrCodeBase64: string, appointmentId: string) => {
+  const link = document.createElement('a');
+  link.href = `data:image/png;base64,${qrCodeBase64}`;
+  link.download = `cita-${appointmentId}.png`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 const PaymentGatewayPage: FC = () => {
@@ -37,6 +84,7 @@ const PaymentGatewayPage: FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
+  const [appointment, setAppointment] = useState<AppointmentResponse | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -95,12 +143,14 @@ const PaymentGatewayPage: FC = () => {
     setPaymentError(null);
     try {
       // 1. Create the appointment (only after payment is confirmed)
-      await createAppointment({
+      const appointmentResponse = await createAppointment({
         appointmentDate: state.date,
         appointmentTime: state.time,
         notes: state.notes,
         sessionId: state.sessionId,
       });
+      setAppointment(appointmentResponse);
+      
       // 2. Create invoice
       const inv = await createInvoice(user!.id, [
         { type: 'CONSULTATION', description: feeDescription, quantity: 1, unitPrice: feePrice },
@@ -124,6 +174,8 @@ const PaymentGatewayPage: FC = () => {
 
   // ── Success screen ──────────────────────────────────────────────────────────
   if (invoice) {
+    const timeWindow = state ? calculateTimeWindow(state.time) : null;
+    
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Navbar />
@@ -167,6 +219,43 @@ const PaymentGatewayPage: FC = () => {
                 <span className="text-medin-cyan font-bold text-lg">{feeLabel}</span>
               </div>
             </div>
+
+            {/* QR Code Section */}
+            {appointment?.qrCodeBase64 && timeWindow && (
+              <div className="bg-gray-50 border-2 border-medin-cyan rounded-xl p-5 mb-6">
+                <h3 className="text-lg font-bold text-medin-navy mb-3">Tu código QR de confirmación</h3>
+                <div className="flex justify-center mb-4">
+                  <img
+                    src={`data:image/png;base64,${appointment.qrCodeBase64}`}
+                    alt="QR Code de Cita"
+                    className="w-48 h-48 border-2 border-medin-cyan rounded-lg"
+                  />
+                </div>
+                <div className="text-sm text-gray-700 space-y-2 text-left">
+                  <p className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-medin-cyan flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span><strong>QR válido desde</strong> {timeWindow.validFrom} <strong>hasta</strong> {timeWindow.validUntil}</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-medin-cyan flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Presenta este código en recepción el día de tu cita</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => downloadQR(appointment.qrCodeBase64!, appointment.id)}
+                  className="w-full mt-4 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Descargar QR
+                </button>
+              </div>
+            )}
 
             <button
               onClick={() => navigate('/patient-dashboard')}

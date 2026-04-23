@@ -181,9 +181,10 @@ services:
       - SPRING_DATASOURCE_PASSWORD=medflow_pass
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - SERVICES_PATIENT_SERVICE_URL=http://patient-service:8082
-      - SERVICES_PHARMACY_SERVICE_URL=http://pharmacy-service:8085
-      - SERVICES_LAB_SERVICE_URL=http://lab-service:8084
+      - PATIENT_SERVICE_URL=http://patient-service:8082
+      - PHARMACY_SERVICE_URL=http://pharmacy-service:8085
+      - LAB_SERVICE_URL=http://lab-service:8084
+      - AUTH_SERVICE_URL=http://auth-service:8081
     depends_on:
       postgres:
         condition: service_healthy
@@ -192,6 +193,8 @@ services:
       eureka-server:
         condition: service_healthy
       patient-service:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
     networks:
       - medflow-network
