@@ -308,8 +308,34 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending, loadingSlots, selectedTime, date]);
 
-  // All slots to display = shift slots for selected date
-  const displaySlots = date ? shiftSlotsForDate(date) : [];
+  // All slots to display = shift slots for selected date, filtered by current time if today
+  const displaySlots = useMemo(() => {
+    if (!date) return [];
+    const slots = shiftSlotsForDate(date);
+    
+    // If selected date is today, filter out past time slots
+    const today = new Date();
+    const selectedDate = new Date(date + 'T00:00:00');
+    const isToday = 
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate();
+    
+    if (!isToday) return slots;
+    
+    // Filter out slots that have already passed
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    
+    return slots.filter(slot => {
+      const [slotHour, slotMinute] = slot.split(':').map(Number);
+      const slotTimeInMinutes = slotHour * 60 + slotMinute;
+      // Keep slots that are at least 30 minutes in the future
+      return slotTimeInMinutes >= currentTimeInMinutes + 30;
+    });
+  }, [date, shiftSlotsForDate]);
 
   // ── slot selection with hold ──
   const handleSlotSelect = async (slot: string) => {

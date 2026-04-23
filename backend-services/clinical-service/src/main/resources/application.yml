@@ -2,6 +2,10 @@ spring:
   application:
     name: clinical-service
 
+  # Set default timezone to Guatemala (GMT-6)
+  jackson:
+    time-zone: America/Guatemala
+
   datasource:
     url: jdbc:postgresql://localhost:5432/medflow_db?currentSchema=clinical_schema
     username: ${DB_USERNAME:medflow_user}
