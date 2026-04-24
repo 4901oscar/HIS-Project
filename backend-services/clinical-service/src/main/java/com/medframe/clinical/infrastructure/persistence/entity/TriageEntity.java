@@ -15,6 +15,9 @@ public class TriageEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
+    @Column(name = "appointment_id")
+    private String appointmentId;
+
     @Column(name = "patient_id", nullable = false)
     private String patientId;
 
@@ -47,6 +50,9 @@ public class TriageEntity {
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
 
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }

@@ -71,4 +71,9 @@ export const getCurrentUser = (): AuthUser | null => {
   return data ? JSON.parse(data) : null;
 };
 
-export default { login, logout, isAuthenticated, getCurrentUser };
+export const getUserFullName = async (userId: string): Promise<string> => {
+  const response = await api.get<{ id: string; fullName: string }>(`/api/auth/users/${userId}`);
+  return response.data.fullName;
+};
+
+export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName };

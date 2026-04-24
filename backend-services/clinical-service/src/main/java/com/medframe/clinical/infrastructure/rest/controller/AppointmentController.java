@@ -1,7 +1,11 @@
 package com.medframe.clinical.infrastructure.rest.controller;
 
 import com.medframe.clinical.application.usecase.ManageAppointmentUseCaseImpl;
+import com.medframe.clinical.domain.exception.TriageNotFoundException;
 import com.medframe.clinical.domain.model.Appointment;
+import com.medframe.clinical.domain.model.Triage;
+import com.medframe.clinical.domain.port.in.GetAppointmentTriageUseCase;
+import com.medframe.clinical.domain.port.in.ListPendingTriageAppointmentsUseCase;
 import com.medframe.clinical.domain.port.in.ManageAppointmentUseCase;
 import com.medframe.clinical.domain.port.out.DoctorRepository;
 import com.medframe.clinical.domain.port.out.PatientServiceClient;
@@ -11,6 +15,7 @@ import com.medframe.clinical.infrastructure.rest.dto.request.CreateAppointmentRe
 import com.medframe.clinical.infrastructure.rest.dto.request.HoldSlotRequest;
 import com.medframe.clinical.infrastructure.rest.dto.response.AppointmentResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.AvailableSlotsResponse;
+import com.medframe.clinical.infrastructure.rest.dto.response.TriageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +43,8 @@ public class AppointmentController {
     private final AppointmentManager appointmentManager;
     private final PatientServiceClient patientServiceClient;
     private final DoctorRepository doctorRepository;
+    private final GetAppointmentTriageUseCase getAppointmentTriageUseCase;
+    private final ListPendingTriageAppointmentsUseCase listPendingTriageAppointmentsUseCase;
     
     private static final DateTimeFormatter INVOICE_TIMESTAMP_FORMATTER = 
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -63,6 +70,21 @@ public class AppointmentController {
     public ResponseEntity<List<AppointmentResponse>> listDoctor() {
         List<AppointmentResponse> list = manageAppointmentUseCase.listDoctorAppointments()
                 .stream().map(this::mapToResponse).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+
+    /**
+     * GET /api/clinical/appointments/pending-triage
+     * Lists all active appointments that are waiting for triage.
+     * Returns 200 with array of appointments (empty array if none).
+     * Requirements: 4.3, 4.4
+     */
+    @GetMapping("/pending-triage")
+    public ResponseEntity<List<AppointmentResponse>> listPendingTriageAppointments() {
+        List<AppointmentResponse> list = listPendingTriageAppointmentsUseCase.listPendingTriageAppointments()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(list);
     }
 
@@ -197,10 +219,37 @@ public class AppointmentController {
         return ResponseEntity.noContent().build();
     }
     
+    /**
+     * GET /api/clinical/appointments/{id}/triage
+     * Retrieves the triage record associated with a specific appointment.
+     * Returns 200 with TriageResponse if found, 404 if not found.
+     * Requirements: 3.4, 3.5, 3.6
+     */
+    @GetMapping("/{id}/triage")
+    public ResponseEntity<TriageResponse> getAppointmentTriage(@PathVariable String id) {
+        Triage triage = getAppointmentTriageUseCase.getAppointmentTriage(id)
+                .orElseThrow(() -> new TriageNotFoundException("No triage found for this appointment"));
+        
+        return ResponseEntity.ok(mapTriageToResponse(triage));
+    }
+    
     private AppointmentResponse mapToResponse(Appointment appointment) {
+        // Fetch patient data to include name and DPI
+        String patientName = null;
+        String patientDpi = null;
+        try {
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            patientName = patient.getFullName();
+            patientDpi = patient.getDpi();
+        } catch (Exception e) {
+            log.warn("Could not fetch patient data for appointment {}: {}", appointment.getId(), e.getMessage());
+        }
+        
         return new AppointmentResponse(
             appointment.getId(),
             appointment.getPatientId(),
+            patientName,
+            patientDpi,
             appointment.getDoctorId(),
             appointment.getAppointmentDate(),
             appointment.getAppointmentTime(),
@@ -208,6 +257,17 @@ public class AppointmentController {
             appointment.getNotes(),
             appointment.getCreatedAt(),
             appointment.getQrCodeBase64()  // Include QR code if generated
+        );
+    }
+    
+    private TriageResponse mapTriageToResponse(Triage triage) {
+        return new TriageResponse(
+            triage.getId(),
+            triage.getPatientId(),
+            triage.getPriorityLevel().name(),
+            triage.getPriorityLevel().getDescription(),
+            triage.getMaxWaitTimeMinutes(),
+            triage.getPerformedAt()
         );
     }
 }

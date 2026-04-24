@@ -40,8 +40,9 @@ public class PerformTriageUseCaseImpl implements PerformTriageUseCase {
     }
     
     /**
-     * Performs Manchester triage for a patient.
+     * Performs Manchester triage for a patient linked to an appointment.
      * 
+     * @param appointmentId The appointment's unique identifier
      * @param patientId The patient's unique identifier
      * @param doctorId The doctor performing the triage
      * @param motifId The Manchester motif (reason for consultation)
@@ -49,15 +50,19 @@ public class PerformTriageUseCaseImpl implements PerformTriageUseCase {
      * @return The completed Triage with calculated priority level
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have DOCTOR role
      * @throws com.medframe.clinical.domain.exception.VitalSignsNotFoundException if patient has no vital signs
+     * @throws com.medframe.clinical.domain.exception.AppointmentNotFoundException if appointment not found
+     * @throws com.medframe.clinical.domain.exception.DuplicateTriageException if triage already exists for appointment
+     * @throws IllegalStateException if appointment is not in ACTIVE status
      */
     @Override
-    public Triage performTriage(String patientId, String doctorId,
+    public Triage performTriage(String appointmentId, String patientId, String doctorId,
                                 String motifId, List<String> discriminatorIds) {
         // 1. Validate permissions - only DOCTOR role can perform triage
         permissionValidator.requireRole("DOCTOR");
         
         // 2. Delegate to domain service for business logic
-        Triage triage = triageEngine.performTriage(patientId, doctorId,
+        // TriageEngine handles appointment validation (exists, ACTIVE status, no duplicate)
+        Triage triage = triageEngine.performTriage(appointmentId, patientId, doctorId,
                                                     motifId, discriminatorIds);
         
         // 3. Persist the triage result

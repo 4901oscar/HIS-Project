@@ -1,16 +1,22 @@
 package com.medframe.clinical.domain.service;
 
+import com.medframe.clinical.domain.exception.AppointmentNotFoundException;
+import com.medframe.clinical.domain.exception.DuplicateTriageException;
 import com.medframe.clinical.domain.exception.VitalSignsNotFoundException;
+import com.medframe.clinical.domain.model.Appointment;
 import com.medframe.clinical.domain.model.ManchesterDiscriminator;
 import com.medframe.clinical.domain.model.PriorityLevel;
 import com.medframe.clinical.domain.model.Triage;
 import com.medframe.clinical.domain.model.VitalSigns;
+import com.medframe.clinical.domain.port.out.AppointmentRepository;
 import com.medframe.clinical.domain.port.out.ManchesterCatalogRepository;
+import com.medframe.clinical.domain.port.out.TriageRepository;
 import com.medframe.clinical.domain.port.out.VitalSignsRepository;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * TriageEngine - Core business logic for Manchester Triage System.
@@ -23,23 +29,47 @@ public class TriageEngine {
 
     private final VitalSignsRepository vitalSignsRepository;
     private final ManchesterCatalogRepository manchesterCatalogRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final TriageRepository triageRepository;
 
     public TriageEngine(VitalSignsRepository vitalSignsRepository,
-                        ManchesterCatalogRepository manchesterCatalogRepository) {
+                        ManchesterCatalogRepository manchesterCatalogRepository,
+                        AppointmentRepository appointmentRepository,
+                        TriageRepository triageRepository) {
         this.vitalSignsRepository = vitalSignsRepository;
         this.manchesterCatalogRepository = manchesterCatalogRepository;
+        this.appointmentRepository = appointmentRepository;
+        this.triageRepository = triageRepository;
     }
 
-    public Triage performTriage(String patientId, String doctorId,
+    public Triage performTriage(String appointmentId, String patientId, String doctorId,
                                 String motifId, List<String> discriminatorIds) {
 
-        // 1. Verify patient has vital signs (required for triage)
+        // 1. Validate appointment exists
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException(
+                        "Appointment not found"));
+
+        // 2. Validate appointment status is ACTIVE
+        if (appointment.getStatus() != Appointment.AppointmentStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Appointment must be in ACTIVE status for triage");
+        }
+
+        // 3. Verify no duplicate triage exists
+        Optional<Triage> existingTriage = triageRepository.findByAppointmentId(appointmentId);
+        if (existingTriage.isPresent()) {
+            throw new DuplicateTriageException(
+                    "Triage already exists for this appointment");
+        }
+
+        // 4. Verify patient has vital signs (required for triage)
         VitalSigns vitalSigns = vitalSignsRepository.findLatestByPatientId(patientId)
                 .orElseThrow(() -> new VitalSignsNotFoundException(
                         "El paciente no tiene signos vitales registrados. " +
                         "Por favor, capture los signos vitales antes de realizar el triaje."));
 
-        // 2. Load discriminators from catalog
+        // 5. Load discriminators from catalog
         List<ManchesterDiscriminator> discriminators =
                 manchesterCatalogRepository.findDiscriminatorsByIds(discriminatorIds);
 
@@ -49,11 +79,12 @@ public class TriageEngine {
                     "Seleccione al menos un discriminador del catálogo Manchester.");
         }
 
-        // 3. Calculate priority level using Manchester algorithm
+        // 6. Calculate priority level using Manchester algorithm
         PriorityLevel priorityLevel = calculatePriorityLevel(discriminators);
 
-        // 4. Build and return Triage domain object
+        // 7. Build and return Triage domain object with appointmentId
         Triage triage = new Triage();
+        triage.setAppointmentId(appointmentId);
         triage.setPatientId(patientId);
         triage.setDoctorId(doctorId);
         triage.setMotifId(motifId);

@@ -32,8 +32,11 @@ public class BeanConfiguration {
 
     @Bean
     public TriageEngine triageEngine(VitalSignsRepository vitalSignsRepository,
-                                     ManchesterCatalogRepository manchesterCatalogRepository) {
-        return new TriageEngine(vitalSignsRepository, manchesterCatalogRepository);
+                                     ManchesterCatalogRepository manchesterCatalogRepository,
+                                     AppointmentRepository appointmentRepository,
+                                     TriageRepository triageRepository) {
+        return new TriageEngine(vitalSignsRepository, manchesterCatalogRepository,
+                                appointmentRepository, triageRepository);
     }
 
     @Bean

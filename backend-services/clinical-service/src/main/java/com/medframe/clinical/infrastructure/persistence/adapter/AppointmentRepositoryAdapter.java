@@ -76,4 +76,11 @@ public class AppointmentRepositoryAdapter implements AppointmentRepository {
     public void deleteById(String id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public List<Appointment> findPendingTriage() {
+        return jpaRepository.findPendingTriage().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }

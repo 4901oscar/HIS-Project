@@ -5,6 +5,8 @@ spring:
   # Set default timezone to Guatemala (GMT-6)
   jackson:
     time-zone: America/Guatemala
+    serialization:
+      write-dates-as-timestamps: false
 
   datasource:
     url: jdbc:postgresql://localhost:5432/medflow_db?currentSchema=clinical_schema
@@ -14,10 +16,6 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
-
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
 
   task:
     execution:
@@ -41,6 +39,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     out-of-order: true
+    validate-on-migrate: false
     locations: classpath:db/migration
     schemas: clinical_schema
     default-schema: clinical_schema

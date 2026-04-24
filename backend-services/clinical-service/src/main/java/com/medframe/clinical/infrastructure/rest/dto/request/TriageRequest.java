@@ -13,6 +13,9 @@ import java.util.List;
 @AllArgsConstructor
 public class TriageRequest {
     
+    @NotBlank(message = "appointmentId es requerido")
+    private String appointmentId;
+    
     @NotBlank(message = "Patient ID es requerido")
     private String patientId;
     

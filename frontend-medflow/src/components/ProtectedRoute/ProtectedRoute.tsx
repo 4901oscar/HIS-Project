@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: string;
+  requiredRole?: string | string[];
 }
 
 const ProtectedRoute: FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
@@ -23,7 +23,14 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children, requiredRole }) => 
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (requiredRole && !hasRole(requiredRole)) {
+  // Check if user has required role(s)
+  const hasRequiredRole = requiredRole
+    ? Array.isArray(requiredRole)
+      ? requiredRole.some(role => hasRole(role))
+      : hasRole(requiredRole)
+    : true;
+
+  if (requiredRole && !hasRequiredRole) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md text-center">

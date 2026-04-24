@@ -17,6 +17,7 @@ public class TriageMapper {
 
         TriageEntity entity = new TriageEntity();
         entity.setId(domain.getId());
+        entity.setAppointmentId(domain.getAppointmentId());
         entity.setPatientId(domain.getPatientId());
         entity.setDoctorId(domain.getDoctorId());
         entity.setMotifId(domain.getMotifId());
@@ -36,6 +37,7 @@ public class TriageMapper {
 
         Triage domain = new Triage();
         domain.setId(entity.getId());
+        domain.setAppointmentId(entity.getAppointmentId());
         domain.setPatientId(entity.getPatientId());
         domain.setDoctorId(entity.getDoctorId());
         domain.setMotifId(entity.getMotifId());

@@ -5,11 +5,15 @@ import api from '../api';
 export interface AppointmentResponse {
   id: string;
   patientId: string;
+  patientName?: string;  // NEW: Patient full name from backend
+  patientDpi?: string;   // NEW: Patient DPI from backend
   doctorId: string;
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  notes?: string;
   createdAt: string;
+  qrCodeBase64?: string;
 }
 
 export const createAppointment = async (data: {
@@ -29,6 +33,26 @@ export const activateAppointment = async (id: string): Promise<void> => {
 
 export const cancelAppointment = async (id: string): Promise<void> => {
   await api.delete(`/api/clinical/appointments/${id}`);
+};
+
+/**
+ * Get list of pending triage appointments (ACTIVE appointments without triage)
+ * @returns Array of pending triage appointments
+ */
+export const getPendingTriageAppointments = async (): Promise<AppointmentResponse[]> => {
+  const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments/pending-triage');
+  return response.data;
+};
+
+/**
+ * Get triage for a specific appointment
+ * @param appointmentId - The appointment ID
+ * @returns Triage response
+ * @throws Error if no triage found (404)
+ */
+export const getAppointmentTriage = async (appointmentId: string): Promise<TriageResponse> => {
+  const response = await api.get<TriageResponse>(`/api/clinical/appointments/${appointmentId}/triage`);
+  return response.data;
 };
 
 // ─── Vital Signs ─────────────────────────────────────────────────────────────
@@ -71,12 +95,13 @@ export interface TriageResponse {
   id: string;
   patientId: string;
   priorityLevel: string;
-  description: string;
+  priorityDescription: string;
   maxWaitTimeMinutes: number;
   performedAt: string;
 }
 
 export const performTriage = async (data: {
+  appointmentId: string;
   patientId: string;
   motifId: string;
   discriminatorIds: string[];
@@ -183,6 +208,8 @@ export default {
   createAppointment,
   activateAppointment,
   cancelAppointment,
+  getPendingTriageAppointments,
+  getAppointmentTriage,
   recordVitalSigns,
   performTriage,
   registerConsultation,

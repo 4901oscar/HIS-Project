@@ -15,6 +15,8 @@ public class AppointmentResponse {
 
     private String id;
     private String patientId;
+    private String patientName;  // NEW: Patient full name
+    private String patientDpi;   // NEW: Patient DPI
     private String doctorId;
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
