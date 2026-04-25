@@ -37,10 +37,9 @@ class PatientServiceClientAdapterTest {
             "patient-123",                      // id
             "1234567890123",                    // dpi
             "12345678",                         // nit
+            "Juan Carlos Pérez García",         // fullName
             "Juan",                             // firstName
-            "Carlos",                           // secondName
             "Pérez",                            // firstLastName
-            "García",                           // secondLastName
             LocalDate.of(1990, 1, 15),         // birthDate
             "M",                                // gender
             "juan.perez@example.com",          // email

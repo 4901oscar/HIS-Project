@@ -43,19 +43,22 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     private final PermissionValidator permissionValidator;
     private final com.medframe.clinical.domain.service.DoctorAssignmentService doctorAssignmentService;
     private final DoctorRepository doctorRepository;
+    private final com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient;
 
     public ManageAppointmentUseCaseImpl(AppointmentManager appointmentManager,
                                         AppointmentRepository appointmentRepository,
                                         AppointmentSlotCache slotCache,
                                         PermissionValidator permissionValidator,
                                         com.medframe.clinical.domain.service.DoctorAssignmentService doctorAssignmentService,
-                                        DoctorRepository doctorRepository) {
+                                        DoctorRepository doctorRepository,
+                                        com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient) {
         this.appointmentManager = appointmentManager;
         this.appointmentRepository = appointmentRepository;
         this.slotCache = slotCache;
         this.permissionValidator = permissionValidator;
         this.doctorAssignmentService = doctorAssignmentService;
         this.doctorRepository = doctorRepository;
+        this.patientServiceClient = patientServiceClient;
     }
     
     /**
@@ -217,13 +220,42 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
         permissionValidator.requireRole("ADMISSION", "ADMIN");
         return appointmentRepository.findAll();
     }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<Appointment> listAppointmentsWithoutInvoice() {
+        permissionValidator.requireRole("ADMISSION", "ADMIN");
+        return appointmentRepository.findAppointmentsWithoutInvoice();
+    }
+    
+    @Override
+    @Transactional
+    public Appointment updateInvoiceId(String appointmentId, String invoiceId) {
+        permissionValidator.requireRole("ADMISSION", "ADMIN");
+        
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        
+        appointment.setInvoiceId(invoiceId);
+        return appointmentRepository.update(appointment);
+    }
 
     @Override
     @Transactional(readOnly = true)
     public List<Appointment> listMyAppointments() {
         permissionValidator.requireRole("PATIENT");
-        String patientId = permissionValidator.getUserId();
-        return appointmentRepository.findByPatientId(patientId);
+        String userId = permissionValidator.getUserId();
+        
+        // Get the patient record associated with this userId
+        try {
+            com.medframe.clinical.infrastructure.client.dto.PatientDTO patient = 
+                (com.medframe.clinical.infrastructure.client.dto.PatientDTO) patientServiceClient.getPatient(userId);
+            String patientId = patient.getId();
+            return appointmentRepository.findByPatientId(patientId);
+        } catch (Exception e) {
+            // If patient record not found, return empty list
+            return new ArrayList<>();
+        }
     }
 
     @Override
@@ -235,10 +267,8 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     }
 
     private String resolvePatientId(String requestedPatientId) {
-        String roles = permissionValidator.getUserRoles();
-        if (roles != null && roles.contains("PATIENT")) {
-            return permissionValidator.getUserId();
-        }
+        // The patientId is already resolved correctly in the controller
+        // by calling patient-service to get the real patient ID from auth_user_id
         return requestedPatientId;
     }
 

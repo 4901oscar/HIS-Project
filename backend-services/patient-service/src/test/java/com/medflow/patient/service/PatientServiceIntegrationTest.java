@@ -38,7 +38,7 @@ class PatientServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         when(authServiceClient.createPatientAccount(
-                anyString(), anyString(), anyString(), any(), anyString(), any(), any()))
+                anyString(), anyString(), anyString(), any(), anyString(), any(), anyString(), any(), any()))
                 .thenReturn(new AuthServiceClient.PatientAccountResult("auth-uuid-001", "Temp1234!"));
     }
 
@@ -49,7 +49,7 @@ class PatientServiceIntegrationTest {
         req.setFirstName("Juan");
         req.setFirstLastName("García");
         req.setBirthDate(LocalDate.of(1990, 5, 15));
-        req.setGender(Gender.MASCULINO);
+        req.setGender(Gender.M);
         req.setEmail(email);
         req.setPhone("55551234");
         req.setDepartment("Guatemala");

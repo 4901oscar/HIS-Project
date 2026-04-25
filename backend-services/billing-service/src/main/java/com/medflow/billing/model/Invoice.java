@@ -41,6 +41,14 @@ public class Invoice {
     private String patientId;
     
     /**
+     * ID of the appointment that generated this invoice (nullable)
+     * Logical foreign key to clinical_schema.appointments.id (not enforced)
+     * NULL when invoice was created manually without an appointment
+     */
+    @Column(name = "appointment_id", length = 36)
+    private String appointmentId;
+    
+    /**
      * List of charges associated with this invoice
      * Cascade ALL: when invoice is saved/deleted, charges are also saved/deleted
      */
@@ -83,6 +91,18 @@ public class Invoice {
      */
     @Column(name = "created_by", nullable = false, length = 36)
     private String createdBy;
+    
+    /**
+     * Customer NIT for electronic invoice
+     */
+    @Column(name = "customer_nit", length = 20)
+    private String customerNit;
+    
+    /**
+     * Customer name for electronic invoice
+     */
+    @Column(name = "customer_name", length = 200)
+    private String customerName;
     
     /**
      * Timestamp when the invoice was last updated

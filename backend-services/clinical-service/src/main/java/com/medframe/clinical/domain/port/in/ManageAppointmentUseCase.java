@@ -66,6 +66,33 @@ public interface ManageAppointmentUseCase {
 
     /** All appointments — for ADMISSION / ADMIN. */
     List<Appointment> listAll();
+    
+    /**
+     * Lists all appointments that do not have an associated invoice.
+     * Used for manual reconciliation when Billing Service was unavailable.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-12.1: Consultar citas sin factura para reconciliación manual</li>
+     * </ul>
+     * 
+     * @return list of appointments without invoice (invoiceId is NULL)
+     */
+    List<Appointment> listAppointmentsWithoutInvoice();
+    
+    /**
+     * Updates the invoiceId of an appointment during manual reconciliation.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-12.2: Actualizar invoiceId manualmente</li>
+     * </ul>
+     * 
+     * @param appointmentId ID of the appointment to update
+     * @param invoiceId ID of the invoice to link
+     * @return the updated appointment
+     */
+    Appointment updateInvoiceId(String appointmentId, String invoiceId);
 
     /** Appointments belonging to the authenticated patient (patientId from JWT). */
     List<Appointment> listMyAppointments();

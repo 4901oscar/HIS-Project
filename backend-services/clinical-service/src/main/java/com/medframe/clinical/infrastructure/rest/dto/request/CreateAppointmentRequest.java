@@ -15,6 +15,10 @@ import java.time.LocalTime;
 @FutureAppointment(message = "La cita debe ser al menos 30 minutos en el futuro")
 public class CreateAppointmentRequest {
     
+    // Optional: If provided, creates appointment for this patient (used by admission)
+    // If null, uses the authenticated user's patient ID
+    private String patientId;
+    
     // Optional: If null, automatic doctor assignment will be used
     private String doctorId;
     

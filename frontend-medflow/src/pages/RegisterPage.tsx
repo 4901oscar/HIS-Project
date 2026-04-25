@@ -20,6 +20,11 @@ const initialForm: FormState = {
   secondLastName: '',
   email: '',
   phone: '',
+  birthDate: '',
+  gender: '',
+  department: '',
+  municipality: '',
+  zone: '',
   address: '',
   password: '',
   confirmPassword: '',
@@ -51,6 +56,14 @@ const RegisterPage: FC = () => {
       next.email = 'Ingresa un correo electrónico válido.';
     if (!/^\d{8}$/.test(form.phone))
       next.phone = 'El teléfono debe tener exactamente 8 dígitos.';
+    if (!form.birthDate.trim())
+      next.birthDate = 'La fecha de nacimiento es requerida.';
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate))
+      next.birthDate = 'Formato de fecha inválido (YYYY-MM-DD).';
+    if (!form.gender.trim())
+      next.gender = 'El género es requerido.';
+    else if (form.gender !== 'M' && form.gender !== 'F')
+      next.gender = 'El género debe ser M o F.';
     if (form.password.length < 8)
       next.password = 'La contraseña debe tener al menos 8 caracteres.';
     if (form.password !== form.confirmPassword)
@@ -85,6 +98,11 @@ const RegisterPage: FC = () => {
         secondLastName: form.secondLastName || undefined,
         email: form.email,
         phone: form.phone,
+        birthDate: form.birthDate,
+        gender: form.gender,
+        department: form.department || undefined,
+        municipality: form.municipality || undefined,
+        zone: form.zone || undefined,
         address: form.address || undefined,
         password: form.password,
       });
@@ -281,6 +299,71 @@ const RegisterPage: FC = () => {
                   className={inputClass('phone')}
                 />
                 {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
+              </div>
+            </div>
+
+            {/* Fecha de nacimiento y género */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha de nacimiento <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date" name="birthDate" value={form.birthDate}
+                  onChange={handleChange}
+                  max={new Date().toISOString().split('T')[0]}
+                  className={inputClass('birthDate')}
+                />
+                {errors.birthDate && <p className="mt-1 text-xs text-red-600">{errors.birthDate}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Género <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="gender" value={form.gender}
+                  onChange={handleChange as any}
+                  className={inputClass('gender')}
+                >
+                  <option value="">Selecciona...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                </select>
+                {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender}</p>}
+              </div>
+            </div>
+
+            {/* Departamento, Municipio y Zona */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Departamento
+                </label>
+                <input
+                  type="text" name="department" value={form.department}
+                  onChange={handleChange} placeholder="Guatemala"
+                  className={inputClass('department')}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Municipio
+                </label>
+                <input
+                  type="text" name="municipality" value={form.municipality}
+                  onChange={handleChange} placeholder="Guatemala"
+                  className={inputClass('municipality')}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Zona
+                </label>
+                <input
+                  type="text" name="zone" value={form.zone}
+                  onChange={handleChange} placeholder="1"
+                  className={inputClass('zone')}
+                />
               </div>
             </div>
 

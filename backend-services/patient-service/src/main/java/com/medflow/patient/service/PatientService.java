@@ -1,11 +1,13 @@
 package com.medflow.patient.service;
 
+import com.medflow.patient.dto.CreatePatientInternalRequest;
 import com.medflow.patient.dto.CreatePatientRequest;
 import com.medflow.patient.dto.PatientResponse;
 import com.medflow.patient.dto.UpdatePatientRequest;
 import com.medflow.patient.exception.DuplicateDpiException;
 import com.medflow.patient.exception.DuplicateEmailException;
 import com.medflow.patient.exception.PatientNotFoundException;
+import com.medflow.patient.model.Gender;
 import com.medflow.patient.model.Patient;
 import com.medflow.patient.repository.PatientRepository;
 import org.slf4j.Logger;
@@ -13,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -61,21 +65,60 @@ public class PatientService {
                 .build();
 
         Patient saved = patientRepository.save(patient);
+        log.info("[CU-01] Paciente creado. DPI: {}, ID: {}", saved.getDpi(), saved.getId());
 
-        // Crear cuenta en auth-service (CU-01: envía usuario + contraseña temporal)
-        AuthServiceClient.PatientAccountResult account = authServiceClient.createPatientAccount(
-                saved.getDpi(), saved.getEmail(),
-                saved.getFirstName(), saved.getSecondName(),
-                saved.getFirstLastName(), saved.getSecondLastName(),
-                saved.getPhone());
+        return PatientResponse.from(saved);
+    }
 
-        if (account != null) {
-            saved.setAuthUserId(account.authUserId());
-            saved = patientRepository.save(saved);
-            log.info("[CU-01] Cuenta creada para paciente DPI:{}. authUserId: {}", saved.getDpi(), account.authUserId());
-        } else {
-            log.warn("[CU-01] No se pudo crear cuenta en auth-service para DPI:{}", saved.getDpi());
+    /**
+     * Endpoint interno para crear paciente desde auth-service.
+     * Este método es llamado por auth-service después de crear el usuario.
+     * Usa el ID proporcionado por auth-service para mantener consistencia.
+     */
+    @Transactional
+    public PatientResponse createPatientInternal(CreatePatientInternalRequest request) {
+        log.info("[INTERNAL] Recibida petición de creación de paciente. DPI: {}, authUserId: {}", 
+                request.getDpi(), request.getAuthUserId());
+
+        // Validar unicidad
+        if (patientRepository.existsByDpi(request.getDpi())) {
+            log.error("[INTERNAL] DPI duplicado: {}", request.getDpi());
+            throw new DuplicateDpiException(request.getDpi());
         }
+        if (patientRepository.existsByEmail(request.getEmail())) {
+            log.error("[INTERNAL] Email duplicado: {}", request.getEmail());
+            throw new DuplicateEmailException(request.getEmail());
+        }
+
+        // Parsear fecha de nacimiento
+        LocalDate birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+
+        // Parsear género
+        Gender gender = Gender.valueOf(request.getGender());
+
+        // Crear entidad Patient con el ID proporcionado por auth-service
+        Patient patient = Patient.builder()
+                .id(UUID.fromString(request.getId()))
+                .dpi(request.getDpi())
+                .nit(request.getNit())
+                .firstName(request.getFirstName())
+                .secondName(request.getSecondName())
+                .firstLastName(request.getFirstLastName())
+                .secondLastName(request.getSecondLastName())
+                .birthDate(birthDate)
+                .gender(gender)
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .department(request.getDepartment())
+                .municipality(request.getMunicipality())
+                .zone(request.getZone())
+                .address(request.getAddress())
+                .authUserId(request.getAuthUserId())
+                .active(request.getActive())
+                .build();
+
+        Patient saved = patientRepository.save(patient);
+        log.info("[INTERNAL] Paciente creado exitosamente. DPI: {}, ID: {}", saved.getDpi(), saved.getId());
 
         return PatientResponse.from(saved);
     }
@@ -89,6 +132,12 @@ public class PatientService {
     public PatientResponse getByDpi(String dpi) {
         Patient patient = patientRepository.findByDpi(dpi)
                 .orElseThrow(() -> new PatientNotFoundException(dpi));
+        return PatientResponse.from(patient);
+    }
+
+    public PatientResponse getByAuthUserId(String authUserId) {
+        Patient patient = patientRepository.findByAuthUserId(authUserId)
+                .orElseThrow(() -> new PatientNotFoundException("No se encontró paciente con authUserId: " + authUserId));
         return PatientResponse.from(patient);
     }
 

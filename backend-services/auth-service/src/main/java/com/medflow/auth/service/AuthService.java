@@ -1,16 +1,22 @@
 package com.medflow.auth.service;
 
+import com.medflow.auth.client.PatientServiceClient;
 import com.medflow.auth.domain.Role;
 import com.medflow.auth.domain.RoleName;
 import com.medflow.auth.domain.User;
 import com.medflow.auth.dto.CreatePatientAccountRequest;
 import com.medflow.auth.dto.CreatePatientAccountResponse;
+import com.medflow.auth.dto.CreatePatientInternalRequest;
+import com.medflow.auth.dto.PatientResponse;
 import com.medflow.auth.dto.RegisterRequest;
 import com.medflow.auth.exception.EmailAlreadyExistsException;
 import com.medflow.auth.exception.InvalidActivationTokenException;
+import com.medflow.auth.exception.InvalidMedicalDataException;
+import com.medflow.auth.exception.PatientCreationException;
 import com.medflow.auth.exception.UsernameAlreadyExistsException;
 import com.medflow.auth.repository.RoleRepository;
 import com.medflow.auth.repository.UserRepository;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,6 +44,7 @@ public class AuthService {
     private final TokenBlacklistService blacklistService;
     private final ActivationTokenService activationTokenService;
     private final EmailService emailService;
+    private final PatientServiceClient patientServiceClient;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -42,7 +52,8 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        TokenBlacklistService blacklistService,
                        ActivationTokenService activationTokenService,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       PatientServiceClient patientServiceClient) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.jwtService = jwtService;
@@ -50,6 +61,7 @@ public class AuthService {
         this.blacklistService = blacklistService;
         this.activationTokenService = activationTokenService;
         this.emailService = emailService;
+        this.patientServiceClient = patientServiceClient;
     }
 
     public String login(String identifier, String password) {
@@ -68,6 +80,11 @@ public class AuthService {
 
     @Transactional
     public String register(RegisterRequest request) {
+        // Validar campos médicos
+        validateBirthDate(request.getBirthDate());
+        validateGender(request.getGender());
+        
+        // Validar unicidad
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new EmailAlreadyExistsException(request.getEmail());
         }
@@ -78,6 +95,7 @@ public class AuthService {
         Role patientRole = roleRepository.findByName(RoleName.PATIENT)
                 .orElseThrow(() -> new RuntimeException("Rol PATIENT no encontrado en BD"));
 
+        // Paso 1: Crear usuario en auth_schema.users
         User user = User.builder()
                 .username(request.getDpi())
                 .email(request.getEmail())
@@ -92,7 +110,47 @@ public class AuthService {
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("[CU-00.2] Cuenta creada y activada automaticamente. Email: {}", request.getEmail());
+        log.info("[CU-00.2] Usuario creado en auth_schema.users. DPI: {}, ID: {}", request.getDpi(), saved.getId());
+
+        // Paso 2: Crear paciente en patient_schema.patients
+        try {
+            CreatePatientInternalRequest patientRequest = CreatePatientInternalRequest.builder()
+                    .id(saved.getId().toString())
+                    .dpi(request.getDpi())
+                    .nit(request.getNit())
+                    .firstName(request.getFirstName())
+                    .secondName(request.getSecondName())
+                    .firstLastName(request.getFirstLastName())
+                    .secondLastName(request.getSecondLastName())
+                    .birthDate(request.getBirthDate())
+                    .gender(request.getGender())
+                    .email(request.getEmail())
+                    .phone(request.getPhone())
+                    .department(request.getDepartment())
+                    .municipality(request.getMunicipality())
+                    .zone(request.getZone())
+                    .address(request.getAddress())
+                    .authUserId(saved.getId().toString())
+                    .active(true)
+                    .build();
+
+            PatientResponse patientResponse = patientServiceClient.createPatient(patientRequest);
+            log.info("[CU-00.2] Paciente creado en patient_schema.patients. DPI: {}, Patient ID: {}", 
+                    request.getDpi(), patientResponse.getId());
+
+        } catch (FeignException e) {
+            log.error("[CU-00.2] Error al crear paciente en patient-service. DPI: {}, Error: {}", 
+                    request.getDpi(), e.getMessage());
+            throw new PatientCreationException(
+                    "Error al crear registro de paciente en patient-service", e);
+        } catch (Exception e) {
+            log.error("[CU-00.2] Error inesperado al crear paciente. DPI: {}, Error: {}", 
+                    request.getDpi(), e.getMessage());
+            throw new PatientCreationException(
+                    "Error inesperado al crear registro de paciente", e);
+        }
+
+        log.info("[CU-00.2] Cuenta creada y activada automáticamente. Email: {}", request.getEmail());
         return null;
     }
 
@@ -111,6 +169,11 @@ public class AuthService {
 
     @Transactional
     public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request) {
+        // Validar campos médicos
+        validateBirthDate(request.getBirthDate());
+        validateGender(request.getGender());
+        
+        // Validar unicidad
         if (userRepository.findByUsername(request.getDpi()).isPresent()) {
             throw new UsernameAlreadyExistsException(request.getDpi());
         }
@@ -123,6 +186,7 @@ public class AuthService {
 
         String tempPassword = generateTempPassword();
 
+        // Paso 1: Crear usuario en auth_schema.users
         User user = User.builder()
                 .username(request.getDpi())
                 .email(request.getEmail())
@@ -137,17 +201,61 @@ public class AuthService {
                 .build();
 
         User saved = userRepository.save(user);
+        log.info("[CU-01] Usuario creado en auth_schema.users. DPI: {}, ID: {}", request.getDpi(), saved.getId());
+
+        // Paso 2: Crear paciente en patient_schema.patients
+        String patientId = null;
+        try {
+            CreatePatientInternalRequest patientRequest = CreatePatientInternalRequest.builder()
+                    .id(saved.getId().toString())
+                    .dpi(request.getDpi())
+                    .nit(request.getNit())
+                    .firstName(request.getFirstName())
+                    .secondName(request.getSecondName())
+                    .firstLastName(request.getFirstLastName())
+                    .secondLastName(request.getSecondLastName())
+                    .birthDate(request.getBirthDate())
+                    .gender(request.getGender())
+                    .email(request.getEmail())
+                    .phone(request.getPhone())
+                    .department(request.getDepartment())
+                    .municipality(request.getMunicipality())
+                    .zone(request.getZone())
+                    .address(request.getAddress())
+                    .authUserId(saved.getId().toString())
+                    .active(true)
+                    .build();
+
+            PatientResponse patientResponse = patientServiceClient.createPatient(patientRequest);
+            patientId = patientResponse.getId();
+            log.info("[CU-01] Paciente creado en patient_schema.patients. DPI: {}, Patient ID: {}", 
+                    request.getDpi(), patientResponse.getId());
+
+        } catch (FeignException e) {
+            log.error("[CU-01] Error al crear paciente en patient-service. DPI: {}, Error: {}", 
+                    request.getDpi(), e.getMessage());
+            throw new PatientCreationException(
+                    "Error al crear registro de paciente en patient-service", e);
+        } catch (Exception e) {
+            log.error("[CU-01] Error inesperado al crear paciente. DPI: {}, Error: {}", 
+                    request.getDpi(), e.getMessage());
+            throw new PatientCreationException(
+                    "Error inesperado al crear registro de paciente", e);
+        }
+
+        // Paso 3: Enviar email con credenciales
         emailService.sendTempPasswordEmail(
                 saved.getEmail(), saved.getFirstName(),
                 saved.getUsername(), tempPassword);
 
-        log.info("[CU-01] Cuenta paciente creada. DPI: {}", request.getDpi());
+        log.info("[CU-01] Cuenta paciente creada exitosamente. DPI: {}", request.getDpi());
 
         return new CreatePatientAccountResponse(
                 saved.getId().toString(),
+                patientId,
                 saved.getUsername(),
                 tempPassword,
-                "Cuenta creada. Se envio la contrasena temporal al correo del paciente."
+                "Cuenta creada. Se envió la contraseña temporal al correo del paciente."
         );
     }
 
@@ -168,5 +276,36 @@ public class AuthService {
             char tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
         }
         return new String(arr);
+    }
+
+    /**
+     * Valida que la fecha de nacimiento tenga formato YYYY-MM-DD y sea una fecha pasada.
+     */
+    private void validateBirthDate(String birthDate) {
+        if (birthDate == null || birthDate.isBlank()) {
+            throw new InvalidMedicalDataException("La fecha de nacimiento es requerida");
+        }
+
+        try {
+            LocalDate date = LocalDate.parse(birthDate, DateTimeFormatter.ISO_LOCAL_DATE);
+            if (date.isAfter(LocalDate.now()) || date.isEqual(LocalDate.now())) {
+                throw new InvalidMedicalDataException("La fecha de nacimiento debe ser en el pasado");
+            }
+        } catch (DateTimeParseException e) {
+            throw new InvalidMedicalDataException("Formato de fecha inválido. Use YYYY-MM-DD");
+        }
+    }
+
+    /**
+     * Valida que el género sea "M" o "F".
+     */
+    private void validateGender(String gender) {
+        if (gender == null || gender.isBlank()) {
+            throw new InvalidMedicalDataException("El género es requerido");
+        }
+
+        if (!gender.equals("M") && !gender.equals("F")) {
+            throw new InvalidMedicalDataException("El género debe ser M o F");
+        }
     }
 }

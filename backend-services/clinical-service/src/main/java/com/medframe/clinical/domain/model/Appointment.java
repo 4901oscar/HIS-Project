@@ -24,6 +24,10 @@ public class Appointment {
     private LocalDateTime createdAt;
     private String createdBy;
     
+    // NEW: Reference to billing invoice (logical FK, not enforced)
+    // NULL when billing service was unavailable during appointment creation
+    private String invoiceId;
+    
     // Transient field - not persisted in database
     // Populated after QR generation for API response
     private String qrCodeBase64;
@@ -98,6 +102,9 @@ public class Appointment {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public String getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(String invoiceId) { this.invoiceId = invoiceId; }
 
     public String getQrCodeBase64() { return qrCodeBase64; }
     public void setQrCodeBase64(String qrCodeBase64) { this.qrCodeBase64 = qrCodeBase64; }

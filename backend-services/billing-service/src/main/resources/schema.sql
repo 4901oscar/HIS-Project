@@ -6,12 +6,15 @@ CREATE TABLE IF NOT EXISTS billing_schema.invoices (
     id VARCHAR(36) PRIMARY KEY,
     invoice_number VARCHAR(20) UNIQUE NOT NULL,
     patient_id VARCHAR(36) NOT NULL,
+    appointment_id VARCHAR(36),  -- Logical FK to clinical_schema.appointments.id (not enforced)
     subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
     discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
     total DECIMAL(10,2) NOT NULL DEFAULT 0,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     created_at TIMESTAMP NOT NULL,
     created_by VARCHAR(36) NOT NULL,
+    customer_nit VARCHAR(20),
+    customer_name VARCHAR(200),
     updated_at TIMESTAMP,
     CONSTRAINT chk_total_positive CHECK (total >= 0)
 );
@@ -67,5 +70,6 @@ ON CONFLICT (code) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_invoices_patient ON billing_schema.invoices(patient_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON billing_schema.invoices(status);
 CREATE INDEX IF NOT EXISTS idx_invoices_number ON billing_schema.invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_appointment ON billing_schema.invoices(appointment_id);  -- Index for appointment-billing integration
 CREATE INDEX IF NOT EXISTS idx_charges_invoice ON billing_schema.charges(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice ON billing_schema.payments(invoice_id);

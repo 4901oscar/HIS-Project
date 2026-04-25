@@ -42,18 +42,20 @@ const DoctorManagementPage: FC = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestión de Doctores</h2>
-            <p className="text-gray-600">Administre doctores, turnos y días libres</p>
-          </div>
-          {viewMode === 'list' && (
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleCreateDoctor}
-              className="px-4 py-2 bg-medin-blue text-medin-navy font-semibold hover:bg-medin-blue-light transition-colors"
+              onClick={() => window.location.href = '/administrator'}
+              className="text-gray-400 hover:text-gray-600"
             >
-              + VINCULAR DOCTOR
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
-          )}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Gestión de Doctores</h2>
+              <p className="text-gray-500 text-sm">Administre doctores, turnos y días libres</p>
+            </div>
+          </div>
           {viewMode !== 'list' && (
             <button
               onClick={handleCancel}

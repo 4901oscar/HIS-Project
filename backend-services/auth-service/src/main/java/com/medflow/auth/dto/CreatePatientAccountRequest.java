@@ -29,4 +29,20 @@ public class CreatePatientAccountRequest {
 
     @Pattern(regexp = "\\d{8}", message = "El teléfono debe tener 8 dígitos")
     private String phone;
+
+    // Campos médicos obligatorios
+    @NotBlank(message = "La fecha de nacimiento es requerida")
+    @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}", message = "Formato de fecha inválido (YYYY-MM-DD)")
+    private String birthDate;
+
+    @NotBlank(message = "El género es requerido")
+    @Pattern(regexp = "M|F", message = "El género debe ser M o F")
+    private String gender;
+
+    // Campos médicos opcionales
+    private String nit;
+    private String department;
+    private String municipality;
+    private String zone;
+    private String address;
 }

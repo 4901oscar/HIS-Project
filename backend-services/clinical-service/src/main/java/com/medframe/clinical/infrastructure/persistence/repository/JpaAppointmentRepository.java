@@ -56,4 +56,17 @@ public interface JpaAppointmentRepository extends JpaRepository<AppointmentEntit
      */
     @Query("SELECT a FROM AppointmentEntity a WHERE a.status = 'ACTIVE' AND NOT EXISTS (SELECT 1 FROM TriageEntity t WHERE t.appointmentId = a.id)")
     List<AppointmentEntity> findPendingTriage();
+    
+    /**
+     * Find all appointments that do not have an associated invoice.
+     * Used for manual reconciliation when Billing Service was unavailable.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-12.1: Consultar citas sin factura para reconciliación manual</li>
+     * </ul>
+     *
+     * @return list of appointment entities without invoice (invoiceId is NULL)
+     */
+    List<AppointmentEntity> findByInvoiceIdIsNull();
 }

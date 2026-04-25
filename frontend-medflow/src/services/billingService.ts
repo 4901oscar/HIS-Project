@@ -1,112 +1,103 @@
 import api from '../api';
 
-export type ChargeType = 'CONSULTATION' | 'LABORATORY' | 'MEDICATION' | 'OTHER';
-
-export interface ServiceItemResponse {
-  id: string;
-  code: string;
-  name: string;
-  description: string;
-  category: string;
-  price: number;
-  active: boolean;
-}
-
-export const getServiceItems = async (category?: string): Promise<ServiceItemResponse[]> => {
-  const response = await api.get<ServiceItemResponse[]>('/api/billing/services', {
-    params: category ? { category } : undefined,
-  });
-  return response.data;
-};
-export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER';
-export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
-
-export interface ChargeRequest {
-  type: ChargeType;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-export interface ChargeResponse {
-  id: string;
-  type: ChargeType;
+export interface ChargeItem {
+  id?: string;
+  type: 'CONSULTATION' | 'LABORATORY' | 'MEDICATION' | 'OTHER';
   description: string;
   quantity: number;
   unitPrice: number;
   subtotal: number;
 }
 
-export interface InvoiceResponse {
+export interface Invoice {
   id: string;
   invoiceNumber: string;
   patientId: string;
-  charges: ChargeResponse[];
+  charges: ChargeItem[];
   subtotal: number;
-  discount: number;
+  discountAmount: number;
   total: number;
-  status: InvoiceStatus;
+  status: 'PENDING' | 'PAID' | 'CANCELLED';
   createdAt: string;
-  paidAt?: string;
+  createdBy: string;
+  updatedAt?: string;
+}
+
+export interface PaymentRequest {
+  amount: number;
+  method: 'CASH' | 'CARD' | 'TRANSFER';
+  nit?: string;
+  customerName?: string;
 }
 
 export interface PaymentResponse {
+  id: string;
   invoiceId: string;
-  amountPaid: number;
+  amount: number;
   change: number;
-  method: PaymentMethod;
+  method: string;
   paidAt: string;
+  receivedBy: string;
 }
 
-export const createInvoice = async (patientId: string, charges: ChargeRequest[]): Promise<InvoiceResponse> => {
-  const response = await api.post<InvoiceResponse>('/api/billing/invoices', { patientId, charges });
+export interface CreateInvoiceRequest {
+  patientId: string;
+  charges: {
+    type: 'CONSULTATION' | 'LABORATORY' | 'MEDICATION' | 'OTHER';
+    description: string;
+    quantity: number;
+    unitPrice: number;
+  }[];
+}
+
+/**
+ * Crea una nueva factura para un paciente
+ */
+export const createInvoice = async (request: CreateInvoiceRequest): Promise<Invoice> => {
+  const response = await api.post('/api/billing/invoices', request);
   return response.data;
 };
 
-export const getInvoices = async (status?: InvoiceStatus): Promise<InvoiceResponse[]> => {
+/**
+ * Obtiene todas las facturas, opcionalmente filtradas por estado
+ */
+export const getInvoices = async (status?: 'PENDING' | 'PAID' | 'CANCELLED'): Promise<Invoice[]> => {
   const params = status ? { status } : {};
-  const response = await api.get<InvoiceResponse[]>('/api/billing/invoices', { params });
+  const response = await api.get('/api/billing/invoices', { params });
   return response.data;
 };
 
-export const getInvoiceById = async (id: string): Promise<InvoiceResponse> => {
-  const response = await api.get<InvoiceResponse>(`/api/billing/invoices/${id}`);
+/**
+ * Obtiene una factura por ID
+ */
+export const getInvoiceById = async (id: string): Promise<Invoice> => {
+  const response = await api.get(`/api/billing/invoices/${id}`);
   return response.data;
 };
 
+/**
+ * Procesa el pago de una factura
+ */
 export const processPayment = async (
-  id: string,
-  amount: number,
-  method: PaymentMethod
+  invoiceId: string,
+  paymentData: PaymentRequest
 ): Promise<PaymentResponse> => {
-  const response = await api.post<PaymentResponse>(`/api/billing/invoices/${id}/pay`, { amount, method });
+  const response = await api.post(`/api/billing/invoices/${invoiceId}/pay`, paymentData);
   return response.data;
 };
 
-export const applyDiscount = async (
-  id: string,
-  discountData: { amount?: number; percentage?: number }
-): Promise<InvoiceResponse> => {
-  const response = await api.put<InvoiceResponse>(`/api/billing/invoices/${id}/discount`, discountData);
+/**
+ * Obtiene las facturas de un paciente específico
+ */
+export const getPatientInvoices = async (patientId: string): Promise<Invoice[]> => {
+  const response = await api.get(`/api/billing/invoices/patient/${patientId}`);
   return response.data;
 };
 
-export const cancelInvoice = async (id: string): Promise<InvoiceResponse> => {
-  const response = await api.delete<InvoiceResponse>(`/api/billing/invoices/${id}`);
+/**
+ * Cancela una factura
+ */
+export const cancelInvoice = async (invoiceId: string): Promise<Invoice> => {
+  const response = await api.delete(`/api/billing/invoices/${invoiceId}`);
   return response.data;
-};
-
-export const getPatientInvoices = async (patientId: string): Promise<InvoiceResponse[]> => {
-  const response = await api.get<InvoiceResponse[]>(`/api/billing/invoices/patient/${patientId}`);
-  return response.data;
-};
-
-export default {
-  createInvoice,
-  getInvoices,
-  getInvoiceById,
-  processPayment,
-  applyDiscount,
-  cancelInvoice,
-  getPatientInvoices,
 };

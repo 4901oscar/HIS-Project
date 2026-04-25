@@ -16,7 +16,7 @@ import VitalSignsCapture from './pages/vitals/VitalSignsCapture';
 import DoctorConsultation from './pages/doctor/DoctorConsultation';
 import LabSampleManagement from './pages/lab/LabSampleManagement';
 import PharmacyDispense from './pages/pharmacy/PharmacyDispense';
-import CashierBilling from './pages/cashier/CashierBilling';
+import CashierPage from './pages/cashier/CashierPage';
 
 function App() {
   return (
@@ -101,7 +101,7 @@ function App() {
             path="/cashier"
             element={
               <ProtectedRoute requiredRole="CASHIER">
-                <CashierBilling />
+                <CashierPage />
               </ProtectedRoute>
             }
           />

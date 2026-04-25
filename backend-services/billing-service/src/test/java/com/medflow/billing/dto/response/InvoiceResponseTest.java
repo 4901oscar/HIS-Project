@@ -40,6 +40,7 @@ class InvoiceResponseTest {
             "invoice-123",
             "INV-20260416-0001",
             "patient-456",
+            "appointment-123", // appointmentId
             charges,
             new BigDecimal("80.00"),
             new BigDecimal("10.00"),
@@ -47,6 +48,8 @@ class InvoiceResponseTest {
             InvoiceStatus.PENDING,
             now,
             "user-789",
+            null,
+            null,
             null
         );
         

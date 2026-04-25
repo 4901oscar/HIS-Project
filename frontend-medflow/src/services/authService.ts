@@ -29,6 +29,11 @@ export interface RegisterData {
   secondLastName?: string;
   email: string;
   phone: string;
+  birthDate: string; // YYYY-MM-DD
+  gender: string; // M o F
+  department?: string;
+  municipality?: string;
+  zone?: string;
   address?: string;
   password: string;
 }
@@ -36,6 +41,31 @@ export interface RegisterData {
 export interface RegisterResponse {
   message: string;
   email: string;
+}
+
+export interface CreatePatientAccountRequest {
+  dpi: string;
+  nit?: string;
+  firstName: string;
+  secondName?: string;
+  firstLastName: string;
+  secondLastName?: string;
+  email: string;
+  phone: string;
+  birthDate: string; // YYYY-MM-DD
+  gender: string; // M o F
+  department?: string;
+  municipality?: string;
+  zone?: string;
+  address?: string;
+}
+
+export interface CreatePatientAccountResponse {
+  userId: string;
+  patientId: string;
+  username: string;
+  temporaryPassword: string;
+  message: string;
 }
 
 export const register = async (data: RegisterData): Promise<RegisterResponse> => {
@@ -76,4 +106,9 @@ export const getUserFullName = async (userId: string): Promise<string> => {
   return response.data.fullName;
 };
 
-export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName };
+export const createPatientAccount = async (data: CreatePatientAccountRequest): Promise<CreatePatientAccountResponse> => {
+  const response = await api.post<CreatePatientAccountResponse>('/api/auth/internal/create-patient', data);
+  return response.data;
+};
+
+export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName, createPatientAccount };

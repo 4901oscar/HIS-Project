@@ -47,34 +47,82 @@ public class ShiftManager {
     }
     
     /**
-     * Creates a new doctor with the specified shift configuration.
+     * Creates a new doctor with the specified shift configuration, or reactivates an inactive doctor.
      * 
      * <p>This method validates that the shift duration is exactly 8 hours before
      * persisting the doctor record.
      * 
+     * <p><b>Behavior:</b>
+     * <ul>
+     *   <li>If doctor doesn't exist: Creates a new active doctor</li>
+     *   <li>If doctor exists and is INACTIVE: Reactivates the doctor and updates their information</li>
+     *   <li>If doctor exists and is ACTIVE: Throws IllegalStateException</li>
+     * </ul>
+     * 
      * <p><b>Example:</b>
      * <pre>
+     * // First time - creates new doctor
      * Doctor doctor = shiftManager.createDoctor(
+     *     "user-123",
      *     "Dr. Juan Pérez",
      *     "Cardiology",
      *     LocalTime.of(8, 0),   // 08:00
      *     LocalTime.of(16, 0)   // 16:00
      * );
-     * // Result: Doctor created with morning shift (08:00-16:00)
+     * 
+     * // Later - deactivate
+     * shiftManager.deactivateDoctor("user-123");
+     * 
+     * // Re-register - reactivates existing doctor
+     * Doctor reactivated = shiftManager.createDoctor(
+     *     "user-123",
+     *     "Dr. Juan Pérez",
+     *     "Neurology",  // Can update specialty
+     *     LocalTime.of(14, 0),  // Can update shift
+     *     LocalTime.of(22, 0)
+     * );
+     * // Result: Same doctor reactivated with updated information
      * </pre>
      * 
+     * @param userId the user ID from auth-service
      * @param name the doctor's full name
      * @param specialty the doctor's medical specialty
      * @param shiftStart the start time of the doctor's shift
      * @param shiftEnd the end time of the doctor's shift
-     * @return the created doctor with generated ID
+     * @return the created or reactivated doctor
      * @throws IllegalArgumentException if shift duration is not exactly 8 hours
+     * @throws IllegalStateException if doctor already exists and is active
      */
     public Doctor createDoctor(String userId, String name, String specialty,
                                LocalTime shiftStart, LocalTime shiftEnd) {
-        if (doctorRepository.findById(userId).isPresent()) {
-            throw new IllegalStateException("El usuario ya está registrado como doctor en el sistema");
+        // Check if doctor already exists
+        var existingDoctor = doctorRepository.findById(userId);
+        
+        if (existingDoctor.isPresent()) {
+            Doctor doctor = existingDoctor.get();
+            
+            // If doctor is inactive, reactivate and update information
+            if (doctor.getStatus() == Doctor.DoctorStatus.INACTIVE) {
+                doctor.setName(name);
+                doctor.setSpecialty(specialty);
+                doctor.setShiftStart(shiftStart);
+                doctor.setShiftEnd(shiftEnd);
+                doctor.activate(); // Reactivate the doctor
+                
+                // Validate shift duration (throws exception if invalid)
+                doctor.validateShift();
+                
+                return doctorRepository.save(doctor);
+            } else {
+                // Doctor is already active
+                throw new IllegalStateException(
+                    "El usuario ya está registrado como doctor activo en el sistema. " +
+                    "ID: " + userId + ", Nombre: " + doctor.getName()
+                );
+            }
         }
+        
+        // Create new doctor if doesn't exist
         Doctor doctor = new Doctor();
         doctor.setId(userId);
         doctor.setName(name);

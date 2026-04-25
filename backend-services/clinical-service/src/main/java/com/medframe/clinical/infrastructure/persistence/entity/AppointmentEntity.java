@@ -44,6 +44,9 @@ public class AppointmentEntity {
     @Column(name = "created_by", nullable = false, length = 36)
     private String createdBy;
 
+    @Column(name = "invoice_id", length = 36)
+    private String invoiceId;
+
     // Constructors
     public AppointmentEntity() {}
 
@@ -74,4 +77,7 @@ public class AppointmentEntity {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public String getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(String invoiceId) { this.invoiceId = invoiceId; }
 }

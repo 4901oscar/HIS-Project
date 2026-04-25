@@ -22,6 +22,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/api/patients/internal").permitAll() // Endpoint interno para auth-service
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new GatewayAuthFilter(), UsernamePasswordAuthenticationFilter.class);

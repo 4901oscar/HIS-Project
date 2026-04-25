@@ -4,8 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { useAuth } from '../hooks/useAuth';
-import { getServiceItems, createInvoice, processPayment } from '../services/billingService';
-import type { InvoiceResponse } from '../services/billingService';
+import { createInvoice, processPayment, type Invoice } from '../services/billingService';
 import { createAppointment, releaseHold } from '../services/appointmentService';
 import type { AppointmentResponse } from '../services/appointmentService';
 
@@ -83,7 +82,7 @@ const PaymentGatewayPage: FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [appointment, setAppointment] = useState<AppointmentResponse | null>(null);
 
   useEffect(() => {
@@ -92,20 +91,11 @@ const PaymentGatewayPage: FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Fetch consultation fee from service catalog
+  // Fetch consultation fee - hardcoded for now
   useEffect(() => {
-    getServiceItems('CONSULTATION')
-      .then(items => {
-        const active = items.find(i => i.active);
-        if (active) {
-          setFeePrice(active.price);
-          setFeeDescription(active.name);
-        } else {
-          setFeePrice(150);
-        }
-      })
-      .catch(() => setFeePrice(150))
-      .finally(() => setLoadingFee(false));
+    setFeePrice(150);
+    setFeeDescription('Consulta General');
+    setLoadingFee(false);
   }, []);
 
   const formatCardNumber = (val: string) =>
@@ -152,11 +142,20 @@ const PaymentGatewayPage: FC = () => {
       setAppointment(appointmentResponse);
       
       // 2. Create invoice
-      const inv = await createInvoice(user!.id, [
-        { type: 'CONSULTATION', description: feeDescription, quantity: 1, unitPrice: feePrice },
-      ]);
+      const inv = await createInvoice({
+        patientId: user!.id,
+        charges: [
+          { type: 'CONSULTATION', description: feeDescription, quantity: 1, unitPrice: feePrice },
+        ],
+      });
+      
       // 3. Process payment (simulated card → CARD method)
-      await processPayment(inv.id, feePrice, 'CARD');
+      await processPayment(inv.id, {
+        amount: feePrice,
+        method: 'CARD',
+        nit: 'CF',
+        customerName: user!.fullName,
+      });
       // 4. Release the slot hold (createAppointment already does this, but ensure cleanup)
       releaseHold(state.sessionId).catch(() => {});
       setInvoice(inv);

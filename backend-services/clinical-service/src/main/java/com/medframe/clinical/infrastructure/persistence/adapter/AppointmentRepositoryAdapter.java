@@ -83,4 +83,18 @@ public class AppointmentRepositoryAdapter implements AppointmentRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+    
+    @Override
+    public List<Appointment> findAppointmentsWithoutInvoice() {
+        return jpaRepository.findByInvoiceIdIsNull().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public Appointment update(Appointment appointment) {
+        var entity = mapper.toEntity(appointment);
+        var updated = jpaRepository.save(entity);
+        return mapper.toDomain(updated);
+    }
 }

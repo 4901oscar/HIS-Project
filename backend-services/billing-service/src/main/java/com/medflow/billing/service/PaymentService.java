@@ -88,7 +88,9 @@ public class PaymentService {
         
         Payment savedPayment = paymentRepository.save(payment);
         
-        // 6. Update invoice status to PAID
+        // 6. Update invoice with customer billing information and status to PAID
+        invoice.setCustomerNit(request.getNit());
+        invoice.setCustomerName(request.getCustomerName());
         invoice.setStatus(InvoiceStatus.PAID);
         invoice.setUpdatedAt(LocalDateTime.now());
         invoiceRepository.save(invoice);

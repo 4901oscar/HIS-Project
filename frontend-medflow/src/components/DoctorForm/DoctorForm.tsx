@@ -131,7 +131,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
       {!isEditMode && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Seleccionar Doctor *
+            Seleccionar Doctor <span className="text-red-500">*</span>
           </label>
           {loadingEmployees ? (
             <p className="text-sm text-gray-500">Cargando doctores disponibles...</p>
@@ -179,7 +179,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
       {/* Specialty */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Especialidad *
+          Especialidad <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -197,7 +197,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
       {/* Shift Start */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Hora de Inicio del Turno *
+          Hora de Inicio del Turno <span className="text-red-500">*</span>
         </label>
         <input
           type="time"
@@ -214,7 +214,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
       {/* Shift End */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Hora de Fin del Turno *
+          Hora de Fin del Turno <span className="text-red-500">*</span>
         </label>
         <input
           type="time"
