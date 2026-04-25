@@ -61,6 +61,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/actuator/health"
     );
 
+    private static final List<String> PUBLIC_GET_PATHS = Arrays.asList(
+            "/api/clinical/doctors",
+            "/api/clinical/appointments/available"
+    );
+
+    // Hold/release endpoints are public — users may hold before logging in
+    private static final List<String> PUBLIC_ALL_METHODS_PATHS = Arrays.asList(
+            "/api/clinical/appointments/hold"
+    );
+
+
     /**
      * Constructs a new JwtAuthenticationFilter.
      *
@@ -85,7 +96,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         logger.debug("Processing request: {} {}", method, path);
 
         // Skip JWT validation for public paths
-        if (isPublicPath(path)) {
+        if (isPublicPath(path, method)) {
             logger.debug("Public path accessed, skipping JWT validation: {}", path);
             return chain.filter(exchange);
         }
@@ -145,9 +156,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
      * @param path the request path
      * @return true if the path is public, false otherwise
      */
-    private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+    private boolean isPublicPath(String path, String method) {
+        if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) return true;
+        if (PUBLIC_ALL_METHODS_PATHS.stream().anyMatch(path::startsWith)) return true;
+        if ("GET".equals(method)) {
+            return PUBLIC_GET_PATHS.stream().anyMatch(path::startsWith);
+        }
+        return false;
     }
+
 
     /**
      * Extracts the JWT token from the Authorization header.

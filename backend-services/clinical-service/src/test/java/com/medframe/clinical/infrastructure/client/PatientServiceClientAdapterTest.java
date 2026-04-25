@@ -34,16 +34,22 @@ class PatientServiceClientAdapterTest {
     @BeforeEach
     void setUp() {
         samplePatient = new PatientDTO(
-            "patient-123",
-            "Juan",
-            "Pérez",
-            "DNI",
-            "12345678",
-            LocalDate.of(1990, 1, 15),
-            "M",
-            "juan.perez@example.com",
-            "555-1234",
-            "Calle Principal 123"
+            "patient-123",                      // id
+            "1234567890123",                    // dpi
+            "12345678",                         // nit
+            "Juan Carlos Pérez García",         // fullName
+            "Juan",                             // firstName
+            "Pérez",                            // firstLastName
+            LocalDate.of(1990, 1, 15),         // birthDate
+            "M",                                // gender
+            "juan.perez@example.com",          // email
+            "555-1234",                         // phone
+            "Guatemala",                        // department
+            "Guatemala",                        // municipality
+            "1",                                // zone
+            "Calle Principal 123",              // address
+            "auth-user-123",                    // authUserId
+            true                                // active
         );
     }
 
@@ -61,7 +67,7 @@ class PatientServiceClientAdapterTest {
         PatientDTO patient = (PatientDTO) result;
         assertEquals("patient-123", patient.getId());
         assertEquals("Juan", patient.getFirstName());
-        assertEquals("Pérez", patient.getLastName());
+        assertEquals("Pérez", patient.getFirstLastName());
         verify(patientServiceFeignClient, times(1)).getPatient("patient-123");
     }
 

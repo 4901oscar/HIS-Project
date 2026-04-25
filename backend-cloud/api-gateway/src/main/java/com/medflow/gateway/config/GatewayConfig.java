@@ -40,6 +40,7 @@ public class GatewayConfig {
 
     // Path patterns
     private static final String AUTH_PATH = "/api/auth/**";
+    private static final String USERS_PATH = "/api/users/**";
     private static final String PATIENT_PATH = "/api/patients/**";
     private static final String CLINICAL_PATH = "/api/clinical/**";
     private static final String LAB_PATH = "/api/lab/**";
@@ -71,6 +72,11 @@ public class GatewayConfig {
                 // Authentication Service - Handles user login, registration, and JWT generation
                 .route(AUTH_ROUTE_ID, r -> r
                         .path(AUTH_PATH)
+                        .uri(AUTH_SERVICE_URI))
+
+                // User Management - Employee CRUD (also handled by auth-service)
+                .route("user-management", r -> r
+                        .path(USERS_PATH)
                         .uri(AUTH_SERVICE_URI))
                 
                 // Patient Service - Manages patient records and demographics

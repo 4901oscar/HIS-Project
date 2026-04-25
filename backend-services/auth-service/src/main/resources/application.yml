@@ -26,6 +26,25 @@ spring:
       mode: always
       schema-locations: classpath:schema.sql
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:noreply@example.com}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+
 eureka:
   client:
     service-url:

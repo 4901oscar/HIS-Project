@@ -1,5 +1,6 @@
 package com.medflow.patient.service;
 
+import com.medflow.patient.model.Gender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -33,13 +35,21 @@ public class AuthServiceClient {
      * Crea cuenta de paciente en auth-service.
      * @return resultado con authUserId y contraseña temporal, o null si falla.
      */
-    public PatientAccountResult createPatientAccount(String dpi, String email, String fullName) {
+    public PatientAccountResult createPatientAccount(String dpi, String email,
+                                                      String firstName, String secondName,
+                                                      String firstLastName, String secondLastName,
+                                                      String phone, LocalDate birthDate, Gender gender) {
         try {
-            Map<String, String> body = Map.of(
-                    "dpi", dpi,
-                    "email", email,
-                    "fullName", fullName
-            );
+            Map<String, String> body = new java.util.HashMap<>();
+            body.put("dpi", dpi);
+            body.put("email", email);
+            body.put("firstName", firstName);
+            body.put("firstLastName", firstLastName);
+            body.put("birthDate", birthDate.toString());
+            body.put("gender", gender.name());
+            if (secondName != null) body.put("secondName", secondName);
+            if (secondLastName != null) body.put("secondLastName", secondLastName);
+            if (phone != null) body.put("phone", phone);
             ResponseEntity<Map> response = restTemplate.postForEntity(
                     authServiceUrl + "/api/auth/internal/create-patient",
                     body,

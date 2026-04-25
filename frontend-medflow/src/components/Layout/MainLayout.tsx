@@ -7,9 +7,7 @@ import type { FC, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  HomeIcon,
   CalendarIcon,
-  HeartIcon,
   UserGroupIcon,
   BeakerIcon,
   BuildingStorefrontIcon,
@@ -18,6 +16,7 @@ import {
   ArrowLeftOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 
 interface MenuItem {
@@ -28,12 +27,6 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  {
-    name: 'Dashboard',
-    path: '/dashboard',
-    icon: HomeIcon,
-    roles: ['ADMINISTRATOR', 'ADMISSION', 'VITAL_SIGNS', 'DOCTOR', 'LABORATORY', 'PHARMACY', 'CASHIER'],
-  },
   {
     name: 'Administrator',
     path: '/administrator',
@@ -47,10 +40,10 @@ const menuItems: MenuItem[] = [
     roles: ['ADMISSION', 'ADMINISTRATOR'],
   },
   {
-    name: 'Vital Signs',
-    path: '/vitals',
-    icon: HeartIcon,
-    roles: ['VITAL_SIGNS', 'ADMINISTRATOR'],
+    name: 'Triaje Pendiente',
+    path: '/vitals/triage',
+    icon: ClipboardDocumentCheckIcon,
+    roles: ['VITAL_SIGNS', 'DOCTOR'],
   },
   {
     name: 'Doctor',

@@ -43,4 +43,58 @@ public class AppointmentRepositoryAdapter implements AppointmentRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Appointment> findByPatientId(String patientId) {
+        return jpaRepository.findByPatientId(patientId).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Appointment> findByDate(LocalDate date) {
+        return jpaRepository.findByAppointmentDate(date).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Appointment> findAll() {
+        return jpaRepository.findAll().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Appointment> findByDoctorId(String doctorId) {
+        return jpaRepository.findByDoctorId(doctorId).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void deleteById(String id) {
+        jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public List<Appointment> findPendingTriage() {
+        return jpaRepository.findPendingTriage().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<Appointment> findAppointmentsWithoutInvoice() {
+        return jpaRepository.findByInvoiceIdIsNull().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public Appointment update(Appointment appointment) {
+        var entity = mapper.toEntity(appointment);
+        var updated = jpaRepository.save(entity);
+        return mapper.toDomain(updated);
+    }
 }

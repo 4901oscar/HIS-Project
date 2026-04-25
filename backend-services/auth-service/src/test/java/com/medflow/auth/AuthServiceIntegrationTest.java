@@ -95,7 +95,8 @@ class AuthServiceIntegrationTest {
         testUser.setUsername("testdoctor");
         testUser.setPassword(passwordEncoder.encode("password123"));
         testUser.setEmail("testdoctor@medflow.com");
-        testUser.setFullName("Dr. Test Doctor");
+        testUser.setFirstName("Test");
+        testUser.setFirstLastName("Doctor");
         testUser.setActive(true);
         testUser.setRoles(Set.of(doctorRole));
         testUser = userRepository.save(testUser);
@@ -127,7 +128,7 @@ class AuthServiceIntegrationTest {
                 .andExpect(jsonPath("$.expiresIn").value(3600))
                 .andExpect(jsonPath("$.user.username").value("testdoctor"))
                 .andExpect(jsonPath("$.user.email").value("testdoctor@medflow.com"))
-                .andExpect(jsonPath("$.user.fullName").value("Dr. Test Doctor"))
+                .andExpect(jsonPath("$.user.fullName").value("Test Doctor"))
                 .andExpect(jsonPath("$.user.roles[0]").value("DOCTOR"))
                 .andReturn();
         

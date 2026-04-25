@@ -43,7 +43,7 @@ const HomePage: FC = () => {
 
               </p>
               <a
-                href="/admin/patients/register"
+                href="/register"
                 className="inline-block px-5 md:px-6 py-2 bg-medin-blue text-medin-navy rounded-full font-semibold hover:bg-medin-blue-light transition-colors text-sm md:text-base"
               >
                 Registrarse

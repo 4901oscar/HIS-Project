@@ -1,5 +1,6 @@
 package com.medflow.patient.controller;
 
+import com.medflow.patient.dto.CreatePatientInternalRequest;
 import com.medflow.patient.dto.CreatePatientRequest;
 import com.medflow.patient.dto.PatientResponse;
 import com.medflow.patient.dto.UpdatePatientRequest;
@@ -29,6 +30,16 @@ public class PatientController {
         return ResponseEntity.status(HttpStatus.CREATED).body(patientService.createPatient(request));
     }
 
+    /**
+     * Endpoint interno para crear paciente desde auth-service.
+     * Este endpoint NO requiere autenticación ya que es solo para comunicación interna entre servicios.
+     * El auth-service llama a este endpoint después de crear el usuario en auth_schema.users.
+     */
+    @PostMapping("/internal")
+    public ResponseEntity<PatientResponse> createPatientInternal(@Valid @RequestBody CreatePatientInternalRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(patientService.createPatientInternal(request));
+    }
+
     /** Obtener paciente por ID. */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER')")
@@ -41,6 +52,12 @@ public class PatientController {
     @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER')")
     public ResponseEntity<PatientResponse> getByDpi(@PathVariable String dpi) {
         return ResponseEntity.ok(patientService.getByDpi(dpi));
+    }
+
+    /** Buscar paciente por auth_user_id (para uso interno de clinical-service). */
+    @GetMapping("/by-auth-user/{authUserId}")
+    public ResponseEntity<PatientResponse> getByAuthUserId(@PathVariable String authUserId) {
+        return ResponseEntity.ok(patientService.getByAuthUserId(authUserId));
     }
 
     /** Búsqueda por nombre, DPI o email (máx 50 resultados). */

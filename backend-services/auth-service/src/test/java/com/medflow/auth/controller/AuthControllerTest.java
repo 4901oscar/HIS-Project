@@ -88,7 +88,8 @@ class AuthControllerTest {
             .username("doctor1")
             .password("$2a$10$encodedPasswordHash")
             .email("doctor1@medflow.com")
-            .fullName("Dr. Juan Pérez")
+            .firstName("Juan")
+            .firstLastName("Pérez")
             .active(true)
             .roles(Set.of(doctorRole))
             .build();
@@ -120,7 +121,7 @@ class AuthControllerTest {
             .andExpect(jsonPath("$.user.id").value("550e8400-e29b-41d4-a716-446655440000"))
             .andExpect(jsonPath("$.user.username").value("doctor1"))
             .andExpect(jsonPath("$.user.email").value("doctor1@medflow.com"))
-            .andExpect(jsonPath("$.user.fullName").value("Dr. Juan Pérez"))
+            .andExpect(jsonPath("$.user.fullName").value("Juan Pérez"))
             .andExpect(jsonPath("$.user.roles[0]").value("DOCTOR"));
         
         verify(authService).login("doctor1", "password123");
@@ -223,7 +224,7 @@ class AuthControllerTest {
             .andExpect(jsonPath("$.id").value("550e8400-e29b-41d4-a716-446655440000"))
             .andExpect(jsonPath("$.username").value("doctor1"))
             .andExpect(jsonPath("$.email").value("doctor1@medflow.com"))
-            .andExpect(jsonPath("$.fullName").value("Dr. Juan Pérez"))
+            .andExpect(jsonPath("$.fullName").value("Juan Pérez"))
             .andExpect(jsonPath("$.roles[0]").value("DOCTOR"))
             .andExpect(jsonPath("$.active").value(true));
         

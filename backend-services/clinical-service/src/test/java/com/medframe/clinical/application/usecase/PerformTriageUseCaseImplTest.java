@@ -1,6 +1,8 @@
 package com.medframe.clinical.application.usecase;
 
 import com.medframe.clinical.application.service.PermissionValidator;
+import com.medframe.clinical.domain.exception.AppointmentNotFoundException;
+import com.medframe.clinical.domain.exception.DuplicateTriageException;
 import com.medframe.clinical.domain.exception.ForbiddenException;
 import com.medframe.clinical.domain.exception.VitalSignsNotFoundException;
 import com.medframe.clinical.domain.model.PriorityLevel;
@@ -33,8 +35,10 @@ import static org.mockito.Mockito.*;
  * - Business logic is delegated to TriageEngine
  * - Triage results are persisted via TriageRepository
  * - Exceptions from domain services are propagated correctly
+ * - Appointment validation is properly handled
  * 
- * Requirements: Requirement 1 (Manchester Triage), Requirement 9 (Permission Validation)
+ * Requirements: Requirement 1 (Manchester Triage), Requirement 9 (Permission Validation),
+ *               Requirements 1.3-1.6 (Appointment Validation), Requirement 2.3 (Duplicate Prevention)
  * 
  * @author MedFlow Team
  * @version 1.0.0
@@ -55,6 +59,7 @@ class PerformTriageUseCaseImplTest {
     @InjectMocks
     private PerformTriageUseCaseImpl performTriageUseCase;
     
+    private String appointmentId;
     private String patientId;
     private String doctorId;
     private String motifId;
@@ -63,6 +68,7 @@ class PerformTriageUseCaseImplTest {
     
     @BeforeEach
     void setUp() {
+        appointmentId = "appt-001";
         patientId = "patient-123";
         doctorId = "doctor-456";
         motifId = "M01";
@@ -71,6 +77,7 @@ class PerformTriageUseCaseImplTest {
         // Create a sample triage result
         expectedTriage = new Triage();
         expectedTriage.setId("triage-789");
+        expectedTriage.setAppointmentId(appointmentId);
         expectedTriage.setPatientId(patientId);
         expectedTriage.setDoctorId(doctorId);
         expectedTriage.setMotifId(motifId);
@@ -86,20 +93,21 @@ class PerformTriageUseCaseImplTest {
     void shouldSuccessfullyPerformTriageWhenUserHasDoctorRole() {
         // Given: User has DOCTOR role, engine returns triage, repository saves it
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, discriminatorIds))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
             .thenReturn(expectedTriage);
         when(triageRepository.save(any(Triage.class))).thenReturn(expectedTriage);
         
         // When: Perform triage
-        Triage result = performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds);
+        Triage result = performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         
         // Then: Should validate permissions, delegate to engine, and persist
         verify(permissionValidator).requireRole("DOCTOR");
-        verify(triageEngine).performTriage(patientId, doctorId, motifId, discriminatorIds);
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         verify(triageRepository).save(expectedTriage);
         
         assertNotNull(result);
         assertEquals(expectedTriage.getId(), result.getId());
+        assertEquals(expectedTriage.getAppointmentId(), result.getAppointmentId());
         assertEquals(expectedTriage.getPatientId(), result.getPatientId());
         assertEquals(expectedTriage.getPriorityLevel(), result.getPriorityLevel());
     }
@@ -114,14 +122,14 @@ class PerformTriageUseCaseImplTest {
         // When/Then: Should throw ForbiddenException
         ForbiddenException exception = assertThrows(
             ForbiddenException.class,
-            () -> performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds)
+            () -> performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds)
         );
         
         assertTrue(exception.getMessage().contains("No tiene permisos"));
         
         // Verify that engine and repository were never called
         verify(permissionValidator).requireRole("DOCTOR");
-        verify(triageEngine, never()).performTriage(anyString(), anyString(), anyString(), anyList());
+        verify(triageEngine, never()).performTriage(anyString(), anyString(), anyString(), anyString(), anyList());
         verify(triageRepository, never()).save(any(Triage.class));
     }
     
@@ -130,7 +138,7 @@ class PerformTriageUseCaseImplTest {
     void shouldPropagateVitalSignsNotFoundExceptionFromTriageEngine() {
         // Given: Permission validation passes but patient has no vital signs
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, discriminatorIds))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
             .thenThrow(new VitalSignsNotFoundException(
                 "El paciente no tiene signos vitales registrados. " +
                 "Por favor, capture los signos vitales antes de realizar el triaje."));
@@ -138,14 +146,14 @@ class PerformTriageUseCaseImplTest {
         // When/Then: Should propagate the exception
         VitalSignsNotFoundException exception = assertThrows(
             VitalSignsNotFoundException.class,
-            () -> performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds)
+            () -> performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds)
         );
         
         assertTrue(exception.getMessage().contains("signos vitales"));
         
         // Verify that permission was validated and engine was called
         verify(permissionValidator).requireRole("DOCTOR");
-        verify(triageEngine).performTriage(patientId, doctorId, motifId, discriminatorIds);
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         
         // Verify that repository was never called
         verify(triageRepository, never()).save(any(Triage.class));
@@ -156,7 +164,7 @@ class PerformTriageUseCaseImplTest {
     void shouldPropagateIllegalArgumentExceptionFromTriageEngine() {
         // Given: Permission validation passes but discriminators are invalid
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, discriminatorIds))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
             .thenThrow(new IllegalArgumentException(
                 "No se encontraron discriminadores válidos. " +
                 "Seleccione al menos un discriminador del catálogo Manchester."));
@@ -164,14 +172,14 @@ class PerformTriageUseCaseImplTest {
         // When/Then: Should propagate the exception
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds)
+            () -> performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds)
         );
         
         assertTrue(exception.getMessage().contains("discriminadores válidos"));
         
         // Verify that permission was validated and engine was called
         verify(permissionValidator).requireRole("DOCTOR");
-        verify(triageEngine).performTriage(patientId, doctorId, motifId, discriminatorIds);
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         
         // Verify that repository was never called
         verify(triageRepository, never()).save(any(Triage.class));
@@ -182,18 +190,19 @@ class PerformTriageUseCaseImplTest {
     void shouldPersistTriageWithCorrectPriorityLevel() {
         // Given: User has DOCTOR role and engine calculates RED priority
         Triage redTriage = new Triage();
+        redTriage.setAppointmentId(appointmentId);
         redTriage.setPatientId(patientId);
         redTriage.setDoctorId(doctorId);
         redTriage.setPriorityLevel(PriorityLevel.RED);
         redTriage.setMaxWaitTimeMinutes(0);
         
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, discriminatorIds))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
             .thenReturn(redTriage);
         when(triageRepository.save(any(Triage.class))).thenReturn(redTriage);
         
         // When: Perform triage
-        Triage result = performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds);
+        Triage result = performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         
         // Then: Should persist triage with RED priority
         verify(triageRepository).save(redTriage);
@@ -206,17 +215,17 @@ class PerformTriageUseCaseImplTest {
     void shouldCallComponentsInCorrectOrder() {
         // Given: All components are properly configured
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, discriminatorIds))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
             .thenReturn(expectedTriage);
         when(triageRepository.save(any(Triage.class))).thenReturn(expectedTriage);
         
         // When: Perform triage
-        performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds);
+        performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         
         // Then: Should call in order: permission validation → engine → repository
         var inOrder = inOrder(permissionValidator, triageEngine, triageRepository);
         inOrder.verify(permissionValidator).requireRole("DOCTOR");
-        inOrder.verify(triageEngine).performTriage(patientId, doctorId, motifId, discriminatorIds);
+        inOrder.verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         inOrder.verify(triageRepository).save(expectedTriage);
     }
     
@@ -227,15 +236,15 @@ class PerformTriageUseCaseImplTest {
         List<String> multipleDiscriminators = Arrays.asList("D01", "D02", "D03", "D04");
         
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, multipleDiscriminators))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, multipleDiscriminators))
             .thenReturn(expectedTriage);
         when(triageRepository.save(any(Triage.class))).thenReturn(expectedTriage);
         
         // When: Perform triage with multiple discriminators
-        Triage result = performTriageUseCase.performTriage(patientId, doctorId, motifId, multipleDiscriminators);
+        Triage result = performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, multipleDiscriminators);
         
         // Then: Should successfully process all discriminators
-        verify(triageEngine).performTriage(patientId, doctorId, motifId, multipleDiscriminators);
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, multipleDiscriminators);
         assertNotNull(result);
     }
     
@@ -244,26 +253,100 @@ class PerformTriageUseCaseImplTest {
     void shouldReturnPersistedTriageWithGeneratedId() {
         // Given: Repository generates an ID when saving
         Triage triageWithoutId = new Triage();
+        triageWithoutId.setAppointmentId(appointmentId);
         triageWithoutId.setPatientId(patientId);
         triageWithoutId.setDoctorId(doctorId);
         triageWithoutId.setPriorityLevel(PriorityLevel.YELLOW);
         
         Triage triageWithId = new Triage();
         triageWithId.setId("generated-id-123");
+        triageWithId.setAppointmentId(appointmentId);
         triageWithId.setPatientId(patientId);
         triageWithId.setDoctorId(doctorId);
         triageWithId.setPriorityLevel(PriorityLevel.YELLOW);
         
         doNothing().when(permissionValidator).requireRole("DOCTOR");
-        when(triageEngine.performTriage(patientId, doctorId, motifId, discriminatorIds))
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
             .thenReturn(triageWithoutId);
         when(triageRepository.save(triageWithoutId)).thenReturn(triageWithId);
         
         // When: Perform triage
-        Triage result = performTriageUseCase.performTriage(patientId, doctorId, motifId, discriminatorIds);
+        Triage result = performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
         
         // Then: Should return triage with generated ID
         assertNotNull(result.getId());
         assertEquals("generated-id-123", result.getId());
+    }
+    
+    @Test
+    @DisplayName("Should propagate AppointmentNotFoundException when appointment not found")
+    void shouldPropagateAppointmentNotFoundExceptionWhenAppointmentNotFound() {
+        // Given: Permission validation passes but appointment does not exist
+        doNothing().when(permissionValidator).requireRole("DOCTOR");
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
+            .thenThrow(new AppointmentNotFoundException("Appointment not found"));
+        
+        // When/Then: Should propagate the exception
+        AppointmentNotFoundException exception = assertThrows(
+            AppointmentNotFoundException.class,
+            () -> performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds)
+        );
+        
+        assertEquals("Appointment not found", exception.getMessage());
+        
+        // Verify that permission was validated and engine was called
+        verify(permissionValidator).requireRole("DOCTOR");
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
+        
+        // Verify that repository was never called
+        verify(triageRepository, never()).save(any(Triage.class));
+    }
+    
+    @Test
+    @DisplayName("Should propagate IllegalStateException when appointment is not ACTIVE")
+    void shouldPropagateIllegalStateExceptionWhenAppointmentNotActive() {
+        // Given: Permission validation passes but appointment is not in ACTIVE status
+        doNothing().when(permissionValidator).requireRole("DOCTOR");
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
+            .thenThrow(new IllegalStateException("Appointment must be in ACTIVE status for triage"));
+        
+        // When/Then: Should propagate the exception
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds)
+        );
+        
+        assertEquals("Appointment must be in ACTIVE status for triage", exception.getMessage());
+        
+        // Verify that permission was validated and engine was called
+        verify(permissionValidator).requireRole("DOCTOR");
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
+        
+        // Verify that repository was never called
+        verify(triageRepository, never()).save(any(Triage.class));
+    }
+    
+    @Test
+    @DisplayName("Should propagate DuplicateTriageException when triage already exists for appointment")
+    void shouldPropagateDuplicateTriageExceptionWhenTriageAlreadyExists() {
+        // Given: Permission validation passes but triage already exists for the appointment
+        doNothing().when(permissionValidator).requireRole("DOCTOR");
+        when(triageEngine.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds))
+            .thenThrow(new DuplicateTriageException("Triage already exists for this appointment"));
+        
+        // When/Then: Should propagate the exception
+        DuplicateTriageException exception = assertThrows(
+            DuplicateTriageException.class,
+            () -> performTriageUseCase.performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds)
+        );
+        
+        assertEquals("Triage already exists for this appointment", exception.getMessage());
+        
+        // Verify that permission was validated and engine was called
+        verify(permissionValidator).requireRole("DOCTOR");
+        verify(triageEngine).performTriage(appointmentId, patientId, doctorId, motifId, discriminatorIds);
+        
+        // Verify that repository was never called
+        verify(triageRepository, never()).save(any(Triage.class));
     }
 }

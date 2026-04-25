@@ -24,6 +24,7 @@ public class TriageController {
             @RequestHeader("X-User-Id") String userId) {
         
         Triage triage = performTriageUseCase.performTriage(
+            request.getAppointmentId(),
             request.getPatientId(),
             userId,
             request.getMotifId(),

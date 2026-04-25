@@ -40,6 +40,34 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("Bad Request", ex.getMessage()));
     }
 
+    @ExceptionHandler(EmployeeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEmployeeNotFound(EmployeeNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("Not Found", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PatientCreationException.class)
+    public ResponseEntity<ErrorResponse> handlePatientCreation(PatientCreationException ex) {
+        log.error("Error al crear paciente: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("Patient Creation Error", 
+                        "Error al crear registro de paciente. La transacción fue revertida."));
+    }
+
+    @ExceptionHandler(InvalidMedicalDataException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidMedicalData(InvalidMedicalDataException ex) {
+        log.warn("Datos médicos inválidos: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid Medical Data", ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        log.warn("Argumento inválido: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Bad Request", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         String msg = ex.getBindingResult().getFieldErrors().stream()

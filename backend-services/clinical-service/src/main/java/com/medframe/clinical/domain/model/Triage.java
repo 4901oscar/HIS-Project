@@ -9,6 +9,7 @@ import java.util.List;
 public class Triage {
 
     private String id;
+    private String appointmentId;
     private String patientId;
     private String doctorId;
     private String motifId;
@@ -20,8 +21,9 @@ public class Triage {
 
     public Triage() {}
 
-    public Triage(String patientId, String doctorId, String motifId,
+    public Triage(String appointmentId, String patientId, String doctorId, String motifId,
                   List<String> discriminatorIds, PriorityLevel priorityLevel) {
+        this.appointmentId = appointmentId;
         this.patientId = patientId;
         this.doctorId = doctorId;
         this.motifId = motifId;
@@ -35,6 +37,9 @@ public class Triage {
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
 
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }

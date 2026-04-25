@@ -32,8 +32,11 @@ public class BeanConfiguration {
 
     @Bean
     public TriageEngine triageEngine(VitalSignsRepository vitalSignsRepository,
-                                     ManchesterCatalogRepository manchesterCatalogRepository) {
-        return new TriageEngine(vitalSignsRepository, manchesterCatalogRepository);
+                                     ManchesterCatalogRepository manchesterCatalogRepository,
+                                     AppointmentRepository appointmentRepository,
+                                     TriageRepository triageRepository) {
+        return new TriageEngine(vitalSignsRepository, manchesterCatalogRepository,
+                                appointmentRepository, triageRepository);
     }
 
     @Bean
@@ -44,8 +47,11 @@ public class BeanConfiguration {
     @Bean
     public AppointmentManager appointmentManager(AppointmentRepository appointmentRepository,
                                                   AppointmentSlotCache slotCache,
-                                                  PatientServiceClient patientServiceClient) {
-        return new AppointmentManager(appointmentRepository, slotCache, patientServiceClient);
+                                                  PatientServiceClient patientServiceClient,
+                                                  QRCodeGenerator qrGenerator,
+                                                  AppointmentEmailSender emailSender) {
+        return new AppointmentManager(appointmentRepository, slotCache, patientServiceClient, 
+                                       qrGenerator, emailSender);
     }
 
     @Bean

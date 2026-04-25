@@ -11,7 +11,7 @@ import java.time.LocalTime;
 public class Appointment {
 
     public enum AppointmentStatus {
-        SCHEDULED, ACTIVE, COMPLETED, CANCELLED
+        SCHEDULED, ACTIVE, COMPLETED, CANCELLED, MISSED
     }
 
     private String id;
@@ -23,6 +23,14 @@ public class Appointment {
     private String notes;
     private LocalDateTime createdAt;
     private String createdBy;
+    
+    // NEW: Reference to billing invoice (logical FK, not enforced)
+    // NULL when billing service was unavailable during appointment creation
+    private String invoiceId;
+    
+    // Transient field - not persisted in database
+    // Populated after QR generation for API response
+    private String qrCodeBase64;
 
     public Appointment() {
         this.status = AppointmentStatus.SCHEDULED;
@@ -58,6 +66,15 @@ public class Appointment {
         this.status = AppointmentStatus.CANCELLED;
     }
 
+    /** Business method: SCHEDULED → MISSED */
+    public void markAsMissed() {
+        if (this.status != AppointmentStatus.SCHEDULED) {
+            throw new IllegalStateException(
+                "Solo se pueden marcar como perdidas las citas programadas. Estado actual: " + this.status);
+        }
+        this.status = AppointmentStatus.MISSED;
+    }
+
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -85,4 +102,10 @@ public class Appointment {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public String getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(String invoiceId) { this.invoiceId = invoiceId; }
+
+    public String getQrCodeBase64() { return qrCodeBase64; }
+    public void setQrCodeBase64(String qrCodeBase64) { this.qrCodeBase64 = qrCodeBase64; }
 }

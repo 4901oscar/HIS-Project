@@ -25,6 +25,7 @@ public class AppointmentMapper {
         entity.setNotes(domain.getNotes());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setCreatedBy(domain.getCreatedBy());
+        entity.setInvoiceId(domain.getInvoiceId());
 
         return entity;
     }
@@ -44,6 +45,7 @@ public class AppointmentMapper {
         domain.setNotes(entity.getNotes());
         domain.setCreatedAt(entity.getCreatedAt());
         domain.setCreatedBy(entity.getCreatedBy());
+        domain.setInvoiceId(entity.getInvoiceId());
 
         return domain;
     }

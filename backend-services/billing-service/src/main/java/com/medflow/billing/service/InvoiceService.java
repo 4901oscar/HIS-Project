@@ -8,6 +8,7 @@ import com.medflow.billing.model.Charge;
 import com.medflow.billing.model.Invoice;
 import com.medflow.billing.model.InvoiceStatus;
 import com.medflow.billing.repository.InvoiceRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
  * Handles invoice creation, calculation, and business logic.
  */
 @Service
+@Slf4j
 public class InvoiceService {
     
     private final InvoiceRepository invoiceRepository;
@@ -54,6 +56,8 @@ public class InvoiceService {
         Invoice invoice = new Invoice();
         invoice.setInvoiceNumber(invoiceNumber);
         invoice.setPatientId(request.getPatientId());
+        // REQ-1.8, REQ-5.4, REQ-7.3: Guardar appointmentId si está presente
+        invoice.setAppointmentId(request.getAppointmentId());
         invoice.setStatus(InvoiceStatus.PENDING);
         invoice.setCreatedAt(LocalDateTime.now());
         invoice.setCreatedBy(createdBy);
@@ -142,6 +146,7 @@ public class InvoiceService {
             invoice.getId(),
             invoice.getInvoiceNumber(),
             invoice.getPatientId(),
+            invoice.getAppointmentId(), // REQ-7.6, REQ-8.3: Incluir appointmentId en respuesta
             chargeResponses,
             invoice.getSubtotal(),
             invoice.getDiscountAmount(),
@@ -149,6 +154,8 @@ public class InvoiceService {
             invoice.getStatus(),
             invoice.getCreatedAt(),
             invoice.getCreatedBy(),
+            invoice.getCustomerNit(),
+            invoice.getCustomerName(),
             invoice.getUpdatedAt()
         );
     }
@@ -201,10 +208,13 @@ public class InvoiceService {
      * @throws com.medflow.billing.exception.InvoiceNotFoundException if invoice not found
      */
     public InvoiceResponse getById(String id) {
+        log.info("Getting invoice by ID: {}", id);
+        
         Invoice invoice = invoiceRepository.findById(id)
             .orElseThrow(() -> new com.medflow.billing.exception.InvoiceNotFoundException(
                 "Factura no encontrada con ID: " + id));
         
+        log.info("Invoice {} retrieved successfully with status: {}", id, invoice.getStatus());
         return mapToResponse(invoice);
     }
     

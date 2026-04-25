@@ -15,6 +15,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     Optional<Patient> findByDpi(String dpi);
     Optional<Patient> findByEmail(String email);
+    Optional<Patient> findByAuthUserId(String authUserId);
     boolean existsByDpi(String dpi);
     boolean existsByEmail(String email);
 
