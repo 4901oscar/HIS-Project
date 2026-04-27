@@ -12,7 +12,8 @@ import DashboardPage from './pages/DashboardPage';
 // Importar páginas por rol
 import AdministratorDashboard from './pages/administrator/AdministratorDashboard';
 import ActivateAppointments from './pages/admission/ActivateAppointments';
-import VitalSignsCapture from './pages/vitals/VitalSignsCapture';
+import TriagePendingPage from './pages/vitals/TriagePendingPage';
+import TriageVitalSignsCapture from './pages/vitals/TriageVitalSignsCapture';
 import DoctorConsultation from './pages/doctor/DoctorConsultation';
 import LabSampleManagement from './pages/lab/LabSampleManagement';
 import PharmacyDispense from './pages/pharmacy/PharmacyDispense';
@@ -56,12 +57,22 @@ function App() {
             }
           />
 
-          {/* Vital Signs - VITAL_SIGNS y ADMINISTRATOR */}
+          {/* Triage Pending - VITAL_SIGNS, DOCTOR y ADMINISTRATOR */}
           <Route
-            path="/vitals"
+            path="/vitals/triage"
             element={
-              <ProtectedRoute requiredRole="VITAL_SIGNS">
-                <VitalSignsCapture />
+              <ProtectedRoute requiredRole={["VITAL_SIGNS", "DOCTOR"]}>
+                <TriagePendingPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Triage Vital Signs Capture - VITAL_SIGNS, DOCTOR y ADMINISTRATOR */}
+          <Route
+            path="/vitals/triage/capture"
+            element={
+              <ProtectedRoute requiredRole={["VITAL_SIGNS", "DOCTOR"]}>
+                <TriageVitalSignsCapture />
               </ProtectedRoute>
             }
           />
