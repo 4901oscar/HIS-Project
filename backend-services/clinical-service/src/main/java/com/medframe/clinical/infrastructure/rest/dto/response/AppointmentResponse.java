@@ -15,13 +15,14 @@ public class AppointmentResponse {
 
     private String id;
     private String patientId;
-    private String patientName;  // NEW: Patient full name
-    private String patientDpi;   // NEW: Patient DPI
+    private String patientName;
+    private String patientDpi;
     private String doctorId;
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
     private String status;
     private String notes;
     private LocalDateTime createdAt;
-    private String qrCodeBase64;  // NEW: QR code for appointment confirmation
+    private String qrCodeBase64;
+    private String invoiceId;
 }

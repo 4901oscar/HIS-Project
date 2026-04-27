@@ -111,8 +111,10 @@ public class AppointmentController {
     /** Appointments for the authenticated patient. */
     @GetMapping("/my")
     public ResponseEntity<List<AppointmentResponse>> listMine() {
+        // mapToResponseLight omits patient-service calls: the patient already knows their own
+        // data and the dashboard doesn't display patientName/patientDpi from this endpoint.
         List<AppointmentResponse> list = manageAppointmentUseCase.listMyAppointments()
-                .stream().map(this::mapToResponse).collect(java.util.stream.Collectors.toList());
+                .stream().map(this::mapToResponseLight).collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(list);
     }
 
@@ -120,7 +122,7 @@ public class AppointmentController {
     @GetMapping("/doctor")
     public ResponseEntity<List<AppointmentResponse>> listDoctor() {
         List<AppointmentResponse> list = manageAppointmentUseCase.listDoctorAppointments()
-                .stream().map(this::mapToResponse).collect(java.util.stream.Collectors.toList());
+                .stream().map(this::mapToResponseLight).collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(list);
     }
 
@@ -193,14 +195,14 @@ public class AppointmentController {
         String patientName = "Paciente";
         String patientDpi = null;
         try {
-            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
             patientName = patient.getFullName();
             patientDpi = patient.getDpi();
         } catch (Exception e) {
-            log.warn("Could not fetch patient data for appointment {}: {}", 
+            log.warn("Could not fetch patient data for appointment {}: {}",
                      appointment.getId(), e.getMessage());
         }
-        
+
         // 2. Obtener información del doctor
         String doctorName = doctorRepository.findById(appointment.getDoctorId())
                 .map(d -> "Dr. " + d.getName())
@@ -409,9 +411,10 @@ public class AppointmentController {
                 invoiceResponse = billingServiceClient.createInvoice(invoiceRequest, userId);
                 
                 if (invoiceResponse != null) {
-                    // Factura creada exitosamente
+                    // Factura creada exitosamente — persistir invoiceId en la cita
                     appointment.setInvoiceId(invoiceResponse.getId());
                     invoiceNumber = invoiceResponse.getInvoiceNumber();
+                    appointmentRepository.save(appointment);
                     log.info("Factura creada exitosamente para cita {}. InvoiceId: {}, InvoiceNumber: {}",
                             appointment.getId(), invoiceResponse.getId(), invoiceNumber);
                 } else {
@@ -482,11 +485,44 @@ public class AppointmentController {
         return generateTemporaryInvoiceNumber();
     }
     
-    /** QR scan — validates time window and activates the appointment if within window. */
+    /** QR scan — validates payment and time window before activating the appointment. */
     @PostMapping("/{id}/scan")
     public ResponseEntity<Map<String, Object>> scanAppointment(@PathVariable String id) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Validate payment only when appointment is about to be activated (within time window)
+        Appointment preCheck = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada: " + id));
+
+        if (preCheck.getStatus() == AppointmentStatus.SCHEDULED) {
+            LocalDateTime apptDateTime = LocalDateTime.of(
+                    preCheck.getAppointmentDate(), preCheck.getAppointmentTime());
+            boolean withinWindow = !now.isBefore(apptDateTime.minusMinutes(15))
+                                && !now.isAfter(apptDateTime.plusMinutes(60));
+
+            if (withinWindow) {
+                PaymentValidationResult validation = paymentValidator.validatePayment(
+                        preCheck.getInvoiceId(), preCheck.getId());
+
+                if (!validation.isAllowed()) {
+                    log.warn("QR scan blocked for appointment {} — payment not confirmed: {}",
+                             id, validation.getErrorMessage());
+                    Map<String, Object> body = new java.util.LinkedHashMap<>();
+                    body.put("status", "PAYMENT_REQUIRED");
+                    body.put("message", validation.getErrorMessage());
+                    body.put("appointmentId", preCheck.getId());
+                    body.put("patientId", preCheck.getPatientId());
+                    body.put("doctorId", preCheck.getDoctorId());
+                    body.put("date", preCheck.getAppointmentDate().toString());
+                    body.put("time", preCheck.getAppointmentTime().toString());
+                    body.put("appointmentStatus", preCheck.getStatus().name());
+                    return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+                }
+            }
+        }
+
         com.medframe.clinical.domain.model.ScanResult result =
-                appointmentManager.validateAndActivateAppointment(id, LocalDateTime.now());
+                appointmentManager.validateAndActivateAppointment(id, now);
         Appointment appt = result.getAppointment();
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("status", result.getStatus().name());
@@ -719,7 +755,7 @@ public class AppointmentController {
         // 2. Obtener información del paciente
         String patientName = "Paciente";
         try {
-            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
             patientName = patient.getFullName();
         } catch (Exception e) {
             log.warn("Could not fetch patient data for QR status: {}", e.getMessage());
@@ -825,17 +861,16 @@ public class AppointmentController {
     }
     
     private AppointmentResponse mapToResponse(Appointment appointment) {
-        // Fetch patient data to include name and DPI
         String patientName = null;
         String patientDpi = null;
         try {
-            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
             patientName = patient.getFullName();
             patientDpi = patient.getDpi();
         } catch (Exception e) {
             log.warn("Could not fetch patient data for appointment {}: {}", appointment.getId(), e.getMessage());
         }
-        
+
         return new AppointmentResponse(
             appointment.getId(),
             appointment.getPatientId(),
@@ -847,7 +882,26 @@ public class AppointmentController {
             appointment.getStatus().name(),
             appointment.getNotes(),
             appointment.getCreatedAt(),
-            appointment.getQrCodeBase64()  // Include QR code if generated
+            appointment.getQrCodeBase64(),
+            appointment.getInvoiceId()
+        );
+    }
+
+    /** Mapper sin llamadas a patient-service — para endpoints donde el caller ya conoce sus datos. */
+    private AppointmentResponse mapToResponseLight(Appointment appointment) {
+        return new AppointmentResponse(
+            appointment.getId(),
+            appointment.getPatientId(),
+            null,
+            null,
+            appointment.getDoctorId(),
+            appointment.getAppointmentDate(),
+            appointment.getAppointmentTime(),
+            appointment.getStatus().name(),
+            appointment.getNotes(),
+            appointment.getCreatedAt(),
+            appointment.getQrCodeBase64(),
+            appointment.getInvoiceId()
         );
     }
     

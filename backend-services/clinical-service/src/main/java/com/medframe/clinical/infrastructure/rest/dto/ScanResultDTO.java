@@ -34,15 +34,16 @@ public class ScanResultDTO {
         AppointmentResponse appointmentResponse = new AppointmentResponse(
             scanResult.getAppointment().getId(),
             scanResult.getAppointment().getPatientId(),
-            null,  // patientName - not needed for scan response
-            null,  // patientDpi - not needed for scan response
+            null,
+            null,
             scanResult.getAppointment().getDoctorId(),
             scanResult.getAppointment().getAppointmentDate(),
             scanResult.getAppointment().getAppointmentTime(),
             scanResult.getAppointment().getStatus().name(),
             scanResult.getAppointment().getNotes(),
             scanResult.getAppointment().getCreatedAt(),
-            null  // Don't include QR in scan response
+            null,
+            scanResult.getAppointment().getInvoiceId()
         );
         
         return new ScanResultDTO(

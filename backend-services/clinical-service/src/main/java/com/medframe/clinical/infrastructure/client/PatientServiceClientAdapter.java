@@ -45,6 +45,24 @@ public class PatientServiceClientAdapter implements PatientServiceClient {
     }
     
     @Override
+    @CircuitBreaker(name = "patientService", fallbackMethod = "getPatientFallback")
+    @Retry(name = "patientService")
+    public Object getPatientById(String patientId) {
+        try {
+            log.debug("Calling Patient Service to get patient by ID: {}", patientId);
+            PatientDTO patient = patientServiceFeignClient.getPatient(patientId);
+            log.debug("Successfully retrieved patient by ID: {}", patientId);
+            return patient;
+        } catch (FeignException.NotFound e) {
+            log.warn("Patient not found with ID: {}", patientId);
+            throw new PatientNotFoundException("Paciente no encontrado con ID: " + patientId);
+        } catch (FeignException e) {
+            log.error("Error calling Patient Service for patient ID {}: {}", patientId, e.getMessage());
+            throw new ServiceUnavailableException("Patient Service no está disponible");
+        }
+    }
+
+    @Override
     @CircuitBreaker(name = "patientService", fallbackMethod = "getPatientByAuthUserIdFallback")
     @Retry(name = "patientService")
     public Object getPatientByAuthUserId(String authUserId) {

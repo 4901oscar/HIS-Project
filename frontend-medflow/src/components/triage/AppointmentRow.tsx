@@ -8,8 +8,6 @@ import type { AppointmentResponse } from '../../services/clinicalService';
 
 interface AppointmentRowProps {
   appointment: AppointmentResponse;
-  isSelected: boolean;
-  onSelect: (appointment: AppointmentResponse) => void;
   onCallPatient: (appointment: AppointmentResponse) => void;
 }
 
@@ -27,22 +25,9 @@ function formatDate(dateStr: string): string {
 
 const AppointmentRow: FC<AppointmentRowProps> = ({
   appointment,
-  isSelected,
-  onSelect,
   onCallPatient,
 }) => {
   const navigate = useNavigate();
-
-  const handleClick = useCallback(() => {
-    onSelect(appointment);
-  }, [appointment, onSelect]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  }, [handleClick]);
 
   const handleCallPatient = useCallback((e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent row selection
@@ -61,14 +46,7 @@ const AppointmentRow: FC<AppointmentRowProps> = ({
 
   return (
     <tr
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      className={`cursor-pointer hover:bg-gray-50 transition-colors ${
-        isSelected ? 'bg-medin-cyan/10 border-l-4 border-medin-cyan' : ''
-      }`}
-      role="button"
-      tabIndex={0}
-      aria-label={`Seleccionar cita del ${formatDate(appointment.appointmentDate)} a las ${appointment.appointmentTime}`}
+      className="hover:bg-gray-50 transition-colors"
     >
       <td className="py-3 pr-4 whitespace-nowrap">{formatDate(appointment.appointmentDate)}</td>
       <td className="py-3 pr-4 whitespace-nowrap">
@@ -94,8 +72,5 @@ const AppointmentRow: FC<AppointmentRowProps> = ({
 
 // Memoize component to prevent unnecessary re-renders
 export default memo(AppointmentRow, (prevProps, nextProps) => {
-  return (
-    prevProps.appointment.id === nextProps.appointment.id &&
-    prevProps.isSelected === nextProps.isSelected
-  );
+  return prevProps.appointment.id === nextProps.appointment.id;
 });

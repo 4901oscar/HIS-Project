@@ -27,7 +27,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/lab/exam-types)",
       "Bash(curl -s http://localhost:8080/api/lab/exam-types)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/billing/services)",
-      "Bash(curl -s http://localhost:8080/api/billing/services)"
+      "Bash(curl -s http://localhost:8080/api/billing/services)",
+      "Bash(docker-compose build *)",
+      "Bash(python -c \"import sys,json; h=json.load\\(sys.stdin\\); print\\(h.get\\('Status'\\)\\); [print\\(l['Output']\\) for l in h.get\\('Log',[]\\)]\")"
     ]
   }
 }

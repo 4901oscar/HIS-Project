@@ -10,11 +10,10 @@ import { getPatientByDpi } from '../../services/patientService';
 import type { CreatePatientRequest } from '../../services/patientService';
 import { createPatientAccount } from '../../services/authService';
 import type { CreatePatientAccountRequest } from '../../services/authService';
-import { activateAppointment, listAllAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
-import type { AppointmentResponse, ScanResult } from '../../services/appointmentService';
+import { activateAppointment, listTodayAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
+import type { AppointmentWithPaymentStatus, ScanResult } from '../../services/appointmentService';
 import { listActiveDoctors, getDoctorDaysOff } from '../../services/doctorService';
 import type { Doctor, DayOff } from '../../services/doctorService';
-import { createInvoice } from '../../services/billingService';
 import { Html5Qrcode } from 'html5-qrcode';
 import axios from 'axios';
 
@@ -186,14 +185,16 @@ const ActivateAppointments: FC = () => {
   const [tab, setTab] = useState<Tab>('schedule');
 
   // ── Lista de citas ────────────────────────────────────────────────────────
-  const [allAppointments, setAllAppointments] = useState<AppointmentResponse[]>([]);
+  const [allAppointments, setAllAppointments] = useState<AppointmentWithPaymentStatus[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [activateErrors, setActivateErrors] = useState<Record<string, string>>({});
 
   const loadAppointments = useCallback(() => {
     setListLoading(true);
-    listAllAppointments()
+    setActivateErrors({});
+    listTodayAppointments()
       .then(setAllAppointments)
       .catch(() => {})
       .finally(() => { setListLoading(false); setListLoaded(true); });
@@ -207,13 +208,15 @@ const ActivateAppointments: FC = () => {
 
   const handleActivateAppointment = async (appointmentId: string) => {
     setActivatingId(appointmentId);
+    setActivateErrors(prev => { const next = { ...prev }; delete next[appointmentId]; return next; });
     try {
       await activateAppointment(appointmentId);
-      // Reload appointments to reflect the change
       loadAppointments();
     } catch (err) {
-      console.error('Error activating appointment:', err);
-      alert('Error al activar la cita');
+      const message = axios.isAxiosError(err)
+        ? (err.response?.data?.message || err.response?.data?.error || 'Error al activar la cita')
+        : 'Error al activar la cita';
+      setActivateErrors(prev => ({ ...prev, [appointmentId]: message }));
     } finally {
       setActivatingId(null);
     }
@@ -400,25 +403,12 @@ const ActivateAppointments: FC = () => {
         targetPatientId = existingPatient.id;
       }
 
-      // Create appointment with patientId
+      // Create appointment — el backend crea la factura vinculada automáticamente
       await createAppointment({
         patientId: targetPatientId,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
         notes: motivo.trim(),
-      });
-
-      // Create invoice for consultation fee
-      await createInvoice({
-        patientId: targetPatientId,
-        charges: [
-          {
-            type: 'CONSULTATION',
-            description: 'Consulta General',
-            quantity: 1,
-            unitPrice: 150.00, // Precio de consulta general
-          },
-        ],
       });
 
       setScheduleSuccess('Cita agendada exitosamente. Se ha enviado un correo con los detalles. El paciente debe pasar a caja para realizar el pago.');
@@ -484,8 +474,15 @@ const ActivateAppointments: FC = () => {
             const result = await scanAppointment(appointmentId);
             setScanResult(result);
           } catch (err) {
-            if (axios.isAxiosError(err) && err.response?.status === 404) {
-              setScannerError('Cita no encontrada.');
+            if (axios.isAxiosError(err)) {
+              if (err.response?.status === 404) {
+                setScannerError('Cita no encontrada.');
+              } else if (err.response?.status === 402) {
+                const msg = err.response?.data?.message || 'El paciente debe pagar en caja primero.';
+                setScannerError(`Pago pendiente: ${msg}`);
+              } else {
+                setScannerError('Error al procesar el QR. Intenta de nuevo.');
+              }
             } else {
               setScannerError('Error al procesar el QR. Intenta de nuevo.');
             }
@@ -843,77 +840,104 @@ const ActivateAppointments: FC = () => {
         {/* ── Tab: Ver Citas ── */}
         {tab === 'list' && (
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Todas las Citas</h3>
-              <button 
-                onClick={() => { setListLoaded(false); loadAppointments(); }} 
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-semibold text-gray-900">Citas de Hoy</h3>
+              <button
+                onClick={() => { setListLoaded(false); loadAppointments(); }}
                 className="text-xs text-medin-cyan hover:underline"
               >
                 Actualizar
               </button>
             </div>
-            
+            <p className="text-xs text-gray-500 mb-4">
+              Solo se pueden activar citas con pago confirmado en caja.
+            </p>
+
             {listLoading ? (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
               </div>
             ) : allAppointments.length === 0 ? (
-              <p className="text-gray-500 text-sm">No hay citas registradas.</p>
+              <p className="text-gray-500 text-sm">No hay citas para hoy.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
-                      <th className="pb-2 pr-4">Fecha</th>
                       <th className="pb-2 pr-4">Hora</th>
+                      <th className="pb-2 pr-4">Paciente</th>
+                      <th className="pb-2 pr-4">DPI</th>
+                      <th className="pb-2 pr-4">Doctor</th>
                       <th className="pb-2 pr-4">Estado</th>
-                      <th className="pb-2 pr-4">Motivo</th>
-                      <th className="pb-2 pr-4">ID Paciente</th>
-                      <th className="pb-2 pr-4">ID Cita</th>
+                      <th className="pb-2 pr-4">Pago</th>
                       <th className="pb-2">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {allAppointments
                       .slice()
-                      .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
-                      .map((appt) => (
-                        <tr key={appt.id} className="hover:bg-gray-50">
-                          <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentDate}</td>
-                          <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentTime.substring(0, 5)}</td>
-                          <td className="py-2 pr-4">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                              {STATUS_LABEL[appt.status] ?? appt.status}
-                            </span>
-                          </td>
-                          <td className="py-2 pr-4 max-w-xs truncate">{appt.notes ?? '—'}</td>
-                          <td className="py-2 pr-4 font-mono text-xs">{appt.patientId}</td>
-                          <td className="py-2 pr-4 font-mono text-xs">{appt.id}</td>
-                          <td className="py-2">
-                            {appt.status === 'SCHEDULED' ? (
-                              <button
-                                onClick={() => handleActivateAppointment(appt.id)}
-                                disabled={activatingId === appt.id}
-                                className="flex items-center gap-1 px-3 py-1 bg-medin-cyan text-medin-navy text-xs font-medium rounded hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      .sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime))
+                      .map((appt) => {
+                        const PAYMENT_COLOR: Record<string, string> = {
+                          PAID:       'bg-green-100 text-green-800',
+                          PENDING:    'bg-orange-100 text-orange-800',
+                          CANCELLED:  'bg-red-100 text-red-700',
+                          NO_INVOICE: 'bg-gray-100 text-gray-600',
+                          ERROR:      'bg-red-100 text-red-700',
+                        };
+                        return (
+                          <tr key={appt.id} className="hover:bg-gray-50">
+                            <td className="py-2 pr-4 whitespace-nowrap font-medium">
+                              {appt.appointmentTime.substring(0, 5)}
+                            </td>
+                            <td className="py-2 pr-4">{appt.patientName}</td>
+                            <td className="py-2 pr-4 font-mono text-xs">{appt.patientDpi ?? '—'}</td>
+                            <td className="py-2 pr-4 text-xs">{appt.doctorName}</td>
+                            <td className="py-2 pr-4">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                                {STATUS_LABEL[appt.status] ?? appt.status}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span
+                                title={appt.activateButtonTooltip}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${PAYMENT_COLOR[appt.paymentStatus] ?? 'bg-gray-100 text-gray-600'}`}
                               >
-                                {activatingId === appt.id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-medin-navy border-t-transparent"></div>
-                                    Activando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircleIcon className="h-3 w-3" />
-                                    Activar
-                                  </>
-                                )}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-gray-400">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                                {appt.paymentStatusLabel}
+                              </span>
+                            </td>
+                            <td className="py-2 space-y-1">
+                              {appt.status === 'SCHEDULED' ? (
+                                <>
+                                  <button
+                                    onClick={() => handleActivateAppointment(appt.id)}
+                                    disabled={activatingId === appt.id || !appt.canActivate}
+                                    title={appt.activateButtonTooltip}
+                                    className="flex items-center gap-1 px-3 py-1 bg-medin-cyan text-medin-navy text-xs font-medium rounded hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    {activatingId === appt.id ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-2 border-medin-navy border-t-transparent" />
+                                        Activando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircleIcon className="h-3 w-3" />
+                                        Activar
+                                      </>
+                                    )}
+                                  </button>
+                                  {activateErrors[appt.id] && (
+                                    <p className="text-xs text-red-600 max-w-[180px]">{activateErrors[appt.id]}</p>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>

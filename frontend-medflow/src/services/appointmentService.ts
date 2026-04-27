@@ -18,7 +18,8 @@ export interface AppointmentResponse {
   status: string;
   notes?: string;
   createdAt: string;
-  qrCodeBase64?: string;  // NEW: QR code for appointment confirmation
+  qrCodeBase64?: string;
+  invoiceId?: string;
 }
 
 export interface AvailableSlotsResponse {
@@ -76,6 +77,27 @@ export const releaseHold = async (sessionId: string): Promise<void> => {
 
 export const listAllAppointments = async (): Promise<AppointmentResponse[]> => {
   const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments');
+  return response.data;
+};
+
+export interface AppointmentWithPaymentStatus {
+  id: string;
+  patientName: string;
+  patientDpi: string | null;
+  doctorName: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  status: string;
+  paymentStatus: 'PAID' | 'PENDING' | 'CANCELLED' | 'NO_INVOICE' | 'ERROR';
+  paymentStatusLabel: string;
+  paymentStatusColor: string;
+  canActivate: boolean;
+  activateButtonTooltip: string;
+  invoiceNumber?: string;
+}
+
+export const listTodayAppointments = async (): Promise<AppointmentWithPaymentStatus[]> => {
+  const response = await api.get<AppointmentWithPaymentStatus[]>('/api/clinical/appointments/today');
   return response.data;
 };
 
