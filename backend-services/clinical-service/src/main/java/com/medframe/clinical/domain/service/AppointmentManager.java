@@ -87,13 +87,34 @@ public class AppointmentManager {
     public Appointment createAppointment(String patientId, String doctorId,
                                           LocalDate date, LocalTime time,
                                           String notes, String createdBy) {
-        return createAppointment(patientId, doctorId, date, time, notes, createdBy, false);
+        return createAppointment(patientId, doctorId, date, time, notes, createdBy, false, true);
     }
 
     public Appointment createAppointment(String patientId, String doctorId,
                                           LocalDate date, LocalTime time,
                                           String notes, String createdBy,
                                           boolean skipPatientValidation) {
+        return createAppointment(patientId, doctorId, date, time, notes, createdBy, skipPatientValidation, true);
+    }
+
+    /**
+     * Creates a new appointment with configurable initial state based on payment status.
+     * 
+     * @param patientId Patient identifier
+     * @param doctorId Doctor identifier
+     * @param date Appointment date
+     * @param time Appointment time
+     * @param notes Optional notes
+     * @param createdBy User who created the appointment
+     * @param skipPatientValidation Whether to skip patient existence validation
+     * @param hasPaid Whether consultation fee has been paid (determines initial state)
+     * @return Created appointment with initial state (PENDING_PAYMENT or SCHEDULED)
+     */
+    public Appointment createAppointment(String patientId, String doctorId,
+                                          LocalDate date, LocalTime time,
+                                          String notes, String createdBy,
+                                          boolean skipPatientValidation,
+                                          boolean hasPaid) {
 
         // 1. Validate patient exists (HTTP call) — skipped when patient books for themselves (JWT proves identity)
         if (!skipPatientValidation) {
@@ -117,8 +138,15 @@ public class AppointmentManager {
             appointment.setAppointmentTime(time);
             appointment.setNotes(notes);
             appointment.setCreatedBy(createdBy);
+            
+            // 4. Set initial state based on payment status
+            if (hasPaid) {
+                appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+            } else {
+                appointment.setStatus(Appointment.AppointmentStatus.PENDING_PAYMENT);
+            }
 
-            // 4. Persist to database
+            // 5. Persist to database
             return appointmentRepository.save(appointment);
 
         } catch (Exception e) {

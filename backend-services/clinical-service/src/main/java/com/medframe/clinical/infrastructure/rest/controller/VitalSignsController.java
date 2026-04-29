@@ -24,6 +24,7 @@ public class VitalSignsController {
             @RequestHeader("X-User-Id") String userId) {
         
         VitalSigns vitalSigns = recordVitalSignsUseCase.recordVitalSigns(
+            request.getAppointmentId(),
             request.getPatientId(),
             request.getSystolicPressure(),
             request.getDiastolicPressure(),

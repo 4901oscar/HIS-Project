@@ -25,4 +25,7 @@ public class AppointmentResponse {
     private LocalDateTime createdAt;
     private String qrCodeBase64;
     private String invoiceId;
+    private String labInvoiceId;
+    private String pharmacyInvoiceId;
+    private Boolean isPriority;
 }

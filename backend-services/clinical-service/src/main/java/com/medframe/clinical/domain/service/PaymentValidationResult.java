@@ -86,4 +86,8 @@ public class PaymentValidationResult {
     public static PaymentValidationResult failed(PaymentValidationError error, String message) {
         return new PaymentValidationResult(false, error, message, null, false, null);
     }
+
+    public static PaymentValidationResult failedWithInvoice(PaymentValidationError error, String message, InvoiceResponse invoice) {
+        return new PaymentValidationResult(false, error, message, invoice, false, null);
+    }
 }

@@ -43,7 +43,10 @@ public class ScanResultDTO {
             scanResult.getAppointment().getNotes(),
             scanResult.getAppointment().getCreatedAt(),
             null,
-            scanResult.getAppointment().getInvoiceId()
+            scanResult.getAppointment().getInvoiceId(),
+            scanResult.getAppointment().getLabInvoiceId(),
+            scanResult.getAppointment().getPharmacyInvoiceId(),
+            scanResult.getAppointment().isPriority()
         );
         
         return new ScanResultDTO(

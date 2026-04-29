@@ -49,12 +49,14 @@ public interface JpaAppointmentRepository extends JpaRepository<AppointmentEntit
     List<AppointmentEntity> findByDoctorId(String doctorId);
 
     /**
-     * Find all ACTIVE appointments that do not have an associated triage record.
+     * Find all VITAL_SIGNS appointments that do not have an associated triage record.
      * Uses a NOT EXISTS subquery for optimal performance.
+     * 
+     * VITAL_SIGNS: Appointments waiting for vital signs capture (all editable)
      *
-     * @return list of ACTIVE appointment entities without triage records
+     * @return list of VITAL_SIGNS appointment entities without triage records
      */
-    @Query("SELECT a FROM AppointmentEntity a WHERE a.status = 'ACTIVE' AND NOT EXISTS (SELECT 1 FROM TriageEntity t WHERE t.appointmentId = a.id)")
+    @Query("SELECT a FROM AppointmentEntity a WHERE a.status = 'VITAL_SIGNS' AND NOT EXISTS (SELECT 1 FROM TriageEntity t WHERE t.appointmentId = a.id)")
     List<AppointmentEntity> findPendingTriage();
     
     /**

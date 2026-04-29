@@ -300,6 +300,8 @@ services:
     build:
       context: ./frontend-medflow
       dockerfile: Dockerfile
+      args:
+        VITE_API_GATEWAY_URL: http://localhost:8080
     container_name: medflow-frontend
     ports:
       - "3000:3000"

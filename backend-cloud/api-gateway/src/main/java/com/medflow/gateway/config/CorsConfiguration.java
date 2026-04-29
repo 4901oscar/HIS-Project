@@ -54,7 +54,7 @@ public class CorsConfiguration {
         config.setAllowedOrigins(origins);
         
         // Allow common HTTP methods used by REST APIs
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         
         // Allow all headers (including custom headers like Authorization)
         config.setAllowedHeaders(Arrays.asList("*"));

@@ -44,6 +44,7 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     private final com.medframe.clinical.domain.service.DoctorAssignmentService doctorAssignmentService;
     private final DoctorRepository doctorRepository;
     private final com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient;
+    private final com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository;
 
     public ManageAppointmentUseCaseImpl(AppointmentManager appointmentManager,
                                         AppointmentRepository appointmentRepository,
@@ -51,7 +52,8 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
                                         PermissionValidator permissionValidator,
                                         com.medframe.clinical.domain.service.DoctorAssignmentService doctorAssignmentService,
                                         DoctorRepository doctorRepository,
-                                        com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient) {
+                                        com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient,
+                                        com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository) {
         this.appointmentManager = appointmentManager;
         this.appointmentRepository = appointmentRepository;
         this.slotCache = slotCache;
@@ -59,6 +61,7 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
         this.doctorAssignmentService = doctorAssignmentService;
         this.doctorRepository = doctorRepository;
         this.patientServiceClient = patientServiceClient;
+        this.stateTransitionRepository = stateTransitionRepository;
     }
     
     /**
@@ -102,7 +105,7 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     }
     
     /**
-     * Activates a scheduled appointment (transitions from SCHEDULED to ACTIVE).
+     * Activates a scheduled appointment (transitions from SCHEDULED to VITAL_SIGNS).
      * 
      * @param appointmentId The appointment's unique identifier
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMISSION or ADMIN role
@@ -114,8 +117,17 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
         // Validate permissions - ADMISSION or ADMIN role can activate appointments
         permissionValidator.requireRole("ADMISSION", "ADMIN");
         
+        // Get appointment to capture old status
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
         // Delegate to domain service
         appointmentManager.activateAppointment(appointmentId);
+        
+        // Log state transition (now goes directly to VITAL_SIGNS)
+        logStateTransition(appointmentId, oldStatus, Appointment.AppointmentStatus.VITAL_SIGNS, 
+                          "Cita activada - Transición directa a signos vitales");
     }
     
     /**
@@ -131,12 +143,177 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
         // Validate permissions - ADMISSION or ADMIN role can cancel appointments
         permissionValidator.requireRole("ADMISSION", "ADMIN");
         
+        // Get appointment to capture old status
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
         // Delegate to domain service
         // The domain service will:
         //    - Retrieve appointment
         //    - Transition to CANCELLED status
         //    - Release slot in Redis
         appointmentManager.cancelAppointment(appointmentId);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, Appointment.AppointmentStatus.CANCELLED, 
+                          "Cita cancelada");
+    }
+
+    /**
+     * Confirms payment for a PENDING_PAYMENT appointment and transitions to SCHEDULED.
+     * 
+     * @param appointmentId The appointment's unique identifier
+     * @param invoiceId The invoice ID to validate
+     * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMISSION or ADMIN role
+     * @throws AppointmentNotFoundException if appointment doesn't exist
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_PAYMENT state
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails
+     */
+    @Override
+    public void confirmPayment(String appointmentId, String invoiceId) {
+        permissionValidator.requireRole("ADMISSION", "ADMIN", "CASHIER");
+        
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
+        // Update invoice ID
+        appointment.setInvoiceId(invoiceId);
+        
+        // Transition state
+        appointment.confirmPayment();
+        
+        // Persist changes
+        appointmentRepository.update(appointment);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
+                          "Pago confirmado - Invoice: " + invoiceId);
+    }
+
+
+    /**
+     * Confirms lab payment for a PENDING_LAB_PAYMENT appointment and transitions to LABORATORY.
+     * 
+     * @param appointmentId The appointment's unique identifier
+     * @param labInvoiceId The lab invoice ID to validate
+     * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMISSION or ADMIN role
+     * @throws AppointmentNotFoundException if appointment doesn't exist
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_LAB_PAYMENT state
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails
+     */
+    @Override
+    public void confirmLabPayment(String appointmentId, String labInvoiceId) {
+        permissionValidator.requireRole("ADMISSION", "ADMIN", "CASHIER");
+        
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
+        // Update lab invoice ID
+        appointment.setLabInvoiceId(labInvoiceId);
+        
+        // Transition state
+        appointment.confirmLabPayment();
+        
+        // Persist changes
+        appointmentRepository.update(appointment);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
+                          "Pago de laboratorio confirmado - Invoice: " + labInvoiceId);
+    }
+
+    /**
+     * Completes lab tests for a LABORATORY appointment and transitions to RE_EVALUATION.
+     * 
+     * @param appointmentId The appointment's unique identifier
+     * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have LAB role
+     * @throws AppointmentNotFoundException if appointment doesn't exist
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in LABORATORY state
+     */
+    @Override
+    public void completeLab(String appointmentId) {
+        permissionValidator.requireRole("LAB", "ADMIN");
+        
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
+        // Transition state
+        appointment.completeLab();
+        
+        // Persist changes
+        appointmentRepository.update(appointment);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
+                          "Laboratorio completado");
+    }
+
+    /**
+     * Confirms pharmacy payment for a PENDING_PHARMACY_PAYMENT appointment and transitions to PHARMACY.
+     * 
+     * @param appointmentId The appointment's unique identifier
+     * @param pharmacyInvoiceId The pharmacy invoice ID to validate
+     * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMISSION or ADMIN role
+     * @throws AppointmentNotFoundException if appointment doesn't exist
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_PHARMACY_PAYMENT state
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails
+     */
+    @Override
+    public void confirmPharmacyPayment(String appointmentId, String pharmacyInvoiceId) {
+        permissionValidator.requireRole("ADMISSION", "ADMIN", "CASHIER");
+        
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
+        // Update pharmacy invoice ID
+        appointment.setPharmacyInvoiceId(pharmacyInvoiceId);
+        
+        // Transition state
+        appointment.confirmPharmacyPayment();
+        
+        // Persist changes
+        appointmentRepository.update(appointment);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
+                          "Pago de farmacia confirmado - Invoice: " + pharmacyInvoiceId);
+    }
+
+    /**
+     * Dispenses medication for a PHARMACY appointment and transitions to COMPLETED.
+     * 
+     * @param appointmentId The appointment's unique identifier
+     * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have PHARMACY role
+     * @throws AppointmentNotFoundException if appointment doesn't exist
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PHARMACY state
+     */
+    @Override
+    public void dispenseMedication(String appointmentId) {
+        permissionValidator.requireRole("PHARMACY", "ADMIN");
+        
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
+        
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
+        // Transition state
+        appointment.dispenseMedication();
+        
+        // Persist changes
+        appointmentRepository.update(appointment);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
+                          "Medicamentos dispensados");
     }
     
     /**
@@ -217,7 +394,7 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<Appointment> listAll() {
-        permissionValidator.requireRole("ADMISSION", "ADMIN");
+        permissionValidator.requireRole("ADMISSION", "ADMIN", "CASHIER", "DOCTOR", "LABORATORY", "PHARMACY", "VITAL_SIGNS");
         return appointmentRepository.findAll();
     }
     
@@ -263,7 +440,30 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     public List<Appointment> listDoctorAppointments() {
         permissionValidator.requireRole("DOCTOR", "ADMIN");
         String doctorId = permissionValidator.getUserId();
-        return appointmentRepository.findByDoctorId(doctorId);
+        
+        // Filter appointments in CONSULTATION and RE_EVALUATION states
+        // Sort RE_EVALUATION first (priority)
+        return appointmentRepository.findByDoctorId(doctorId).stream()
+                .filter(a -> a.getStatus() == Appointment.AppointmentStatus.CONSULTATION ||
+                            a.getStatus() == Appointment.AppointmentStatus.RE_EVALUATION)
+                .sorted((a1, a2) -> {
+                    // RE_EVALUATION appointments have priority
+                    if (a1.getStatus() == Appointment.AppointmentStatus.RE_EVALUATION &&
+                        a2.getStatus() != Appointment.AppointmentStatus.RE_EVALUATION) {
+                        return -1; // a1 comes first
+                    }
+                    if (a2.getStatus() == Appointment.AppointmentStatus.RE_EVALUATION &&
+                        a1.getStatus() != Appointment.AppointmentStatus.RE_EVALUATION) {
+                        return 1; // a2 comes first
+                    }
+                    // Same priority, sort by date and time
+                    int dateCompare = a1.getAppointmentDate().compareTo(a2.getAppointmentDate());
+                    if (dateCompare != 0) {
+                        return dateCompare;
+                    }
+                    return a1.getAppointmentTime().compareTo(a2.getAppointmentTime());
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private String resolvePatientId(String requestedPatientId) {
@@ -275,5 +475,38 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     private boolean isPatientRole() {
         String roles = permissionValidator.getUserRoles();
         return roles != null && roles.contains("PATIENT");
+    }
+    
+    /**
+     * Registra una transición de estado en la tabla de auditoría.
+     * 
+     * @param appointmentId ID de la cita
+     * @param fromState Estado anterior
+     * @param toState Estado nuevo
+     * @param notes Notas opcionales sobre la transición
+     */
+    private void logStateTransition(String appointmentId, 
+                                    Appointment.AppointmentStatus fromState,
+                                    Appointment.AppointmentStatus toState,
+                                    String notes) {
+        try {
+            String userId = permissionValidator.getUserId();
+            
+            com.medframe.clinical.domain.model.AppointmentStateTransition transition = 
+                com.medframe.clinical.domain.model.AppointmentStateTransition.builder()
+                    .appointmentId(appointmentId)
+                    .fromState(fromState)
+                    .toState(toState)
+                    .transitionedBy(userId)
+                    .transitionedAt(java.time.LocalDateTime.now())
+                    .notes(notes)
+                    .build();
+            
+            stateTransitionRepository.save(transition);
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            // Audit logging is important but shouldn't block business operations
+            System.err.println("Error logging state transition: " + e.getMessage());
+        }
     }
 }

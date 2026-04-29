@@ -13,6 +13,9 @@ public class VitalSignsRequest {
     @NotBlank(message = "Patient ID es requerido")
     private String patientId;
     
+    @NotBlank(message = "Appointment ID es requerido")
+    private String appointmentId;
+    
     @NotNull(message = "Presión sistólica es requerida")
     @Min(value = 50, message = "Presión sistólica debe ser al menos 50 mmHg")
     @Max(value = 250, message = "Presión sistólica no puede exceder 250 mmHg")

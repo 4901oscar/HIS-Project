@@ -75,7 +75,7 @@ const TriageVitalSignsCapture: FC = () => {
 
   const handleSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    if (!patient) return;
+    if (!patient || !appointmentId) return;
 
     setSaving(true);
     setSaveError(null);
@@ -83,6 +83,7 @@ const TriageVitalSignsCapture: FC = () => {
 
     try {
       const res = await recordVitalSigns({
+        appointmentId,
         patientId: patient.id,
         systolicPressure: Number(form.systolicPressure),
         diastolicPressure: Number(form.diastolicPressure),
@@ -105,9 +106,10 @@ const TriageVitalSignsCapture: FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [patient, form, navigate]);
+  }, [patient, appointmentId, form, navigate]);
 
   const handleCancel = useCallback(() => {
+    // Simply navigate back - appointment stays in VITAL_SIGNS for next staff member
     navigate('/vitals/triage');
   }, [navigate]);
 
@@ -128,8 +130,9 @@ const TriageVitalSignsCapture: FC = () => {
   if (loading) {
     return (
       <MainLayout>
-        <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-medin-cyan border-t-transparent" />
+          <p className="text-gray-600">Cargando...</p>
         </div>
       </MainLayout>
     );

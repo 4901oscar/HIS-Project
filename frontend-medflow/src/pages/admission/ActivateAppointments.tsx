@@ -10,29 +10,14 @@ import { getPatientByDpi } from '../../services/patientService';
 import type { CreatePatientRequest } from '../../services/patientService';
 import { createPatientAccount } from '../../services/authService';
 import type { CreatePatientAccountRequest } from '../../services/authService';
-import { activateAppointment, listTodayAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
-import type { AppointmentWithPaymentStatus, ScanResult } from '../../services/appointmentService';
+import { activateAppointment, listAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
+import type { AppointmentListItem, ScanResult } from '../../services/appointmentService';
 import { listActiveDoctors, getDoctorDaysOff } from '../../services/doctorService';
 import type { Doctor, DayOff } from '../../services/doctorService';
 import { Html5Qrcode } from 'html5-qrcode';
 import axios from 'axios';
 
 type Tab = 'schedule' | 'list' | 'scan';
-
-const STATUS_LABEL: Record<string, string> = {
-  SCHEDULED: 'Agendada',
-  ACTIVE: 'Activa',
-  COMPLETED: 'Completada',
-  CANCELLED: 'Cancelada',
-  MISSED: 'Perdida',
-};
-const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  COMPLETED: 'bg-gray-100 text-gray-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-  MISSED: 'bg-orange-100 text-orange-800',
-};
 
 const emptyForm: CreatePatientRequest = {
   dpi: '', nit: '', firstName: '', secondName: '',
@@ -185,7 +170,7 @@ const ActivateAppointments: FC = () => {
   const [tab, setTab] = useState<Tab>('schedule');
 
   // ── Lista de citas ────────────────────────────────────────────────────────
-  const [allAppointments, setAllAppointments] = useState<AppointmentWithPaymentStatus[]>([]);
+  const [allAppointments, setAllAppointments] = useState<AppointmentListItem[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
   const [activatingId, setActivatingId] = useState<string | null>(null);
@@ -194,8 +179,10 @@ const ActivateAppointments: FC = () => {
   const loadAppointments = useCallback(() => {
     setListLoading(true);
     setActivateErrors({});
-    listTodayAppointments()
-      .then(setAllAppointments)
+    listAppointments({ queue: 'admission' })
+      .then(appointments => {
+        setAllAppointments(appointments);
+      })
       .catch(() => {})
       .finally(() => { setListLoading(false); setListLoaded(true); });
   }, []);
@@ -841,7 +828,7 @@ const ActivateAppointments: FC = () => {
         {tab === 'list' && (
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-semibold text-gray-900">Citas de Hoy</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Cola de Admisión</h3>
               <button
                 onClick={() => { setListLoaded(false); loadAppointments(); }}
                 className="text-xs text-medin-cyan hover:underline"
@@ -857,13 +844,14 @@ const ActivateAppointments: FC = () => {
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
               </div>
-            ) : allAppointments.length === 0 ? (
-              <p className="text-gray-500 text-sm">No hay citas para hoy.</p>
+            ) : allAppointments.filter(appt => appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT').length === 0 ? (
+              <p className="text-gray-500 text-sm">No hay citas pendientes de activación.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="pb-2 pr-4">Fecha</th>
                       <th className="pb-2 pr-4">Hora</th>
                       <th className="pb-2 pr-4">Paciente</th>
                       <th className="pb-2 pr-4">DPI</th>
@@ -875,44 +863,50 @@ const ActivateAppointments: FC = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {allAppointments
+                      .filter(appt => appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT')
                       .slice()
-                      .sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime))
+                      .sort((a, b) => {
+                        const dateCompare = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
+                        if (dateCompare !== 0) return dateCompare;
+                        return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
+                      })
                       .map((appt) => {
-                        const PAYMENT_COLOR: Record<string, string> = {
-                          PAID:       'bg-green-100 text-green-800',
-                          PENDING:    'bg-orange-100 text-orange-800',
-                          CANCELLED:  'bg-red-100 text-red-700',
-                          NO_INVOICE: 'bg-gray-100 text-gray-600',
-                          ERROR:      'bg-red-100 text-red-700',
-                        };
                         return (
                           <tr key={appt.id} className="hover:bg-gray-50">
-                            <td className="py-2 pr-4 whitespace-nowrap font-medium">
-                              {appt.appointmentTime.substring(0, 5)}
+                            <td className="py-2 pr-4 whitespace-nowrap text-xs">
+                              {new Date(appt.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </td>
-                            <td className="py-2 pr-4">{appt.patientName}</td>
-                            <td className="py-2 pr-4 font-mono text-xs">{appt.patientDpi ?? '—'}</td>
-                            <td className="py-2 pr-4 text-xs">{appt.doctorName}</td>
+                            <td className="py-2 pr-4 whitespace-nowrap font-medium">
+                              {appt.appointmentTime.toString().substring(0, 5)}
+                            </td>
+                            <td className="py-2 pr-4">{appt.patient.fullName}</td>
+                            <td className="py-2 pr-4 font-mono text-xs">{appt.patient.dpi ?? '—'}</td>
+                            <td className="py-2 pr-4 text-xs">{appt.doctor.name}</td>
                             <td className="py-2 pr-4">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                                {STATUS_LABEL[appt.status] ?? appt.status}
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${appt.statusColor}`}>
+                                {appt.statusLabel}
                               </span>
                             </td>
                             <td className="py-2 pr-4">
                               <span
-                                title={appt.activateButtonTooltip}
-                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${PAYMENT_COLOR[appt.paymentStatus] ?? 'bg-gray-100 text-gray-600'}`}
+                                title={appt.payment.tooltip}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  appt.payment.statusColor === 'green' ? 'bg-green-100 text-green-800' :
+                                  appt.payment.statusColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                                  appt.payment.statusColor === 'red' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}
                               >
-                                {appt.paymentStatusLabel}
+                                {appt.payment.statusLabel}
                               </span>
                             </td>
                             <td className="py-2 space-y-1">
-                              {appt.status === 'SCHEDULED' ? (
+                              {(appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT') ? (
                                 <>
                                   <button
                                     onClick={() => handleActivateAppointment(appt.id)}
-                                    disabled={activatingId === appt.id || !appt.canActivate}
-                                    title={appt.activateButtonTooltip}
+                                    disabled={activatingId === appt.id || !appt.payment.canActivate}
+                                    title={appt.payment.tooltip}
                                     className="flex items-center gap-1 px-3 py-1 bg-medin-cyan text-medin-navy text-xs font-medium rounded hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
                                     {activatingId === appt.id ? (
@@ -1010,8 +1004,8 @@ const ActivateAppointments: FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Estado</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[scanResult.appointmentStatus] ?? ''}`}>
-                      {STATUS_LABEL[scanResult.appointmentStatus] ?? scanResult.appointmentStatus}
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {scanResult.appointmentStatus}
                     </span>
                   </div>
                   <div className="flex justify-between">

@@ -1,171 +1,178 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
-import PendingAppointmentsList from '../../components/triage/PendingAppointmentsList';
-import ErrorAlert from '../../components/common/ErrorAlert';
-import { getPendingTriageAppointments } from '../../services/clinicalService';
-import type { AppointmentResponse } from '../../services/clinicalService';
-import { extractErrorMessage } from '../../utils/errorHandler';
+import { listAppointments } from '../../services/appointmentService';
+import type { AppointmentListItem } from '../../services/appointmentService';
 
-const REFRESH_DEBOUNCE_MS = 500;
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
+const REFRESH_DEBOUNCE_MS = 500;
 
 const TriagePendingPage: FC = () => {
-  // Appointments list
-  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
-  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
-  // Screen reader announcement for list changes (task 52)
-  const [listAnnouncement, setListAnnouncement] = useState('');
+  const navigate = useNavigate();
+  const [appointments, setAppointments] = useState<AppointmentListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Refs
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // ─── Cleanup on unmount (task 63) ────────────────────────────────────────
 
   useEffect(() => {
     return () => {
       if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
-      abortControllerRef.current?.abort();
     };
   }, []);
 
-  // ─── Data Fetching ────────────────────────────────────────────────────────
-
-  const fetchPendingAppointments = useCallback(async (showLoading = true) => {
-    // Abort any in-flight request (task 63)
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
-
-    if (showLoading) setAppointmentsLoading(true);
-    setAppointmentsError(null);
-
+  const fetchAppointments = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    setError(null);
     try {
-      const data = await getPendingTriageAppointments();
-
+      const data = await listAppointments({ queue: 'triage' });
       setAppointments(data);
-
-      // Announce list update to screen readers (task 52)
-      setListAnnouncement(
-        data.length === 0
-          ? 'No hay citas pendientes de triaje'
-          : `Lista actualizada. ${data.length} cita${data.length !== 1 ? 's' : ''} pendiente${data.length !== 1 ? 's' : ''} de triaje`
-      );
-    } catch (error) {
-      if (showLoading) {
-        setAppointmentsError(extractErrorMessage(error));
-      } else {
-        console.error('Auto-refresh error:', error);
-      }
+    } catch (err) {
+      if (showLoading) setError('No se pudo cargar la lista de citas pendientes de triaje.');
+      console.error(err);
     } finally {
-      if (showLoading) setAppointmentsLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
-  // ─── Call Patient ─────────────────────────────────────────────────────────
+  const handleManualRefresh = useCallback(() => {
+    if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    refreshDebounceRef.current = setTimeout(() => fetchAppointments(true), REFRESH_DEBOUNCE_MS);
+  }, [fetchAppointments]);
 
-  const handleCallPatient = useCallback(async (appointment: AppointmentResponse) => {
-    // Play audio announcement with patient name from appointment
-    const patientName = appointment.patientName || 'Paciente';
+  useEffect(() => {
+    fetchAppointments(true);
+    const interval = setInterval(() => fetchAppointments(false), AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [fetchAppointments]);
+
+  const handleAtender = (appt: AppointmentListItem) => {
     const utterance = new SpeechSynthesisUtterance(
-      `${patientName}, por favor pasar a sala de triaje`
+      `${appt.patient.fullName}, por favor pasar a sala de triaje`
     );
     utterance.lang = 'es-GT';
     utterance.rate = 0.9;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-  }, []);
 
-  // ─── Manual Refresh with debounce (task 62) ───────────────────────────────
-
-  const handleManualRefresh = useCallback(() => {
-    if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
-    refreshDebounceRef.current = setTimeout(() => {
-      fetchPendingAppointments(true);
-    }, REFRESH_DEBOUNCE_MS);
-  }, [fetchPendingAppointments]);
-
-  // ─── Lifecycle ────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    fetchPendingAppointments(true);
-
-    const interval = setInterval(() => {
-      fetchPendingAppointments(false);
-    }, AUTO_REFRESH_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [fetchPendingAppointments]);
-
-  // ─── Render ───────────────────────────────────────────────────────────────
+    navigate('/vitals/triage/capture', {
+      state: { appointmentId: appt.id, patientId: appt.patient.id },
+    });
+  };
 
   return (
     <MainLayout>
-      <div className="min-w-[320px] space-y-6">
-        {/* Screen reader live region (task 52) */}
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          className="sr-only"
-        >
-          {listAnnouncement}
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Triaje — Signos Vitales</h2>
+            <p className="text-gray-500 text-sm">Pacientes pendientes de registro de signos vitales</p>
+          </div>
+          <button
+            onClick={handleManualRefresh}
+            disabled={loading}
+            className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50"
+          >
+            {loading ? (
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent" />
+                Actualizando...
+              </span>
+            ) : 'Actualizar'}
+          </button>
         </div>
 
-        {/* Page Header */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Triaje Pendiente</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Lista de citas activas pendientes de triaje
-          </p>
-        </div>
-
-        {/* Global Alerts */}
-        {appointmentsError && (
-          <ErrorAlert
-            message={appointmentsError}
-            onDismiss={() => setAppointmentsError(null)}
-            onRetry={handleManualRefresh}
-          />
+        {/* Error */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+            {error}
+          </div>
         )}
 
-        {/* Main Content */}
-        <div className="bg-white rounded-lg shadow p-6" aria-busy={appointmentsLoading}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-medin-navy">
-              Citas Pendientes
-              {appointments.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  ({appointments.length})
-                </span>
-              )}
-            </h3>
-            <button
-              onClick={handleManualRefresh}
-              disabled={appointmentsLoading}
-              className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Actualizar lista de citas pendientes"
-            >
-              {appointmentsLoading ? (
-                <span className="flex items-center gap-1">
-                  <span
-                    className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent"
-                    aria-hidden="true"
-                  />
-                  Actualizando...
-                </span>
-              ) : (
-                'Actualizar'
-              )}
-            </button>
+        {/* Table */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent" />
           </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Pacientes en Espera ({appointments.length})
+              </h3>
+            </div>
 
-          <PendingAppointmentsList
-            appointments={appointments}
-            onCallPatient={handleCallPatient}
-            loading={appointmentsLoading}
-          />
-        </div>
+            {appointments.length === 0 ? (
+              <div className="text-center py-16 text-gray-500">
+                <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-lg font-medium">No hay pacientes en espera</p>
+                <p className="text-sm text-gray-400 mt-1">Todos los pacientes han sido atendidos</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="pb-2 pr-4 pl-6">Fecha</th>
+                      <th className="pb-2 pr-4">Hora</th>
+                      <th className="pb-2 pr-4">Paciente</th>
+                      <th className="pb-2 pr-4">DPI</th>
+                      <th className="pb-2 pr-4">Estado</th>
+                      <th className="pb-2 pr-4">Motivo</th>
+                      <th className="pb-2 pr-6">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {appointments
+                      .slice()
+                      .sort((a, b) => {
+                        const d = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
+                        if (d !== 0) return d;
+                        return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
+                      })
+                      .map((appt) => (
+                        <tr key={appt.id} className="hover:bg-gray-50">
+                          <td className="py-3 pr-4 pl-6 whitespace-nowrap text-xs">
+                            {new Date(appt.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </td>
+                          <td className="py-3 pr-4 whitespace-nowrap font-medium">
+                            {appt.appointmentTime.toString().substring(0, 5)}
+                          </td>
+                          <td className="py-3 pr-4">{appt.patient.fullName}</td>
+                          <td className="py-3 pr-4 font-mono text-xs">{appt.patient.dpi ?? '—'}</td>
+                          <td className="py-3 pr-4">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              appt.statusColor === 'green' ? 'bg-green-100 text-green-800' :
+                              appt.statusColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                              appt.statusColor === 'blue' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {appt.statusLabel}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 max-w-xs truncate text-gray-500 text-xs">
+                            {appt.notes ?? '—'}
+                          </td>
+                          <td className="py-3 pr-6 whitespace-nowrap text-right">
+                            <button
+                              onClick={() => handleAtender(appt)}
+                              className="px-4 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-sm"
+                            >
+                              Atender
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </MainLayout>
   );

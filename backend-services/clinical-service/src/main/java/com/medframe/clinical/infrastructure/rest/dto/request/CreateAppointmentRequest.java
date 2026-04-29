@@ -32,4 +32,9 @@ public class CreateAppointmentRequest {
 
     // Optional: releases the temporary hold after a successful booking
     private String sessionId;
+    
+    // Optional: Indicates if consultation fee has been paid
+    // If true, appointment starts in SCHEDULED state
+    // If false or null, appointment starts in PENDING_PAYMENT state
+    private Boolean hasPaid;
 }
