@@ -33,6 +33,9 @@ const initialForm: FormState = {
 type FieldErrors = Partial<Record<keyof FormState, string>>;
 
 const RegisterPage: FC = () => {
+  const today = new Date();
+const minDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -126,7 +129,7 @@ const RegisterPage: FC = () => {
   };
 
   const inputClass = (field: keyof FormState) =>
-    `block w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors text-sm ${
+    `block w-full px-6 py-3 border rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors text-base font-medium ${
       errors[field] ? 'border-red-400 bg-red-50' : 'border-gray-300'
     }`;
 
@@ -135,20 +138,34 @@ const RegisterPage: FC = () => {
     return (
       <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-medin-navy via-medin-navy to-medin-blue flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center">
-          <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div 
+        className="min-h-screen flex items-center justify-center p-4 overflow-hidden relative"
+        style={{
+          backgroundColor: `#1F2B6C`,
+        }}
+      >
+        {/* Brick-pattern medical cross overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: `
+            url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><defs><linearGradient id="crossGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:rgba(21,158,236,0.2)"/><stop offset="100%" style="stop-color:rgba(21,158,236,0.05)"/></linearGradient></defs><g opacity="0.4"><rect x="40" y="5" width="20" height="90" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="5" y="40" width="90" height="20" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="140" y="105" width="20" height="90" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="105" y="140" width="90" height="20" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/></g></svg>')`
+          ,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '200px 200px',
+          opacity: 0.6,
+        }}></div>
+        <div className="relative bg-white rounded-3xl shadow-2xl p-12 w-full max-w-lg text-center">
+          <div className="h-24 w-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
+            <svg className="h-12 w-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Cuenta creada!</h2>
-          <p className="text-gray-600 mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">¡Cuenta creada!</h2>
+          <p className="text-gray-600 mb-10 text-lg">
             Tu cuenta ha sido creada exitosamente. Ya puedes iniciar sesión con tu DPI y contraseña.
           </p>
           <Link
             to="/login"
-            className="inline-block w-full py-3 px-4 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-center"
+            className="inline-block w-full py-4 px-6 bg-medin-cyan text-medin-navy font-bold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-center text-base"
           >
             Iniciar sesión
           </Link>
@@ -162,45 +179,59 @@ const RegisterPage: FC = () => {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-gradient-to-br from-medin-navy via-medin-navy to-medin-blue flex items-center justify-center p-4 py-10">
-      <div className="absolute top-20 left-20 w-64 h-64 bg-medin-cyan opacity-10 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-medin-blue opacity-10 rounded-full blur-3xl" />
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 py-10 overflow-hidden relative"
+      style={{
+        backgroundColor: `#1F2B6C`,
+      }}
+    >
+      {/* Brick-pattern medical cross overlay */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: `
+          url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><defs><linearGradient id="crossGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:rgba(21,158,236,0.2)"/><stop offset="100%" style="stop-color:rgba(21,158,236,0.05)"/></linearGradient></defs><g opacity="0.4"><rect x="40" y="5" width="20" height="90" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="5" y="40" width="90" height="20" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="140" y="105" width="20" height="90" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="105" y="140" width="90" height="20" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/></g></svg>')`
+        ,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '200px 200px',
+        opacity: 0.6,
+      }}></div>
 
-      <div className="relative w-full max-w-lg">
+    
+
+      <div className="relative w-full max-w-4xl">
         {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center space-x-3 mb-3">
-            <img src="/icono.svg" alt="MedFlow" className="h-12 w-auto" />
-            <h1 className="text-3xl font-bold">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <img src="/icono.svg" alt="MedFlow" className="h-14 w-auto" />
+            <h1 className="text-4xl font-bold">
               <span className="text-white">Med</span>
               <span className="text-medin-cyan">Flow</span>
             </h1>
           </div>
-          <p className="text-gray-300 text-sm">Sistema de Información Hospitalaria</p>
+          <p className="text-gray-200 text-base">Sistema de Información Hospitalaria</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="mb-5">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Crear cuenta de paciente</h2>
-            <p className="text-gray-500 text-sm">Los campos marcados con <span className="text-red-500">*</span> son obligatorios</p>
+        <div className="bg-white rounded-3xl shadow-2xl p-12 lg:p-16">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Crear cuenta de paciente</h2>
+            <p className="text-gray-500 text-base">Los campos marcados con <span className="text-red-500">*</span> son obligatorios</p>
           </div>
 
           {serverError && (
-            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
-              <svg className="h-5 w-5 text-red-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
+              <svg className="h-6 w-6 text-red-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-red-800 text-sm">{serverError}</p>
+              <p className="text-red-800 text-base">{serverError}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
 
             {/* DPI y NIT */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   DPI <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -219,21 +250,23 @@ const RegisterPage: FC = () => {
                   type="text" name="nit" value={form.nit}
                   onChange={handleChange} placeholder="12345678 o C/F"
                   className={inputClass('nit')}
+                  maxLength={15}
                 />
                 {errors.nit && <p className="mt-1 text-xs text-red-600">{errors.nit}</p>}
               </div>
             </div>
 
             {/* Primer y segundo nombre */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Primer nombre <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text" name="firstName" value={form.firstName}
                   onChange={handleChange} placeholder="Juan"
                   className={inputClass('firstName')}
+                  maxLength={25}
                 />
                 {errors.firstName && <p className="mt-1 text-xs text-red-600">{errors.firstName}</p>}
               </div>
@@ -245,20 +278,22 @@ const RegisterPage: FC = () => {
                   type="text" name="secondName" value={form.secondName}
                   onChange={handleChange} placeholder="Carlos"
                   className={inputClass('secondName')}
+                  maxLength={25}
                 />
               </div>
             </div>
 
             {/* Primer y segundo apellido */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Primer apellido <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text" name="firstLastName" value={form.firstLastName}
                   onChange={handleChange} placeholder="García"
                   className={inputClass('firstLastName')}
+                  maxLength={25}
                 />
                 {errors.firstLastName && <p className="mt-1 text-xs text-red-600">{errors.firstLastName}</p>}
               </div>
@@ -270,17 +305,19 @@ const RegisterPage: FC = () => {
                   type="text" name="secondLastName" value={form.secondLastName}
                   onChange={handleChange} placeholder="López"
                   className={inputClass('secondLastName')}
+                  maxLength={25}
                 />
               </div>
             </div>
 
             {/* Correo y teléfono */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2 " >
                   Correo electrónico <span className="text-red-500">*</span>
                 </label>
                 <input
+                  maxLength={60}
                   type="email" name="email" value={form.email}
                   onChange={handleChange} placeholder="juan@ejemplo.com"
                   autoComplete="email"
@@ -303,15 +340,15 @@ const RegisterPage: FC = () => {
             </div>
 
             {/* Fecha de nacimiento y género */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Fecha de nacimiento <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date" name="birthDate" value={form.birthDate}
                   onChange={handleChange}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={maxDateString}
                   className={inputClass('birthDate')}
                 />
                 {errors.birthDate && <p className="mt-1 text-xs text-red-600">{errors.birthDate}</p>}
@@ -328,15 +365,16 @@ const RegisterPage: FC = () => {
                   <option value="">Selecciona...</option>
                   <option value="M">Masculino</option>
                   <option value="F">Femenino</option>
+                  
                 </select>
                 {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender}</p>}
               </div>
             </div>
 
             {/* Departamento, Municipio y Zona */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Departamento
                 </label>
                 <input
@@ -346,7 +384,7 @@ const RegisterPage: FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Municipio
                 </label>
                 <input
@@ -356,7 +394,7 @@ const RegisterPage: FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Zona
                 </label>
                 <input
@@ -369,22 +407,22 @@ const RegisterPage: FC = () => {
 
             {/* Dirección */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-base font-semibold text-gray-700 mb-2">
                 Dirección
               </label>
               <textarea
                 name="address" value={form.address}
                 onChange={handleChange}
                 placeholder="Zona 1, Ciudad de Guatemala..."
-                rows={2}
-                className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors text-sm resize-none"
+                rows={3}
+                className="block w-full px-6 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors text-base font-medium resize-none"
               />
             </div>
 
             {/* Contraseña */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Contraseña <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -415,7 +453,7 @@ const RegisterPage: FC = () => {
                 {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Confirmar contraseña <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -433,7 +471,7 @@ const RegisterPage: FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mt-2"
+              className="w-full py-4 px-6 bg-medin-cyan text-medin-navy font-bold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mt-4 text-base"
             >
               {isLoading ? (
                 <>
@@ -449,16 +487,16 @@ const RegisterPage: FC = () => {
             </button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-gray-600">
+          <p className="mt-8 text-center text-base text-gray-600">
             ¿Ya tienes cuenta?{' '}
-            <Link to="/login" className="text-medin-cyan hover:text-medin-blue font-medium">
+            <Link to="/login" className="text-medin-cyan hover:text-medin-blue font-bold">
               Inicia sesión
             </Link>
           </p>
         </div>
 
-        <div className="text-center mt-4">
-          <p className="text-gray-400 text-xs">© 2026 MedFlow. Todos los derechos reservados.</p>
+        <div className="text-center mt-6">
+          <p className="text-gray-400 text-sm">© 2026 MedFlow. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

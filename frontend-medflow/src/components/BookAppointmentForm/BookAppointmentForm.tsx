@@ -387,7 +387,7 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
     `w-full px-4 py-3 bg-medin-navy border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-medin-cyan${errors[field] ? ' ring-2 ring-red-500' : ''}`;
 
   if (loadingData) {
-    return <div className="text-gray-400 text-sm py-8 text-center">Cargando disponibilidad...</div>;
+    return <div className="text-gray-400 text-xl py-8 text-center">Cargando disponibilidad...</div>;
   }
 
   return (
@@ -395,20 +395,20 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
 
       {/* Fecha (calendario custom) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de la cita</label>
+        <label className="block text-lg font-medium text-gray-700 mb-2">Fecha de la cita</label>
         <Calendar selected={date} onSelect={d => { setDate(d); if (errors.date) setErrors(p => ({ ...p, date: '' })); }} isBlocked={isBlocked} />
-        {date && <p className="text-medin-cyan text-xs mt-2">Fecha seleccionada: {date}</p>}
-        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+        {date && <p className="text-medin-cyan text-lg mt-2">Fecha seleccionada: {date}</p>}
+        {errors.date && <p className="text-red-500 text-lg mt-1">{errors.date}</p>}
       </div>
 
       {/* Horarios */}
       {date && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Hora de la cita</label>
+          <label className="block text-lg font-medium text-gray-700 mb-2">Hora de la cita</label>
           {loadingSlots ? (
-            <p className="text-sm text-gray-400">Verificando disponibilidad...</p>
+            <p className="text-lg text-gray-400">Verificando disponibilidad...</p>
           ) : displaySlots.length === 0 ? (
-            <p className="text-sm text-amber-600">No hay horarios para esta fecha.</p>
+            <p className="text-lg text-amber-600">No hay horarios para esta fecha.</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {displaySlots.map(slot => {
@@ -420,7 +420,7 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
                     type="button"
                     disabled={!isAvailable}
                     onClick={() => handleSlotSelect(slot)}
-                    className={`py-2 text-sm font-medium border transition-colors ${
+                    className={`py-2 text-lg font-medium border transition-colors ${
                       isSelected
                         ? 'bg-medin-cyan text-medin-navy border-medin-cyan'
                         : isAvailable
@@ -436,7 +436,7 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
           )}
           {/* Hold countdown */}
           {selectedTime && holdSecondsLeft > 0 && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            <div className="mt-2 flex items-center gap-2 text-base text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
               <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -448,13 +448,13 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
               — confirma tu cita antes de que expire.
             </div>
           )}
-          {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time}</p>}
+          {errors.time && <p className="text-red-500 text-lg mt-1">{errors.time}</p>}
         </div>
       )}
 
       {/* Motivo */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Motivo de consulta</label>
+        <label className="block text-lg font-medium text-gray-700 mb-1">Motivo de consulta</label>
         <textarea
           value={motivo}
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -465,7 +465,7 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
           rows={4}
           className={`${inputClass('motivo')} resize-none`}
         />
-        {errors.motivo && <p className="text-red-500 text-xs mt-1">{errors.motivo}</p>}
+        {errors.motivo && <p className="text-red-500 text-lg mt-1">{errors.motivo}</p>}
       </div>
 
       <button

@@ -42,6 +42,11 @@ const AppointmentPage: FC = () => {
 
             {/* Right Column - Schedule */}
             <div>
+              <br />
+              <br />
+              <br />
+              <br /> 
+              <br />
               <ScheduleHours />
             </div>
           </div>

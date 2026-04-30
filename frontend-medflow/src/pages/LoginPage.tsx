@@ -75,35 +75,59 @@ const LoginPage: FC = () => {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-gradient-to-br from-medin-navy via-medin-navy to-medin-blue flex items-center justify-center p-4">
-      {/* Decorative circles */}
-      <div className="absolute top-20 left-20 w-64 h-64 bg-medin-cyan opacity-10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-medin-blue opacity-10 rounded-full blur-3xl"></div>
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 overflow-hidden relative"
+      style={{
+        backgroundColor: `#1F2B6C`,
+      }}
+    >
+      {/* Brick-pattern medical cross overlay */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: `
+          url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><defs><linearGradient id="crossGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:rgba(21,158,236,0.2)"/><stop offset="100%" style="stop-color:rgba(21,158,236,0.05)"/></linearGradient></defs><g opacity="0.4"><rect x="40" y="5" width="20" height="90" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="5" y="40" width="90" height="20" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="140" y="105" width="20" height="90" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/><rect x="105" y="140" width="90" height="20" fill="url(%23crossGrad)" stroke="rgba(21,158,236,0.15)" stroke-width="1" rx="2"/></g></svg>')`
+        ,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '200px 200px',
+        opacity: 0.6,
+      }}></div>
+      
 
-      <div className="relative w-full max-w-md">      
+      <div className="relative w-full max-w-2xl">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <img src="/icono.svg" alt="MedFlow" className="h-14 w-auto" />
+            <h1 className="text-4xl font-bold">
+              <span className="text-white">Med</span>
+              <span className="text-medin-cyan">Flow</span>
+            </h1>
+          </div>
+          <p className="text-gray-200 text-base">Sistema de Información Hospitalaria</p>
+        </div>
+
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Inicio de sesión</h2>
-            <p className="text-gray-600 text-sm">Ingresa tus credenciales para acceder al sistema</p>
+        <div className="bg-white rounded-3xl shadow-2xl p-12 lg:p-16">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Inicio de sesión</h2>
+            <p className="text-gray-600 text-base">Ingresa tus credenciales para acceder al sistema</p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
-              <svg className="h-5 w-5 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
+              <svg className="h-6 w-6 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-red-800 text-sm">{error}</p>
+              <p className="text-red-800 text-base">{error}</p>
             </div>
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Username */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Usuario <span className="text-red-500">*</span>
+              <label htmlFor="username" className="block text-base font-semibold text-gray-700 mb-2">
+                Correo electrónico <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -112,22 +136,22 @@ const LoginPage: FC = () => {
                   </svg>
                 </div>
                 <input
-                  type="text"
+                  type="email"
                   id="username"
                   name="username"
                   value={credentials.username}
                   onChange={handleChange}
                   required
                   autoComplete="username"
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors"
-                  placeholder="Usuario o correo electrónico"
+                  className="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors text-base font-medium"
+                  placeholder="Correo electrónico"
                 />
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-base font-semibold text-gray-700 mb-2">
                 Contraseña <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -144,7 +168,7 @@ const LoginPage: FC = () => {
                   onChange={handleChange}
                   required
                   autoComplete="current-password"
-                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors"
+                  className="block w-full pl-12 pr-14 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent transition-colors text-base font-medium"
                   placeholder="Contraseña"
                 />
                 <button
@@ -166,23 +190,13 @@ const LoginPage: FC = () => {
               </div>
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 text-medin-cyan border-gray-300 rounded focus:ring-medin-cyan"
-                />
-                <span className="ml-2 text-sm text-gray-600">Recordarme</span>
-              </label>
-              <span className="text-sm text-gray-400">¿Olvidaste tu contraseña?</span>
-            </div>
+           
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="w-full py-4 px-6 bg-medin-cyan text-medin-navy font-bold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-base mt-4"
             >
               {isLoading ? (
                 <>
@@ -198,16 +212,16 @@ const LoginPage: FC = () => {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
-            ¿Eres paciente y no tienes cuenta?{' '}
-            <Link to="/register" className="text-medin-cyan hover:text-medin-blue font-medium">
+          <p className="mt-8 text-center text-base text-gray-600">
+      
+            <Link to="/register" className="text-medin-cyan hover:text-medin-blue font-bold">
               Regístrate aquí
             </Link>
           </p>
         </div>
 
         <div className="text-center mt-6">
-          <p className="text-gray-400 text-xs">© 2026 MedFlow. Todos los derechos reservados.</p>
+          <p className="text-gray-400 text-sm">© 2026 MedFlow. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

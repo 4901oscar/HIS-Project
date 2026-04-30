@@ -98,7 +98,7 @@ const Navbar: FC = () => {
                     to="/register"
                     className="px-3 md:px-4 lg:px-6 py-2 bg-medin-navy border-2 border-white text-white rounded-full font-semibold hover:bg-white hover:text-medin-navy transition-colors text-xs md:text-sm lg:text-base"
                   >
-                    Registrar
+                    Registrarse
                   </Link>
       
                 </>
