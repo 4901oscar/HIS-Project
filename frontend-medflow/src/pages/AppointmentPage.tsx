@@ -32,10 +32,7 @@ const AppointmentPage: FC = () => {
             {/* Left Column - Form */}
             <div>
               <div className="bg-white mb-6 md:mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-medin-navy mb-3 md:mb-4">
-                  Agendar una cita
-                </h2>
-                <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
+                <p className="text-xl text-gray-600 mb-4 md:mb-6">
                   Selecciona fecha, hora y describe brevemente el motivo de tu consulta.
                 </p>
               </div>

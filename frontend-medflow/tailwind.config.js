@@ -39,6 +39,18 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Yeseva One', 'Georgia', 'serif'],
       },
+      fontSize: {
+        'xs': '0.875rem',      // 14px
+        'sm': '1rem',          // 16px (aumentado de 0.875)
+        'base': '1.125rem',    // 18px (aumentado de 1)
+        'lg': '1.375rem',      // 22px (aumentado de 1.125)
+        'xl': '1.75rem',       // 28px (aumentado de 1.5)
+        '2xl': '2.25rem',      // 36px (aumentado de 1.875)
+        '3xl': '2.75rem',      // 44px (aumentado de 2.25)
+        '4xl': '3.5rem',       // 56px (aumentado de 3)
+        '5xl': '4.5rem',       // 72px (aumentado de 3.75)
+        '6xl': '5.5rem',       // 88px (aumentado de 4.5)
+      },
     },
   },
   plugins: [],
