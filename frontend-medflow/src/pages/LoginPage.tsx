@@ -37,7 +37,7 @@ const LoginPage: FC = () => {
         'ADMIN': '/administrator',
         'ADMISSION': '/admission',
         'VITAL_SIGNS': '/vitals/triage',
-        'DOCTOR': '/doctor',
+        'DOCTOR': '/doctor/consultas',
         'LABORATORY': '/lab',
         'PHARMACY': '/pharmacy',
         'CASHIER': '/cashier',

@@ -158,6 +158,35 @@ public class AppointmentController {
     }
     
     /**
+     * GET /api/clinical/appointments/{id} - Obtiene los detalles de una cita específica por su ID.
+     * 
+     * <p>Este endpoint permite obtener toda la información de una cita individual,
+     * incluyendo datos del paciente, doctor, estado de pago e información clínica.</p>
+     * 
+     * @param id ID de la cita
+     * @param includeQR Incluir código QR en respuesta (opcional, default: false)
+     * @param includeClinical Incluir información clínica (opcional, default: false)
+     * @return Detalles completos de la cita
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<AppointmentListItemResponse> getAppointmentById(
+            @PathVariable String id,
+            @RequestParam(required = false, defaultValue = "false") boolean includeQR,
+            @RequestParam(required = false, defaultValue = "false") boolean includeClinical) {
+        
+        log.info("Getting appointment by ID: {}, includeQR: {}, includeClinical: {}", id, includeQR, includeClinical);
+        
+        // Obtener la cita por ID
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + id));
+        
+        // Mapear a DTO unificado
+        AppointmentListItemResponse response = mapToUnifiedResponse(appointment, includeQR, includeClinical);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
      * Aplica filtros a la lista de citas.
      */
     private List<Appointment> applyFilters(

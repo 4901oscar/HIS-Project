@@ -26,6 +26,7 @@ import ActivateAppointments from './pages/admission/ActivateAppointments';
 import TriagePendingPage from './pages/vitals/TriagePendingPage';
 import TriageVitalSignsCapture from './pages/vitals/TriageVitalSignsCapture';
 import DoctorConsultation from './pages/doctor/DoctorConsultation';
+import PatientConsultationForm from './pages/doctor/PatientConsultationForm';
 import LabSampleManagement from './pages/lab/LabSampleManagement';
 import PharmacyDispense from './pages/pharmacy/PharmacyDispense';
 import CashierPage from './pages/cashier/CashierPage';
@@ -140,10 +141,18 @@ function App() {
 
           {/* Doctor - DOCTOR y ADMINISTRATOR */}
           <Route
-            path="/doctor"
+            path="/doctor/consultas"
             element={
               <ProtectedRoute requiredRole="DOCTOR">
                 <DoctorConsultation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/consulta/:appointmentId"
+            element={
+              <ProtectedRoute requiredRole="DOCTOR">
+                <PatientConsultationForm />
               </ProtectedRoute>
             }
           />
