@@ -86,7 +86,6 @@ public class AppointmentListItemResponse {
     public static class DoctorInfo {
         private String id;
         private String name;
-        private String specialty;
     }
     
     // ═══════════════════════════════════════════════════════════

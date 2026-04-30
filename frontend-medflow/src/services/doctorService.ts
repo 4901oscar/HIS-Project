@@ -3,10 +3,10 @@ import api from '../api';
 export interface Doctor {
   id: string;
   name: string;
-  specialty: string;
   shiftStart: string;  // Format: HH:mm
   shiftEnd: string;    // Format: HH:mm
   status: 'ACTIVE' | 'INACTIVE';
+  clinicId: string;
   createdAt: string;
 }
 
@@ -20,15 +20,15 @@ export interface DoctorEmployee {
 
 export interface CreateDoctorRequest {
   userId: string;
+  clinicId: string;
   name: string;
-  specialty: string;
   shiftStart: string;  // Format: HH:mm
   shiftEnd: string;    // Format: HH:mm
 }
 
 export interface UpdateDoctorRequest {
   name: string;
-  specialty: string;
+  clinicId: string;
   shiftStart: string;  // Format: HH:mm
   shiftEnd: string;    // Format: HH:mm
 }

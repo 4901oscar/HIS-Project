@@ -38,9 +38,15 @@ public interface JpaDoctorRepository extends JpaRepository<DoctorEntity, String>
     
     /**
      * Finds all active doctors in the system.
-     * 
+     *
      * @return list of all active doctors
      */
     @Query("SELECT d FROM DoctorEntity d WHERE d.status = 'ACTIVE'")
     List<DoctorEntity> findAllActive();
+
+    /**
+     * Finds all active doctors assigned to a specific clinic.
+     */
+    @Query("SELECT d FROM DoctorEntity d WHERE d.status = 'ACTIVE' AND d.clinicId = :clinicId")
+    List<DoctorEntity> findActiveByClinicId(@Param("clinicId") String clinicId);
 }

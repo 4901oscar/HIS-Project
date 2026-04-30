@@ -1459,7 +1459,6 @@ public class AppointmentController {
                 .map(d -> AppointmentListItemResponse.DoctorInfo.builder()
                         .id(d.getId())
                         .name("Dr. " + d.getName())
-                        .specialty(d.getSpecialty())
                         .build())
                 .orElse(AppointmentListItemResponse.DoctorInfo.builder()
                         .id(appointment.getDoctorId())

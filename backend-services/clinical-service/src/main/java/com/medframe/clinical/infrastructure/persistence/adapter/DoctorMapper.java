@@ -30,10 +30,10 @@ public class DoctorMapper {
         DoctorEntity entity = new DoctorEntity();
         entity.setId(domain.getId());
         entity.setName(domain.getName());
-        entity.setSpecialty(domain.getSpecialty());
         entity.setShiftStart(domain.getShiftStart());
         entity.setShiftEnd(domain.getShiftEnd());
         entity.setStatus(mapStatus(domain.getStatus()));
+        entity.setClinicId(domain.getClinicId());
         entity.setCreatedAt(domain.getCreatedAt());
         
         return entity;
@@ -53,10 +53,10 @@ public class DoctorMapper {
         Doctor domain = new Doctor();
         domain.setId(entity.getId());
         domain.setName(entity.getName());
-        domain.setSpecialty(entity.getSpecialty());
         domain.setShiftStart(entity.getShiftStart());
         domain.setShiftEnd(entity.getShiftEnd());
         domain.setStatus(mapStatus(entity.getStatus()));
+        domain.setClinicId(entity.getClinicId());
         domain.setCreatedAt(entity.getCreatedAt());
         
         return domain;

@@ -60,6 +60,14 @@ public class DoctorRepositoryAdapter implements DoctorRepository {
     }
     
     @Override
+    public List<Doctor> findActiveByClinicId(String clinicId) {
+        return jpaRepository.findActiveByClinicId(clinicId)
+            .stream()
+            .map(mapper::toDomain)
+            .collect(Collectors.toList());
+    }
+
+    @Override
     public void deleteById(String id) {
         jpaRepository.deleteById(id);
     }

@@ -40,11 +40,6 @@ public class Doctor {
     private String name;
     
     /**
-     * Medical specialty (e.g., "Cardiology", "Neurology", "Pediatrics").
-     */
-    private String specialty;
-    
-    /**
      * Start time of the doctor's work shift (e.g., 08:00 for morning shift).
      */
     private LocalTime shiftStart;
@@ -59,6 +54,11 @@ public class Doctor {
      */
     private DoctorStatus status;
     
+    /**
+     * ID of the clinic this doctor is assigned to.
+     */
+    private String clinicId;
+
     /**
      * Timestamp when the doctor record was created.
      */

@@ -60,6 +60,11 @@ public interface DoctorRepository {
     List<Doctor> findAllActive();
     
     /**
+     * Finds all active doctors assigned to a specific clinic.
+     */
+    List<Doctor> findActiveByClinicId(String clinicId);
+
+    /**
      * Deletes a doctor by their unique identifier.
      * 
      * <p>Note: In practice, doctors should be soft-deleted (status = INACTIVE)

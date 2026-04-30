@@ -55,9 +55,9 @@ public class ManageDoctorUseCaseImpl implements ManageDoctorUseCase {
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMINISTRATOR role
      */
     @Override
-    public Doctor createDoctor(String userId, String name, String specialty, LocalTime shiftStart, LocalTime shiftEnd) {
+    public Doctor createDoctor(String userId, String name, LocalTime shiftStart, LocalTime shiftEnd, String clinicId) {
         permissionValidator.requireRole("ADMIN");
-        return shiftManager.createDoctor(userId, name, specialty, shiftStart, shiftEnd);
+        return shiftManager.createDoctor(userId, name, shiftStart, shiftEnd, clinicId);
     }
     
     /**
@@ -81,13 +81,9 @@ public class ManageDoctorUseCaseImpl implements ManageDoctorUseCase {
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMINISTRATOR role
      */
     @Override
-    public Doctor updateDoctor(String doctorId, String name, String specialty, 
-                               LocalTime shiftStart, LocalTime shiftEnd) {
-        // Validate permissions - only ADMINISTRATOR role can update doctors
+    public Doctor updateDoctor(String doctorId, String name, LocalTime shiftStart, LocalTime shiftEnd, String clinicId) {
         permissionValidator.requireRole("ADMIN");
-        
-        // Delegate to domain service
-        return shiftManager.updateDoctor(doctorId, name, specialty, shiftStart, shiftEnd);
+        return shiftManager.updateDoctor(doctorId, name, shiftStart, shiftEnd, clinicId);
     }
     
     /**
