@@ -9,12 +9,12 @@ import doctorImage from '../../assets/doctor.png';
 
 const HeroSection: FC = () => {
   return (
-    <section className="relative bg-gradient-to-r from-gray-50 to-blue-50 overflow-hidden">
+    <section className="relative bg-gradient-to-r from-gray-50 to-blue-50 overflow-hidden px-4 md:px-8 lg:px-5">
       {/* Decorative Shape */}
       <div className="absolute left-0 top-0 w-96 h-96 bg-medin-cyan opacity-10 rounded-full -translate-x-1/2 -translate-y-1/4"></div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-20 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+      <div className="max-w-6xl lg:max-w-full mx-auto py-12 md:py-10 relative xl:px-40 2xl:px-50">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
           {/* Left Content */}
           <div className="space-y-4 md:space-y-6 text-center lg:text-left">
             {/* Subtitle */}
@@ -28,15 +28,6 @@ const HeroSection: FC = () => {
               en Excelencia Médica
             </h1>
 
-            {/* CTA Button */}
-            <div className="pt-4">
-              <Link
-                to="/appointment"
-                className="inline-block px-6 md:px-8 py-2 md:py-3 bg-medin-blue text-medin-navy rounded-full font-semibold hover:bg-medin-blue-light transition-colors shadow-md text-sm md:text-base"
-              >
-                Agendar Cita
-              </Link>
-            </div>
           </div>
 
           {/* Right Content - Doctor Image */}

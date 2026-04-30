@@ -5,6 +5,9 @@ import './App.css';
 
 // Páginas públicas
 import HomePage from './pages/HomePage';
+import Nosotros from './pages/Nosotros';
+import Servicios from './pages/Servicios';
+
 import AppointmentPage from './pages/AppointmentPage';
 import PaymentGatewayPage from './pages/PaymentGatewayPage';
 import LoginPage from './pages/LoginPage';
@@ -37,6 +40,8 @@ function App() {
         <Routes>
           {/* Rutas Públicas */}
           <Route path="/" element={<HomePage />} />
+          <Route path="/nosotros" element={<Nosotros />} />
+          <Route path="/servicios" element={<Servicios />} />
           <Route path="/appointment" element={<AppointmentPage />} />
           <Route path="/payment" element={<PaymentGatewayPage />} />
           <Route path="/login" element={<LoginPage />} />

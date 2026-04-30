@@ -8,71 +8,12 @@ import { Link } from 'react-router-dom';
 const Footer: FC = () => {
   return (
     <footer>
-      {/* Contact Cards Section */}
-      <section className="py-12 md:py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="text-center mb-8 md:mb-12">
-            <p className="text-medin-cyan font-semibold text-xs md:text-sm uppercase tracking-wide mb-2">
-              CONTACTA CON NOSOTROS
-            </p>
-            <h2 className="text-2xl md:text-4xl font-bold text-medin-navy">Contacto</h2>
-          </div>
+<br /><br />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {/* Emergency */}
-            <div className="bg-medin-blue bg-opacity-30 rounded-lg p-6 md:p-8 text-center">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-6 h-6 md:w-8 md:h-8 text-medin-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-bold text-medin-navy mb-2 uppercase">EMERGENCIA</h3>
-              <p className="text-medin-cyan font-semibold">(+502) 1234-5678</p>
-            </div>
-
-            {/* Location */}
-            <div className="bg-medin-navy rounded-lg p-6 md:p-8 text-center text-white">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-white bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-6 h-6 md:w-8 md:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-bold mb-2 uppercase">UBICACIÓN</h3>
-              <p className="text-sm">0123 algun lugar</p>
-              <p className="text-sm">9876 Alguna ciudad</p>
-            </div>
-
-            {/* Email */}
-            <div className="bg-medin-blue bg-opacity-30 rounded-lg p-6 md:p-8 text-center">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-6 h-6 md:w-8 md:h-8 text-medin-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-bold text-medin-navy mb-2 uppercase">CORREO</h3>
-              <p className="text-sm text-medin-navy">dev@gmail.com</p>
-              <p className="text-sm text-medin-navy">medflow@gmail.com</p>
-            </div>
-
-            {/* Working Hours */}
-            <div className="bg-medin-blue bg-opacity-30 rounded-lg p-6 md:p-8 text-center">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-6 h-6 md:w-8 md:h-8 text-medin-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-bold text-medin-navy mb-2 uppercase">HORAS DE TRABAJO</h3>
-              <p className="text-sm text-medin-navy">Lun-Sab 09:00-20:00</p>
-              <p className="text-sm text-medin-navy">Domingos solo emergencias</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Main Footer */}
-      <div className="bg-medin-navy text-white py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="bg-medin-navy text-white py-8 md:py-12 px-4 md:px-6 lg:px-8">
+        <div className="max-w-6xl lg:max-w-full mx-auto xl:px-40 2xl:px-60">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
             {/* Brand */}
             <div>
@@ -91,7 +32,6 @@ const Footer: FC = () => {
             <div>
               <h3 className="font-bold mb-4">Important Links</h3>
               <ul className="space-y-2 text-sm text-gray-300">
-                <li><Link to="/appointment" className="hover:text-medin-cyan transition-colors">Appointment</Link></li>
                 <li><Link to="/doctors" className="hover:text-medin-cyan transition-colors">Doctors</Link></li>
                 <li><Link to="/services" className="hover:text-medin-cyan transition-colors">Services</Link></li>
                 <li><Link to="/about" className="hover:text-medin-cyan transition-colors">About Us</Link></li>
@@ -109,28 +49,13 @@ const Footer: FC = () => {
               </ul>
             </div>
 
-            {/* Newsletter */}
-            <div>
-              <h3 className="font-bold mb-4">Newsletter</h3>
-              <div className="flex">
-                <input
-                  type="email"
-                  placeholder="Enter your email address"
-                  className="flex-1 px-4 py-2 bg-white bg-opacity-10 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:border-medin-cyan text-sm"
-                />
-                <button className="px-4 bg-medin-cyan hover:bg-medin-cyan-dark transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+        
           </div>
 
           {/* Bottom Bar */}
           <div className="pt-6 md:pt-8 border-t border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs md:text-sm text-gray-400 text-center md:text-left">
-              © 2022 MedFlow All Rights Reserved by knhs
+              © 2026 MedFlow All Rights Reserved by knhs
             </p>
             <div className="flex gap-3 md:gap-4">
               <a href="#" className="w-8 h-8 bg-white bg-opacity-10 rounded-full flex items-center justify-center hover:bg-medin-cyan transition-colors">
