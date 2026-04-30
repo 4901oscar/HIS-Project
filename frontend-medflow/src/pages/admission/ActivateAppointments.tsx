@@ -10,30 +10,14 @@ import { getPatientByDpi } from '../../services/patientService';
 import type { CreatePatientRequest } from '../../services/patientService';
 import { createPatientAccount } from '../../services/authService';
 import type { CreatePatientAccountRequest } from '../../services/authService';
-import { activateAppointment, listAllAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
-import type { AppointmentResponse, ScanResult } from '../../services/appointmentService';
+import { activateAppointment, listAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
+import type { AppointmentListItem, ScanResult } from '../../services/appointmentService';
 import { listActiveDoctors, getDoctorDaysOff } from '../../services/doctorService';
 import type { Doctor, DayOff } from '../../services/doctorService';
-import { createInvoice } from '../../services/billingService';
 import { Html5Qrcode } from 'html5-qrcode';
 import axios from 'axios';
 
 type Tab = 'schedule' | 'list' | 'scan';
-
-const STATUS_LABEL: Record<string, string> = {
-  SCHEDULED: 'Agendada',
-  ACTIVE: 'Activa',
-  COMPLETED: 'Completada',
-  CANCELLED: 'Cancelada',
-  MISSED: 'Perdida',
-};
-const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  COMPLETED: 'bg-gray-100 text-gray-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-  MISSED: 'bg-orange-100 text-orange-800',
-};
 
 const emptyForm: CreatePatientRequest = {
   dpi: '', nit: '', firstName: '', secondName: '',
@@ -186,15 +170,19 @@ const ActivateAppointments: FC = () => {
   const [tab, setTab] = useState<Tab>('schedule');
 
   // ── Lista de citas ────────────────────────────────────────────────────────
-  const [allAppointments, setAllAppointments] = useState<AppointmentResponse[]>([]);
+  const [allAppointments, setAllAppointments] = useState<AppointmentListItem[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [activateErrors, setActivateErrors] = useState<Record<string, string>>({});
 
   const loadAppointments = useCallback(() => {
     setListLoading(true);
-    listAllAppointments()
-      .then(setAllAppointments)
+    setActivateErrors({});
+    listAppointments({ queue: 'admission' })
+      .then(appointments => {
+        setAllAppointments(appointments);
+      })
       .catch(() => {})
       .finally(() => { setListLoading(false); setListLoaded(true); });
   }, []);
@@ -207,13 +195,15 @@ const ActivateAppointments: FC = () => {
 
   const handleActivateAppointment = async (appointmentId: string) => {
     setActivatingId(appointmentId);
+    setActivateErrors(prev => { const next = { ...prev }; delete next[appointmentId]; return next; });
     try {
       await activateAppointment(appointmentId);
-      // Reload appointments to reflect the change
       loadAppointments();
     } catch (err) {
-      console.error('Error activating appointment:', err);
-      alert('Error al activar la cita');
+      const message = axios.isAxiosError(err)
+        ? (err.response?.data?.message || err.response?.data?.error || 'Error al activar la cita')
+        : 'Error al activar la cita';
+      setActivateErrors(prev => ({ ...prev, [appointmentId]: message }));
     } finally {
       setActivatingId(null);
     }
@@ -400,25 +390,12 @@ const ActivateAppointments: FC = () => {
         targetPatientId = existingPatient.id;
       }
 
-      // Create appointment with patientId
+      // Create appointment — el backend crea la factura vinculada automáticamente
       await createAppointment({
         patientId: targetPatientId,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
         notes: motivo.trim(),
-      });
-
-      // Create invoice for consultation fee
-      await createInvoice({
-        patientId: targetPatientId,
-        charges: [
-          {
-            type: 'CONSULTATION',
-            description: 'Consulta General',
-            quantity: 1,
-            unitPrice: 150.00, // Precio de consulta general
-          },
-        ],
       });
 
       setScheduleSuccess('Cita agendada exitosamente. Se ha enviado un correo con los detalles. El paciente debe pasar a caja para realizar el pago.');
@@ -484,8 +461,15 @@ const ActivateAppointments: FC = () => {
             const result = await scanAppointment(appointmentId);
             setScanResult(result);
           } catch (err) {
-            if (axios.isAxiosError(err) && err.response?.status === 404) {
-              setScannerError('Cita no encontrada.');
+            if (axios.isAxiosError(err)) {
+              if (err.response?.status === 404) {
+                setScannerError('Cita no encontrada.');
+              } else if (err.response?.status === 402) {
+                const msg = err.response?.data?.message || 'El paciente debe pagar en caja primero.';
+                setScannerError(`Pago pendiente: ${msg}`);
+              } else {
+                setScannerError('Error al procesar el QR. Intenta de nuevo.');
+              }
             } else {
               setScannerError('Error al procesar el QR. Intenta de nuevo.');
             }
@@ -843,22 +827,25 @@ const ActivateAppointments: FC = () => {
         {/* ── Tab: Ver Citas ── */}
         {tab === 'list' && (
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Todas las Citas</h3>
-              <button 
-                onClick={() => { setListLoaded(false); loadAppointments(); }} 
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-semibold text-gray-900">Cola de Admisión</h3>
+              <button
+                onClick={() => { setListLoaded(false); loadAppointments(); }}
                 className="text-xs text-medin-cyan hover:underline"
               >
                 Actualizar
               </button>
             </div>
-            
+            <p className="text-xs text-gray-500 mb-4">
+              Solo se pueden activar citas con pago confirmado en caja.
+            </p>
+
             {listLoading ? (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
               </div>
-            ) : allAppointments.length === 0 ? (
-              <p className="text-gray-500 text-sm">No hay citas registradas.</p>
+            ) : allAppointments.filter(appt => appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT').length === 0 ? (
+              <p className="text-gray-500 text-sm">No hay citas pendientes de activación.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
@@ -866,54 +853,85 @@ const ActivateAppointments: FC = () => {
                     <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
                       <th className="pb-2 pr-4">Fecha</th>
                       <th className="pb-2 pr-4">Hora</th>
+                      <th className="pb-2 pr-4">Paciente</th>
+                      <th className="pb-2 pr-4">DPI</th>
+                      <th className="pb-2 pr-4">Doctor</th>
                       <th className="pb-2 pr-4">Estado</th>
-                      <th className="pb-2 pr-4">Motivo</th>
-                      <th className="pb-2 pr-4">ID Paciente</th>
-                      <th className="pb-2 pr-4">ID Cita</th>
+                      <th className="pb-2 pr-4">Pago</th>
                       <th className="pb-2">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {allAppointments
+                      .filter(appt => appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT')
                       .slice()
-                      .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
-                      .map((appt) => (
-                        <tr key={appt.id} className="hover:bg-gray-50">
-                          <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentDate}</td>
-                          <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentTime.substring(0, 5)}</td>
-                          <td className="py-2 pr-4">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                              {STATUS_LABEL[appt.status] ?? appt.status}
-                            </span>
-                          </td>
-                          <td className="py-2 pr-4 max-w-xs truncate">{appt.notes ?? '—'}</td>
-                          <td className="py-2 pr-4 font-mono text-xs">{appt.patientId}</td>
-                          <td className="py-2 pr-4 font-mono text-xs">{appt.id}</td>
-                          <td className="py-2">
-                            {appt.status === 'SCHEDULED' ? (
-                              <button
-                                onClick={() => handleActivateAppointment(appt.id)}
-                                disabled={activatingId === appt.id}
-                                className="flex items-center gap-1 px-3 py-1 bg-medin-cyan text-medin-navy text-xs font-medium rounded hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      .sort((a, b) => {
+                        const dateCompare = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
+                        if (dateCompare !== 0) return dateCompare;
+                        return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
+                      })
+                      .map((appt) => {
+                        return (
+                          <tr key={appt.id} className="hover:bg-gray-50">
+                            <td className="py-2 pr-4 whitespace-nowrap text-xs">
+                              {new Date(appt.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </td>
+                            <td className="py-2 pr-4 whitespace-nowrap font-medium">
+                              {appt.appointmentTime.toString().substring(0, 5)}
+                            </td>
+                            <td className="py-2 pr-4">{appt.patient.fullName}</td>
+                            <td className="py-2 pr-4 font-mono text-xs">{appt.patient.dpi ?? '—'}</td>
+                            <td className="py-2 pr-4 text-xs">{appt.doctor.name}</td>
+                            <td className="py-2 pr-4">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${appt.statusColor}`}>
+                                {appt.statusLabel}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span
+                                title={appt.payment.tooltip}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  appt.payment.statusColor === 'green' ? 'bg-green-100 text-green-800' :
+                                  appt.payment.statusColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                                  appt.payment.statusColor === 'red' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}
                               >
-                                {activatingId === appt.id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-medin-navy border-t-transparent"></div>
-                                    Activando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircleIcon className="h-3 w-3" />
-                                    Activar
-                                  </>
-                                )}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-gray-400">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                                {appt.payment.statusLabel}
+                              </span>
+                            </td>
+                            <td className="py-2 space-y-1">
+                              {(appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT') ? (
+                                <>
+                                  <button
+                                    onClick={() => handleActivateAppointment(appt.id)}
+                                    disabled={activatingId === appt.id || !appt.payment.canActivate}
+                                    title={appt.payment.tooltip}
+                                    className="flex items-center gap-1 px-3 py-1 bg-medin-cyan text-medin-navy text-xs font-medium rounded hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    {activatingId === appt.id ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-2 border-medin-navy border-t-transparent" />
+                                        Activando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircleIcon className="h-3 w-3" />
+                                        Activar
+                                      </>
+                                    )}
+                                  </button>
+                                  {activateErrors[appt.id] && (
+                                    <p className="text-xs text-red-600 max-w-[180px]">{activateErrors[appt.id]}</p>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -986,8 +1004,8 @@ const ActivateAppointments: FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Estado</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[scanResult.appointmentStatus] ?? ''}`}>
-                      {STATUS_LABEL[scanResult.appointmentStatus] ?? scanResult.appointmentStatus}
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {scanResult.appointmentStatus}
                     </span>
                   </div>
                   <div className="flex justify-between">

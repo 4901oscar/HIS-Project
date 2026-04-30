@@ -26,6 +26,8 @@ public class AppointmentMapper {
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setCreatedBy(domain.getCreatedBy());
         entity.setInvoiceId(domain.getInvoiceId());
+        entity.setLabInvoiceId(domain.getLabInvoiceId());
+        entity.setPharmacyInvoiceId(domain.getPharmacyInvoiceId());
 
         return entity;
     }
@@ -46,6 +48,8 @@ public class AppointmentMapper {
         domain.setCreatedAt(entity.getCreatedAt());
         domain.setCreatedBy(entity.getCreatedBy());
         domain.setInvoiceId(entity.getInvoiceId());
+        domain.setLabInvoiceId(entity.getLabInvoiceId());
+        domain.setPharmacyInvoiceId(entity.getPharmacyInvoiceId());
 
         return domain;
     }

@@ -47,6 +47,54 @@ public interface ManageAppointmentUseCase {
     void cancelAppointment(String appointmentId);
 
     /**
+     * Confirms payment for a PENDING_PAYMENT appointment and transitions to SCHEDULED.
+     * 
+     * @param appointmentId the appointment ID
+     * @param invoiceId the invoice ID to validate
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_PAYMENT state
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails
+     */
+    void confirmPayment(String appointmentId, String invoiceId);
+
+
+
+    /**
+     * Confirms lab payment for a PENDING_LAB_PAYMENT appointment and transitions to LABORATORY.
+     * 
+     * @param appointmentId the appointment ID
+     * @param labInvoiceId the lab invoice ID to validate
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_LAB_PAYMENT state
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails
+     */
+    void confirmLabPayment(String appointmentId, String labInvoiceId);
+
+    /**
+     * Completes lab tests for a LABORATORY appointment and transitions to RE_EVALUATION.
+     * 
+     * @param appointmentId the appointment ID
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in LABORATORY state
+     */
+    void completeLab(String appointmentId);
+
+    /**
+     * Confirms pharmacy payment for a PENDING_PHARMACY_PAYMENT appointment and transitions to PHARMACY.
+     * 
+     * @param appointmentId the appointment ID
+     * @param pharmacyInvoiceId the pharmacy invoice ID to validate
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_PHARMACY_PAYMENT state
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails
+     */
+    void confirmPharmacyPayment(String appointmentId, String pharmacyInvoiceId);
+
+    /**
+     * Dispenses medication for a PHARMACY appointment and transitions to COMPLETED.
+     * 
+     * @param appointmentId the appointment ID
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PHARMACY state
+     */
+    void dispenseMedication(String appointmentId);
+
+    /**
      * Scans a QR code and validates/activates the appointment based on time window.
      * 
      * @param appointmentId the appointment ID from QR code

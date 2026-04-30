@@ -23,10 +23,12 @@ import com.medframe.clinical.infrastructure.client.dto.ChargeRequest;
 import com.medframe.clinical.infrastructure.client.dto.CreateInvoiceRequest;
 import com.medframe.clinical.infrastructure.client.dto.InvoiceResponse;
 import com.medframe.clinical.infrastructure.client.dto.PatientDTO;
+import com.medframe.clinical.infrastructure.rest.dto.request.ConfirmPaymentRequest;
 import com.medframe.clinical.infrastructure.rest.dto.request.CreateAppointmentRequest;
 import com.medframe.clinical.infrastructure.rest.dto.request.HoldSlotRequest;
 import com.medframe.clinical.infrastructure.rest.dto.request.UpdateInvoiceIdRequest;
 import com.medframe.clinical.infrastructure.rest.dto.response.AppointmentResponse;
+import com.medframe.clinical.infrastructure.rest.dto.response.AppointmentListItemResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.AppointmentWithPaymentStatusResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.AvailableSlotsResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.QRStatusResponse;
@@ -45,6 +47,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -74,45 +77,159 @@ public class AppointmentController {
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     
     /** 
-     * All appointments — ADMISSION / ADMIN.
+     * GET /api/clinical/appointments - Endpoint unificado para listado de citas con filtros flexibles.
      * 
-     * <p>Soporta filtro opcional para reconciliación manual:</p>
+     * <p>Este endpoint consolida la funcionalidad de múltiples endpoints específicos,
+     * permitiendo filtrar citas por estado, fecha, cola, y otros criterios mediante
+     * query parameters opcionales.</p>
+     * 
+     * <p><strong>Query Parameters:</strong></p>
      * <ul>
-     *   <li><code>?missingInvoice=true</code> - Retorna solo citas sin factura (invoiceId NULL)</li>
+     *   <li><code>status</code> - Filtrar por uno o múltiples estados (ej: SCHEDULED,PENDING_PAYMENT)</li>
+     *   <li><code>date</code> - Filtrar por fecha específica (formato: yyyy-MM-dd)</li>
+     *   <li><code>queue</code> - Filtrar por tipo de cola: payment, lab, pharmacy, triage</li>
+     *   <li><code>missingInvoice</code> - Filtrar citas sin factura (true/false)</li>
+     *   <li><code>includeQR</code> - Incluir código QR en base64 (true/false, default: false)</li>
+     *   <li><code>includeClinical</code> - Incluir información clínica (true/false, default: false)</li>
+     * </ul>
+     * 
+     * <p><strong>Ejemplos de uso:</strong></p>
+     * <ul>
+     *   <li><code>GET /appointments</code> - Todas las citas</li>
+     *   <li><code>GET /appointments?status=SCHEDULED</code> - Solo citas agendadas</li>
+     *   <li><code>GET /appointments?status=PENDING_PAYMENT,SCHEDULED</code> - Cola de admisión</li>
+     *   <li><code>GET /appointments?queue=payment</code> - Cola de caja</li>
+     *   <li><code>GET /appointments?queue=triage</code> - Cola de triaje</li>
+     *   <li><code>GET /appointments?date=2026-04-27</code> - Citas del día específico</li>
+     *   <li><code>GET /appointments?missingInvoice=true</code> - Citas sin factura</li>
      * </ul>
      * 
      * <p><strong>Requisitos relacionados:</strong></p>
      * <ul>
-     *   <li>REQ-12.1: Endpoint para consultar citas sin factura</li>
+     *   <li>REQ-1: Consolidar endpoints de cola por estado</li>
+     *   <li>REQ-2: Endpoint principal con filtros flexibles</li>
+     *   <li>REQ-3: Estructura de datos unificada</li>
      * </ul>
+     * 
+     * @param status Lista de estados para filtrar (opcional)
+     * @param date Fecha específica para filtrar (opcional)
+     * @param queue Tipo de cola para filtrar (opcional)
+     * @param missingInvoice Filtrar citas sin factura (opcional)
+     * @param includeQR Incluir código QR en respuesta (opcional, default: false)
+     * @param includeClinical Incluir información clínica (opcional, default: false)
+     * @return Lista de citas que cumplen los criterios de filtrado
      */
     @GetMapping
-    public ResponseEntity<List<AppointmentResponse>> listAll(
-            @RequestParam(required = false, defaultValue = "false") boolean missingInvoice) {
+    public ResponseEntity<List<AppointmentListItemResponse>> listAppointments(
+            @RequestParam(required = false) List<String> status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String queue,
+            @RequestParam(required = false, defaultValue = "false") boolean missingInvoice,
+            @RequestParam(required = false, defaultValue = "false") boolean includeQR,
+            @RequestParam(required = false, defaultValue = "false") boolean includeClinical) {
         
+        log.info("Listing appointments with filters - status: {}, date: {}, queue: {}, missingInvoice: {}", 
+                 status, date, queue, missingInvoice);
+        
+        // 1. Obtener todas las citas
         List<Appointment> appointments;
         
         if (missingInvoice) {
-            // Filtrar solo citas sin factura para reconciliación manual
             appointments = manageAppointmentUseCase.listAppointmentsWithoutInvoice();
-            log.info("Consultando citas sin factura. Total encontradas: {}", appointments.size());
+            log.info("Filtering appointments without invoice. Total found: {}", appointments.size());
         } else {
-            // Retornar todas las citas
             appointments = manageAppointmentUseCase.listAll();
         }
         
-        List<AppointmentResponse> list = appointments.stream()
-                .map(this::mapToResponse)
+        // 2. Aplicar filtros
+        appointments = applyFilters(appointments, status, date, queue);
+        
+        log.info("After filtering: {} appointments", appointments.size());
+        
+        // 3. Mapear a DTO unificado
+        List<AppointmentListItemResponse> response = appointments.stream()
+                .map(appt -> mapToUnifiedResponse(appt, includeQR, includeClinical))
                 .collect(java.util.stream.Collectors.toList());
         
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Aplica filtros a la lista de citas.
+     */
+    private List<Appointment> applyFilters(
+            List<Appointment> appointments,
+            List<String> statusFilter,
+            LocalDate dateFilter,
+            String queueFilter) {
+        
+        return appointments.stream()
+                .filter(appt -> matchesStatusFilter(appt, statusFilter))
+                .filter(appt -> matchesDateFilter(appt, dateFilter))
+                .filter(appt -> matchesQueueFilter(appt, queueFilter))
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * Verifica si una cita coincide con el filtro de estado.
+     */
+    private boolean matchesStatusFilter(Appointment appointment, List<String> statusFilter) {
+        if (statusFilter == null || statusFilter.isEmpty()) {
+            return true;
+        }
+        
+        return statusFilter.stream()
+                .anyMatch(s -> appointment.getStatus().name().equals(s));
+    }
+    
+    /**
+     * Verifica si una cita coincide con el filtro de fecha.
+     */
+    private boolean matchesDateFilter(Appointment appointment, LocalDate dateFilter) {
+        if (dateFilter == null) {
+            return true;
+        }
+        
+        return appointment.getAppointmentDate().equals(dateFilter);
+    }
+    
+    /**
+     * Verifica si una cita coincide con el filtro de cola.
+     */
+    private boolean matchesQueueFilter(Appointment appointment, String queueFilter) {
+        if (queueFilter == null || queueFilter.isBlank()) {
+            return true;
+        }
+        
+        switch (queueFilter.toLowerCase()) {
+            case "payment":
+                return appointment.getStatus() == AppointmentStatus.PENDING_PAYMENT ||
+                       appointment.getStatus() == AppointmentStatus.PENDING_LAB_PAYMENT ||
+                       appointment.getStatus() == AppointmentStatus.PENDING_PHARMACY_PAYMENT ||
+                       appointment.getStatus() == AppointmentStatus.SCHEDULED;
+            case "lab":
+            case "laboratory":
+                return appointment.getStatus() == AppointmentStatus.LABORATORY;
+            case "pharmacy":
+                return appointment.getStatus() == AppointmentStatus.PHARMACY;
+            case "triage":
+                return appointment.getStatus() == AppointmentStatus.VITAL_SIGNS;
+            case "admission":
+                return appointment.getStatus() == AppointmentStatus.PENDING_PAYMENT ||
+                       appointment.getStatus() == AppointmentStatus.SCHEDULED;
+            default:
+                log.warn("Unknown queue filter: {}", queueFilter);
+                return true;
+        }
     }
 
     /** Appointments for the authenticated patient. */
     @GetMapping("/my")
     public ResponseEntity<List<AppointmentResponse>> listMine() {
+        // mapToResponseLight omits patient-service calls: the patient already knows their own
+        // data and the dashboard doesn't display patientName/patientDpi from this endpoint.
         List<AppointmentResponse> list = manageAppointmentUseCase.listMyAppointments()
-                .stream().map(this::mapToResponse).collect(java.util.stream.Collectors.toList());
+                .stream().map(this::mapToResponseLight).collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(list);
     }
 
@@ -120,7 +237,101 @@ public class AppointmentController {
     @GetMapping("/doctor")
     public ResponseEntity<List<AppointmentResponse>> listDoctor() {
         List<AppointmentResponse> list = manageAppointmentUseCase.listDoctorAppointments()
-                .stream().map(this::mapToResponse).collect(java.util.stream.Collectors.toList());
+                .stream().map(this::mapToResponseLight).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+    
+    /**
+     * GET /api/clinical/appointments/payment-queue
+     * Lists appointments in payment-pending states for cashier queue.
+     * Returns appointments in PENDING_PAYMENT, PENDING_LAB_PAYMENT, PENDING_PHARMACY_PAYMENT states.
+     * 
+     * @param paymentType Optional filter: "consultation", "lab", "pharmacy"
+     * @return List of appointments waiting for payment
+     * @deprecated Use GET /appointments?queue=payment instead. This endpoint will be removed in v2.0.
+     */
+    @Deprecated
+    @GetMapping("/payment-queue")
+    public ResponseEntity<List<AppointmentResponse>> listPaymentQueue(
+            @RequestParam(required = false) String paymentType) {
+        log.warn("DEPRECATED: /payment-queue endpoint called. Use /appointments?queue=payment instead");
+        log.info("Listing payment queue appointments, filter: {}", paymentType);
+        
+        List<Appointment> appointments = appointmentRepository.findAll().stream()
+                .filter(a -> {
+                    if (paymentType == null) {
+                        return a.getStatus() == Appointment.AppointmentStatus.PENDING_PAYMENT ||
+                               a.getStatus() == Appointment.AppointmentStatus.PENDING_LAB_PAYMENT ||
+                               a.getStatus() == Appointment.AppointmentStatus.PENDING_PHARMACY_PAYMENT;
+                    }
+                    switch (paymentType.toLowerCase()) {
+                        case "consultation":
+                            return a.getStatus() == Appointment.AppointmentStatus.PENDING_PAYMENT;
+                        case "lab":
+                            return a.getStatus() == Appointment.AppointmentStatus.PENDING_LAB_PAYMENT;
+                        case "pharmacy":
+                            return a.getStatus() == Appointment.AppointmentStatus.PENDING_PHARMACY_PAYMENT;
+                        default:
+                            return false;
+                    }
+                })
+                .collect(java.util.stream.Collectors.toList());
+        
+        List<AppointmentResponse> list = appointments.stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
+        
+        log.info("Found {} appointments in payment queue", list.size());
+        return ResponseEntity.ok(list);
+    }
+    
+    /**
+     * GET /api/clinical/appointments/lab-queue
+     * Lists appointments in LABORATORY state for lab staff queue.
+     * 
+     * @return List of appointments waiting for lab tests
+     * @deprecated Use GET /appointments?queue=lab instead. This endpoint will be removed in v2.0.
+     */
+    @Deprecated
+    @GetMapping("/lab-queue")
+    public ResponseEntity<List<AppointmentResponse>> listLabQueue() {
+        log.warn("DEPRECATED: /lab-queue endpoint called. Use /appointments?queue=lab instead");
+        log.info("Listing lab queue appointments");
+        
+        List<Appointment> appointments = appointmentRepository.findAll().stream()
+                .filter(a -> a.getStatus() == Appointment.AppointmentStatus.LABORATORY)
+                .collect(java.util.stream.Collectors.toList());
+        
+        List<AppointmentResponse> list = appointments.stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
+        
+        log.info("Found {} appointments in lab queue", list.size());
+        return ResponseEntity.ok(list);
+    }
+    
+    /**
+     * GET /api/clinical/appointments/pharmacy-queue
+     * Lists appointments in PHARMACY state for pharmacy staff queue.
+     * 
+     * @return List of appointments waiting for medication dispensing
+     * @deprecated Use GET /appointments?queue=pharmacy instead. This endpoint will be removed in v2.0.
+     */
+    @Deprecated
+    @GetMapping("/pharmacy-queue")
+    public ResponseEntity<List<AppointmentResponse>> listPharmacyQueue() {
+        log.warn("DEPRECATED: /pharmacy-queue endpoint called. Use /appointments?queue=pharmacy instead");
+        log.info("Listing pharmacy queue appointments");
+        
+        List<Appointment> appointments = appointmentRepository.findAll().stream()
+                .filter(a -> a.getStatus() == Appointment.AppointmentStatus.PHARMACY)
+                .collect(java.util.stream.Collectors.toList());
+        
+        List<AppointmentResponse> list = appointments.stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
+        
+        log.info("Found {} appointments in pharmacy queue", list.size());
         return ResponseEntity.ok(list);
     }
 
@@ -129,9 +340,12 @@ public class AppointmentController {
      * Lists all active appointments that are waiting for triage.
      * Returns 200 with array of appointments (empty array if none).
      * Requirements: 4.3, 4.4
+     * @deprecated Use GET /appointments?queue=triage instead. This endpoint will be removed in v2.0.
      */
+    @Deprecated
     @GetMapping("/pending-triage")
     public ResponseEntity<List<AppointmentResponse>> listPendingTriageAppointments() {
+        log.warn("DEPRECATED: /pending-triage endpoint called. Use /appointments?queue=triage instead");
         List<AppointmentResponse> list = listPendingTriageAppointmentsUseCase.listPendingTriageAppointments()
                 .stream()
                 .map(this::mapToResponse)
@@ -183,6 +397,42 @@ public class AppointmentController {
     }
     
     /**
+     * GET /api/clinical/appointments/admission-queue
+     * Lista todas las citas en estados PENDING_PAYMENT y SCHEDULED con información de estado de pago.
+     * 
+     * <p>Este endpoint proporciona al personal de admisión una vista completa de todas
+     * las citas pendientes de activación (de todos los días), con indicadores visuales 
+     * del estado de pago.</p>
+     * 
+     * <p><strong>Estados incluidos:</strong></p>
+     * <ul>
+     *   <li>PENDING_PAYMENT: Citas creadas pero sin pago confirmado</li>
+     *   <li>SCHEDULED: Citas con pago confirmado, listas para activar</li>
+     * </ul>
+     * 
+     * @return Lista de citas PENDING_PAYMENT y SCHEDULED con información de estado de pago
+     */
+    @GetMapping("/admission-queue")
+    public ResponseEntity<List<AppointmentWithPaymentStatusResponse>> listAdmissionQueue() {
+        log.info("Listing admission queue appointments with payment status");
+        
+        // 1. Obtener todas las citas en estados PENDING_PAYMENT y SCHEDULED
+        List<Appointment> admissionAppointments = manageAppointmentUseCase.listAll().stream()
+                .filter(appt -> appt.getStatus() == Appointment.AppointmentStatus.PENDING_PAYMENT ||
+                               appt.getStatus() == Appointment.AppointmentStatus.SCHEDULED)
+                .collect(java.util.stream.Collectors.toList());
+        
+        log.info("Found {} appointments in admission queue", admissionAppointments.size());
+        
+        // 2. Mapear cada cita con su estado de pago
+        List<AppointmentWithPaymentStatusResponse> response = admissionAppointments.stream()
+                .map(this::mapToAppointmentWithPaymentStatus)
+                .collect(java.util.stream.Collectors.toList());
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
      * Mapea una cita a AppointmentWithPaymentStatusResponse con información de estado de pago.
      * 
      * @param appointment la cita a mapear
@@ -193,14 +443,14 @@ public class AppointmentController {
         String patientName = "Paciente";
         String patientDpi = null;
         try {
-            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
             patientName = patient.getFullName();
             patientDpi = patient.getDpi();
         } catch (Exception e) {
-            log.warn("Could not fetch patient data for appointment {}: {}", 
+            log.warn("Could not fetch patient data for appointment {}: {}",
                      appointment.getId(), e.getMessage());
         }
-        
+
         // 2. Obtener información del doctor
         String doctorName = doctorRepository.findById(appointment.getDoctorId())
                 .map(d -> "Dr. " + d.getName())
@@ -365,11 +615,12 @@ public class AppointmentController {
         // 2. Create appointment (manual or auto-assignment) — exactly once
         log.error("=== Antes de crear cita. patientId: {} ===", patientId);
         Appointment appointment;
+        boolean hasPaid = request.getHasPaid() != null ? request.getHasPaid() : false;
         if (request.getDoctorId() != null && !request.getDoctorId().trim().isEmpty()) {
             appointment = appointmentManager.createAppointment(
                 patientId, request.getDoctorId(),
                 request.getAppointmentDate(), request.getAppointmentTime(),
-                request.getNotes(), userId, true);
+                request.getNotes(), userId, true, hasPaid);
         } else {
             appointment = manageAppointmentUseCase.createAppointmentWithAutoAssignment(
                 patientId,
@@ -409,9 +660,10 @@ public class AppointmentController {
                 invoiceResponse = billingServiceClient.createInvoice(invoiceRequest, userId);
                 
                 if (invoiceResponse != null) {
-                    // Factura creada exitosamente
+                    // Factura creada exitosamente — persistir invoiceId en la cita
                     appointment.setInvoiceId(invoiceResponse.getId());
                     invoiceNumber = invoiceResponse.getInvoiceNumber();
+                    appointmentRepository.save(appointment);
                     log.info("Factura creada exitosamente para cita {}. InvoiceId: {}, InvoiceNumber: {}",
                             appointment.getId(), invoiceResponse.getId(), invoiceNumber);
                 } else {
@@ -482,11 +734,44 @@ public class AppointmentController {
         return generateTemporaryInvoiceNumber();
     }
     
-    /** QR scan — validates time window and activates the appointment if within window. */
+    /** QR scan — validates payment and time window before activating the appointment. */
     @PostMapping("/{id}/scan")
     public ResponseEntity<Map<String, Object>> scanAppointment(@PathVariable String id) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Validate payment only when appointment is about to be activated (within time window)
+        Appointment preCheck = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada: " + id));
+
+        if (preCheck.getStatus() == AppointmentStatus.SCHEDULED) {
+            LocalDateTime apptDateTime = LocalDateTime.of(
+                    preCheck.getAppointmentDate(), preCheck.getAppointmentTime());
+            boolean withinWindow = !now.isBefore(apptDateTime.minusMinutes(15))
+                                && !now.isAfter(apptDateTime.plusMinutes(60));
+
+            if (withinWindow) {
+                PaymentValidationResult validation = paymentValidator.validatePayment(
+                        preCheck.getInvoiceId(), preCheck.getId());
+
+                if (!validation.isAllowed()) {
+                    log.warn("QR scan blocked for appointment {} — payment not confirmed: {}",
+                             id, validation.getErrorMessage());
+                    Map<String, Object> body = new java.util.LinkedHashMap<>();
+                    body.put("status", "PAYMENT_REQUIRED");
+                    body.put("message", validation.getErrorMessage());
+                    body.put("appointmentId", preCheck.getId());
+                    body.put("patientId", preCheck.getPatientId());
+                    body.put("doctorId", preCheck.getDoctorId());
+                    body.put("date", preCheck.getAppointmentDate().toString());
+                    body.put("time", preCheck.getAppointmentTime().toString());
+                    body.put("appointmentStatus", preCheck.getStatus().name());
+                    return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+                }
+            }
+        }
+
         com.medframe.clinical.domain.model.ScanResult result =
-                appointmentManager.validateAndActivateAppointment(id, LocalDateTime.now());
+                appointmentManager.validateAndActivateAppointment(id, now);
         Appointment appt = result.getAppointment();
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("status", result.getStatus().name());
@@ -588,10 +873,189 @@ public class AppointmentController {
         return ResponseEntity.ok().build();
     }
     
+    /**
+     * POST /api/clinical/appointments/{id}/confirm-payment
+     * Confirms consultation payment and transitions from PENDING_PAYMENT to SCHEDULED.
+     * 
+     * @param id Appointment ID
+     * @param request Request with invoice ID
+     * @return 200 OK if successful
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_PAYMENT state (400)
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails (400)
+     * @throws com.medframe.clinical.domain.exception.ServiceUnavailableException if Billing Service unavailable (503)
+     */
+    @PostMapping("/{id}/confirm-payment")
+    public ResponseEntity<Void> confirmPayment(
+            @PathVariable String id,
+            @Valid @RequestBody ConfirmPaymentRequest request) {
+        log.info("Confirming payment for appointment {}, invoice {}", id, request.getInvoiceId());
+        
+        // Validate payment before confirming
+        PaymentValidationResult validationResult = paymentValidator.validatePayment(
+            request.getInvoiceId(), 
+            id
+        );
+        
+        if (!validationResult.isAllowed()) {
+            PaymentValidationError error = validationResult.getError();
+            
+            if (error == PaymentValidationError.SERVICE_TIMEOUT || 
+                error == PaymentValidationError.SERVICE_ERROR) {
+                log.error("Cannot confirm payment for appointment {} - Billing Service unavailable: {}", 
+                          id, validationResult.getErrorMessage());
+                throw new ServiceUnavailableException(validationResult.getErrorMessage());
+            } else {
+                log.error("Cannot confirm payment for appointment {} - Payment validation failed: {}", 
+                          id, validationResult.getErrorMessage());
+                throw new PaymentValidationException(
+                    validationResult.getErrorMessage(), 
+                    error
+                );
+            }
+        }
+        
+        // Confirm payment and transition state
+        manageAppointmentUseCase.confirmPayment(id, request.getInvoiceId());
+        
+        log.info("Payment confirmed for appointment {}", id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * POST /api/clinical/appointments/{id}/confirm-lab-payment
+     * Confirms lab payment and transitions from PENDING_LAB_PAYMENT to LABORATORY.
+     * 
+     * @param id Appointment ID
+     * @param request Request with lab invoice ID
+     * @return 200 OK if successful
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_LAB_PAYMENT state (400)
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails (400)
+     * @throws com.medframe.clinical.domain.exception.ServiceUnavailableException if Billing Service unavailable (503)
+     */
+    @PostMapping("/{id}/confirm-lab-payment")
+    public ResponseEntity<Void> confirmLabPayment(
+            @PathVariable String id,
+            @Valid @RequestBody ConfirmPaymentRequest request) {
+        log.info("Confirming lab payment for appointment {}, invoice {}", id, request.getInvoiceId());
+        
+        // Validate payment before confirming
+        PaymentValidationResult validationResult = paymentValidator.validatePayment(
+            request.getInvoiceId(), 
+            id
+        );
+        
+        if (!validationResult.isAllowed()) {
+            PaymentValidationError error = validationResult.getError();
+            
+            if (error == PaymentValidationError.SERVICE_TIMEOUT || 
+                error == PaymentValidationError.SERVICE_ERROR) {
+                log.error("Cannot confirm lab payment for appointment {} - Billing Service unavailable: {}", 
+                          id, validationResult.getErrorMessage());
+                throw new ServiceUnavailableException(validationResult.getErrorMessage());
+            } else {
+                log.error("Cannot confirm lab payment for appointment {} - Payment validation failed: {}", 
+                          id, validationResult.getErrorMessage());
+                throw new PaymentValidationException(
+                    validationResult.getErrorMessage(), 
+                    error
+                );
+            }
+        }
+        
+        // Confirm lab payment and transition state
+        manageAppointmentUseCase.confirmLabPayment(id, request.getInvoiceId());
+        
+        log.info("Lab payment confirmed for appointment {}", id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * POST /api/clinical/appointments/{id}/confirm-pharmacy-payment
+     * Confirms pharmacy payment and transitions from PENDING_PHARMACY_PAYMENT to PHARMACY.
+     * 
+     * @param id Appointment ID
+     * @param request Request with pharmacy invoice ID
+     * @return 200 OK if successful
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PENDING_PHARMACY_PAYMENT state (400)
+     * @throws com.medframe.clinical.domain.exception.PaymentValidationException if payment validation fails (400)
+     * @throws com.medframe.clinical.domain.exception.ServiceUnavailableException if Billing Service unavailable (503)
+     */
+    @PostMapping("/{id}/confirm-pharmacy-payment")
+    public ResponseEntity<Void> confirmPharmacyPayment(
+            @PathVariable String id,
+            @Valid @RequestBody ConfirmPaymentRequest request) {
+        log.info("Confirming pharmacy payment for appointment {}, invoice {}", id, request.getInvoiceId());
+        
+        // Validate payment before confirming
+        PaymentValidationResult validationResult = paymentValidator.validatePayment(
+            request.getInvoiceId(), 
+            id
+        );
+        
+        if (!validationResult.isAllowed()) {
+            PaymentValidationError error = validationResult.getError();
+            
+            if (error == PaymentValidationError.SERVICE_TIMEOUT || 
+                error == PaymentValidationError.SERVICE_ERROR) {
+                log.error("Cannot confirm pharmacy payment for appointment {} - Billing Service unavailable: {}", 
+                          id, validationResult.getErrorMessage());
+                throw new ServiceUnavailableException(validationResult.getErrorMessage());
+            } else {
+                log.error("Cannot confirm pharmacy payment for appointment {} - Payment validation failed: {}", 
+                          id, validationResult.getErrorMessage());
+                throw new PaymentValidationException(
+                    validationResult.getErrorMessage(), 
+                    error
+                );
+            }
+        }
+        
+        // Confirm pharmacy payment and transition state
+        manageAppointmentUseCase.confirmPharmacyPayment(id, request.getInvoiceId());
+        
+        log.info("Pharmacy payment confirmed for appointment {}", id);
+        return ResponseEntity.ok().build();
+    }
+    
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancelAppointment(@PathVariable String id) {
         manageAppointmentUseCase.cancelAppointment(id);
         return ResponseEntity.noContent().build();
+    }
+    
+
+    /**
+     * PATCH /api/clinical/appointments/{id}/complete-lab
+     * Transitions appointment from LABORATORY to RE_EVALUATION.
+     * Called when lab tests are completed and results are ready.
+     * 
+     * @param id Appointment ID
+     * @return 200 OK if successful
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in LABORATORY state (400)
+     */
+    @PatchMapping("/{id}/complete-lab")
+    public ResponseEntity<Void> completeLab(@PathVariable String id) {
+        log.info("Completing lab tests for appointment {}", id);
+        manageAppointmentUseCase.completeLab(id);
+        log.info("Appointment {} transitioned to RE_EVALUATION state", id);
+        return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * PATCH /api/clinical/appointments/{id}/dispense-medication
+     * Transitions appointment from PHARMACY to COMPLETED.
+     * Called when medications are dispensed to the patient.
+     * 
+     * @param id Appointment ID
+     * @return 200 OK if successful
+     * @throws com.medframe.clinical.domain.exception.InvalidAppointmentStatusException if not in PHARMACY state (400)
+     */
+    @PatchMapping("/{id}/dispense-medication")
+    public ResponseEntity<Void> dispenseMedication(@PathVariable String id) {
+        log.info("Dispensing medication for appointment {}", id);
+        manageAppointmentUseCase.dispenseMedication(id);
+        log.info("Appointment {} transitioned to COMPLETED state", id);
+        return ResponseEntity.ok().build();
     }
     
     /**
@@ -719,7 +1183,7 @@ public class AppointmentController {
         // 2. Obtener información del paciente
         String patientName = "Paciente";
         try {
-            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
             patientName = patient.getFullName();
         } catch (Exception e) {
             log.warn("Could not fetch patient data for QR status: {}", e.getMessage());
@@ -825,17 +1289,16 @@ public class AppointmentController {
     }
     
     private AppointmentResponse mapToResponse(Appointment appointment) {
-        // Fetch patient data to include name and DPI
         String patientName = null;
         String patientDpi = null;
         try {
-            PatientDTO patient = (PatientDTO) patientServiceClient.getPatient(appointment.getPatientId());
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
             patientName = patient.getFullName();
             patientDpi = patient.getDpi();
         } catch (Exception e) {
             log.warn("Could not fetch patient data for appointment {}: {}", appointment.getId(), e.getMessage());
         }
-        
+
         return new AppointmentResponse(
             appointment.getId(),
             appointment.getPatientId(),
@@ -847,7 +1310,32 @@ public class AppointmentController {
             appointment.getStatus().name(),
             appointment.getNotes(),
             appointment.getCreatedAt(),
-            appointment.getQrCodeBase64()  // Include QR code if generated
+            appointment.getQrCodeBase64(),
+            appointment.getInvoiceId(),
+            appointment.getLabInvoiceId(),
+            appointment.getPharmacyInvoiceId(),
+            appointment.isPriority()
+        );
+    }
+
+    /** Mapper sin llamadas a patient-service — para endpoints donde el caller ya conoce sus datos. */
+    private AppointmentResponse mapToResponseLight(Appointment appointment) {
+        return new AppointmentResponse(
+            appointment.getId(),
+            appointment.getPatientId(),
+            null,
+            null,
+            appointment.getDoctorId(),
+            appointment.getAppointmentDate(),
+            appointment.getAppointmentTime(),
+            appointment.getStatus().name(),
+            appointment.getNotes(),
+            appointment.getCreatedAt(),
+            appointment.getQrCodeBase64(),
+            appointment.getInvoiceId(),
+            appointment.getLabInvoiceId(),
+            appointment.getPharmacyInvoiceId(),
+            appointment.isPriority()
         );
     }
     
@@ -860,5 +1348,280 @@ public class AppointmentController {
             triage.getMaxWaitTimeMinutes(),
             triage.getPerformedAt()
         );
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // MAPPER UNIFICADO - AppointmentListItemResponse
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Mapper unificado que convierte Appointment a AppointmentListItemResponse.
+     * Este mapper centraliza toda la lógica de mapeo y validación de pago.
+     * 
+     * @param appointment la cita a mapear
+     * @param includeQR si se debe incluir el código QR en base64
+     * @param includeClinical si se debe incluir información clínica
+     * @return AppointmentListItemResponse con toda la información
+     */
+    private AppointmentListItemResponse mapToUnifiedResponse(
+            Appointment appointment, 
+            boolean includeQR, 
+            boolean includeClinical) {
+        
+        LocalDate today = LocalDate.now();
+        
+        // 1. Obtener información del paciente
+        AppointmentListItemResponse.PatientInfo patientInfo = null;
+        try {
+            PatientDTO patient = (PatientDTO) patientServiceClient.getPatientById(appointment.getPatientId());
+            patientInfo = AppointmentListItemResponse.PatientInfo.builder()
+                    .id(appointment.getPatientId())
+                    .fullName(patient.getFullName())
+                    .dpi(patient.getDpi())
+                    .phone(patient.getPhone())
+                    .email(patient.getEmail())
+                    .build();
+        } catch (Exception e) {
+            log.warn("Could not fetch patient data for appointment {}: {}", 
+                     appointment.getId(), e.getMessage());
+            patientInfo = AppointmentListItemResponse.PatientInfo.builder()
+                    .id(appointment.getPatientId())
+                    .fullName("Paciente")
+                    .build();
+        }
+        
+        // 2. Obtener información del doctor
+        AppointmentListItemResponse.DoctorInfo doctorInfo = doctorRepository.findById(appointment.getDoctorId())
+                .map(d -> AppointmentListItemResponse.DoctorInfo.builder()
+                        .id(d.getId())
+                        .name("Dr. " + d.getName())
+                        .specialty(d.getSpecialty())
+                        .build())
+                .orElse(AppointmentListItemResponse.DoctorInfo.builder()
+                        .id(appointment.getDoctorId())
+                        .name("Dr. Asignado")
+                        .build());
+        
+        // 3. Validar estado de pago
+        PaymentValidationResult validationResult = paymentValidator.validatePayment(
+                appointment.getInvoiceId(), 
+                appointment.getId()
+        );
+        
+        AppointmentListItemResponse.PaymentInfo paymentInfo = buildPaymentInfo(validationResult);
+        
+        // 4. Información clínica (opcional)
+        AppointmentListItemResponse.ClinicalInfo clinicalInfo = null;
+        if (includeClinical) {
+            clinicalInfo = buildClinicalInfo(appointment);
+        }
+        
+        // 5. Información de QR (opcional)
+        AppointmentListItemResponse.QRInfo qrInfo = null;
+        if (includeQR) {
+            qrInfo = AppointmentListItemResponse.QRInfo.builder()
+                    .hasQR(appointment.getQrCodeBase64() != null)
+                    .qrCodeBase64(appointment.getQrCodeBase64())
+                    .build();
+        }
+        
+        // 6. Metadatos
+        AppointmentListItemResponse.MetadataInfo metadata = AppointmentListItemResponse.MetadataInfo.builder()
+                .isToday(appointment.getAppointmentDate().equals(today))
+                .isPast(appointment.getAppointmentDate().isBefore(today))
+                .isUpcoming(appointment.getAppointmentDate().isAfter(today))
+                .canEdit(canEditAppointment(appointment))
+                .canCancel(canCancelAppointment(appointment))
+                .canActivate(canActivateAppointment(appointment, validationResult))
+                .build();
+        
+        // 7. Construir respuesta completa
+        return AppointmentListItemResponse.builder()
+                .id(appointment.getId())
+                .appointmentDate(appointment.getAppointmentDate())
+                .appointmentTime(appointment.getAppointmentTime())
+                .status(appointment.getStatus().name())
+                .statusLabel(getStatusLabel(appointment.getStatus()))
+                .statusColor(getStatusColor(appointment.getStatus()))
+                .notes(appointment.getNotes())
+                .createdAt(appointment.getCreatedAt())
+                .patient(patientInfo)
+                .doctor(doctorInfo)
+                .payment(paymentInfo)
+                .clinical(clinicalInfo)
+                .qr(qrInfo)
+                .metadata(metadata)
+                .build();
+    }
+    
+    /**
+     * Construye la información de pago basándose en el resultado de validación.
+     */
+    private AppointmentListItemResponse.PaymentInfo buildPaymentInfo(PaymentValidationResult validationResult) {
+        AppointmentListItemResponse.PaymentInfo.PaymentInfoBuilder builder = 
+                AppointmentListItemResponse.PaymentInfo.builder();
+        
+        if (validationResult.isAllowed()) {
+            if (validationResult.isHasWarning()) {
+                // Caso: Cita sin factura (NO_INVOICE)
+                builder
+                        .status("NO_INVOICE")
+                        .statusLabel("SIN FACTURA")
+                        .statusColor("gray")
+                        .canActivate(true)
+                        .tooltip("Cita sin factura - Activar bajo responsabilidad");
+            } else {
+                // Caso: Factura PAID
+                builder
+                        .invoiceId(validationResult.getInvoice() != null ? 
+                                validationResult.getInvoice().getId() : null)
+                        .invoiceNumber(validationResult.getInvoice() != null ? 
+                                validationResult.getInvoice().getInvoiceNumber() : null)
+                        .status("PAID")
+                        .statusLabel("PAGADA")
+                        .statusColor("green")
+                        .amount(validationResult.getInvoice() != null ? 
+                                validationResult.getInvoice().getTotal() : null)
+                        .canActivate(true)
+                        .tooltip("Cita pagada - Puede activarse");
+            }
+        } else {
+            // Validación falló
+            PaymentValidationError error = validationResult.getError();
+            
+            if (error == PaymentValidationError.PAYMENT_PENDING) {
+                builder
+                        .invoiceId(validationResult.getInvoice() != null ?
+                                validationResult.getInvoice().getId() : null)
+                        .invoiceNumber(validationResult.getInvoice() != null ?
+                                validationResult.getInvoice().getInvoiceNumber() : null)
+                        .amount(validationResult.getInvoice() != null ?
+                                validationResult.getInvoice().getTotal() : null)
+                        .status("PENDING")
+                        .statusLabel("PENDIENTE")
+                        .statusColor("orange")
+                        .canActivate(false)
+                        .tooltip("El paciente debe pagar en caja primero");
+
+            } else if (error == PaymentValidationError.INVOICE_CANCELLED) {
+                builder
+                        .status("CANCELLED")
+                        .statusLabel("CANCELADA")
+                        .statusColor("red")
+                        .canActivate(false)
+                        .tooltip("Factura cancelada - Contacte administración");
+                
+            } else {
+                // Otros errores (SERVICE_TIMEOUT, SERVICE_ERROR, INVOICE_NOT_FOUND, etc.)
+                builder
+                        .status("ERROR")
+                        .statusLabel("ERROR")
+                        .statusColor("red")
+                        .canActivate(false)
+                        .tooltip("Error al validar pago - Contacte administración");
+            }
+        }
+        
+        return builder.build();
+    }
+    
+    /**
+     * Construye la información clínica de una cita.
+     * TODO: Implementar lógica real cuando se integren triaje, laboratorio y farmacia.
+     */
+    private AppointmentListItemResponse.ClinicalInfo buildClinicalInfo(Appointment appointment) {
+        // Por ahora retornamos información básica
+        // En el futuro, aquí se consultarían los servicios de triaje, lab, farmacia
+        return AppointmentListItemResponse.ClinicalInfo.builder()
+                .hasVitalSigns(false)  // TODO: Consultar si tiene signos vitales
+                .hasTriage(false)      // TODO: Consultar si tiene triaje completo
+                .manchesterLevel(null) // TODO: Obtener nivel Manchester
+                .hasLabOrders(false)   // TODO: Consultar órdenes de laboratorio
+                .hasPrescriptions(false) // TODO: Consultar recetas
+                .hasConsultation(false)  // TODO: Consultar si tiene consulta
+                .build();
+    }
+    
+    /**
+     * Mapea el estado de la cita a su etiqueta en español.
+     */
+    private String getStatusLabel(AppointmentStatus status) {
+        switch (status) {
+            case PENDING_PAYMENT:
+                return "Pendiente de Pago";
+            case SCHEDULED:
+                return "Agendada";
+            case VITAL_SIGNS:
+                return "Signos Vitales";
+            case CONSULTATION:
+                return "En Consulta";
+            case PENDING_LAB_PAYMENT:
+                return "Pendiente Pago Lab";
+            case LABORATORY:
+                return "Laboratorio";
+            case PENDING_PHARMACY_PAYMENT:
+                return "Pendiente Pago Farmacia";
+            case PHARMACY:
+                return "Farmacia";
+            case COMPLETED:
+                return "Completada";
+            case CANCELLED:
+                return "Cancelada";
+            case MISSED:
+                return "Perdida";
+            default:
+                return status.name();
+        }
+    }
+    
+    /**
+     * Mapea el estado de la cita a su color para UI.
+     */
+    private String getStatusColor(AppointmentStatus status) {
+        switch (status) {
+            case PENDING_PAYMENT:
+            case PENDING_LAB_PAYMENT:
+            case PENDING_PHARMACY_PAYMENT:
+                return "orange";
+            case SCHEDULED:
+                return "blue";
+            case VITAL_SIGNS:
+            case CONSULTATION:
+            case LABORATORY:
+            case PHARMACY:
+                return "green";
+            case COMPLETED:
+                return "gray";
+            case CANCELLED:
+            case MISSED:
+                return "red";
+            default:
+                return "gray";
+        }
+    }
+    
+    /**
+     * Determina si una cita puede ser editada.
+     */
+    private boolean canEditAppointment(Appointment appointment) {
+        return appointment.getStatus() == AppointmentStatus.PENDING_PAYMENT ||
+               appointment.getStatus() == AppointmentStatus.SCHEDULED;
+    }
+    
+    /**
+     * Determina si una cita puede ser cancelada.
+     */
+    private boolean canCancelAppointment(Appointment appointment) {
+        return appointment.getStatus() != AppointmentStatus.COMPLETED &&
+               appointment.getStatus() != AppointmentStatus.CANCELLED &&
+               appointment.getStatus() != AppointmentStatus.MISSED;
+    }
+    
+    /**
+     * Determina si una cita puede ser activada.
+     */
+    private boolean canActivateAppointment(Appointment appointment, PaymentValidationResult validationResult) {
+        return appointment.getStatus() == AppointmentStatus.SCHEDULED &&
+               validationResult.isAllowed();
     }
 }

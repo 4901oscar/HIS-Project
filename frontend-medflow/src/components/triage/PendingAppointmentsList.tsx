@@ -7,8 +7,6 @@ import type { AppointmentResponse } from '../../services/clinicalService';
 
 interface PendingAppointmentsListProps {
   appointments: AppointmentResponse[];
-  selectedAppointmentId: string | null;
-  onSelectAppointment: (appointment: AppointmentResponse) => void;
   onCallPatient: (appointment: AppointmentResponse) => void;
   loading: boolean;
 }
@@ -17,8 +15,6 @@ interface PendingAppointmentsListProps {
 
 const PendingAppointmentsList: FC<PendingAppointmentsListProps> = ({
   appointments,
-  selectedAppointmentId,
-  onSelectAppointment,
   onCallPatient,
   loading,
 }) => {
@@ -67,8 +63,6 @@ const PendingAppointmentsList: FC<PendingAppointmentsListProps> = ({
             <AppointmentRow
               key={appointment.id}
               appointment={appointment}
-              isSelected={appointment.id === selectedAppointmentId}
-              onSelect={onSelectAppointment}
               onCallPatient={onCallPatient}
             />
           ))}

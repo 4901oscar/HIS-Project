@@ -36,11 +36,14 @@ export const cancelAppointment = async (id: string): Promise<void> => {
 };
 
 /**
- * Get list of pending triage appointments (ACTIVE appointments without triage)
+ * Get list of pending triage appointments (VITAL_SIGNS appointments without triage)
  * @returns Array of pending triage appointments
+ * @deprecated Use listAppointments({ queue: 'triage' }) from appointmentService instead
  */
 export const getPendingTriageAppointments = async (): Promise<AppointmentResponse[]> => {
-  const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments/pending-triage');
+  const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments', {
+    params: { queue: 'triage' }
+  });
   return response.data;
 };
 
@@ -58,6 +61,7 @@ export const getAppointmentTriage = async (appointmentId: string): Promise<Triag
 // ─── Vital Signs ─────────────────────────────────────────────────────────────
 
 export interface VitalSignsRequest {
+  appointmentId: string;
   patientId: string;
   systolicPressure: number;
   diastolicPressure: number;

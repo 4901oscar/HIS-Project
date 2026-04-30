@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FC, FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { SpeakerWaveIcon } from '@heroicons/react/24/outline';
 import { getPatientById } from '../../services/patientService';
 import type { PatientResponse } from '../../services/patientService';
 import { recordVitalSigns } from '../../services/clinicalService';
@@ -75,7 +75,7 @@ const TriageVitalSignsCapture: FC = () => {
 
   const handleSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    if (!patient) return;
+    if (!patient || !appointmentId) return;
 
     setSaving(true);
     setSaveError(null);
@@ -83,6 +83,7 @@ const TriageVitalSignsCapture: FC = () => {
 
     try {
       const res = await recordVitalSigns({
+        appointmentId,
         patientId: patient.id,
         systolicPressure: Number(form.systolicPressure),
         diastolicPressure: Number(form.diastolicPressure),
@@ -105,11 +106,23 @@ const TriageVitalSignsCapture: FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [patient, form, navigate]);
+  }, [patient, appointmentId, form, navigate]);
 
   const handleCancel = useCallback(() => {
+    // Simply navigate back - appointment stays in VITAL_SIGNS for next staff member
     navigate('/vitals/triage');
   }, [navigate]);
+
+  const handleCallPatient = useCallback(() => {
+    if (!patient) return;
+    const utterance = new SpeechSynthesisUtterance(
+      `${patient.fullName}, por favor pasar a sala de triaje`
+    );
+    utterance.lang = 'es-GT';
+    utterance.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, [patient]);
 
   const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm';
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
@@ -117,8 +130,9 @@ const TriageVitalSignsCapture: FC = () => {
   if (loading) {
     return (
       <MainLayout>
-        <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-medin-cyan border-t-transparent" />
+          <p className="text-gray-600">Cargando...</p>
         </div>
       </MainLayout>
     );
@@ -157,11 +171,13 @@ const TriageVitalSignsCapture: FC = () => {
             <p className="mt-1 text-sm text-gray-600">Triaje - {patient.fullName}</p>
           </div>
           <button
-            onClick={handleCancel}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+            onClick={handleCallPatient}
+            className="flex items-center gap-2 px-4 py-2 text-medin-cyan bg-medin-cyan/10 rounded-lg hover:bg-medin-cyan/20 transition-colors font-medium"
+            title="Llamar a sala de triaje"
+            aria-label="Llamar a paciente"
           >
-            <ArrowLeftIcon className="h-5 w-5" />
-            Volver
+            <SpeakerWaveIcon className="h-5 w-5" />
+            Llamar Paciente
           </button>
         </div>
 

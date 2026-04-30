@@ -36,7 +36,7 @@ const LoginPage: FC = () => {
       const roleRoutes: Record<string, string> = {
         'ADMIN': '/administrator',
         'ADMISSION': '/admission',
-        'VITAL_SIGNS': '/vitals',
+        'VITAL_SIGNS': '/vitals/triage',
         'DOCTOR': '/doctor',
         'LABORATORY': '/lab',
         'PHARMACY': '/pharmacy',

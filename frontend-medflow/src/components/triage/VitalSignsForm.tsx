@@ -5,6 +5,7 @@ import type { VitalSignsRequest } from '../../services/clinicalService';
 // ─── Type Definitions ─────────────────────────────────────────────────────────
 
 interface VitalSignsFormProps {
+  appointmentId: string;
   patientId: string;
   onSubmit: (data: VitalSignsRequest) => Promise<void>;
   onCancel: () => void;
@@ -26,6 +27,7 @@ interface VitalSignsFormData {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const VitalSignsForm: FC<VitalSignsFormProps> = ({
+  appointmentId,
   patientId,
   onSubmit,
   onCancel,
@@ -131,6 +133,7 @@ const VitalSignsForm: FC<VitalSignsFormProps> = ({
 
     // Convert string inputs to numbers
     const vitalSignsData: VitalSignsRequest = {
+      appointmentId,
       patientId,
       systolicPressure: Number(form.systolicPressure),
       diastolicPressure: Number(form.diastolicPressure),

@@ -286,6 +286,33 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
     
+    /**
+     * Maneja excepciones de cita bloqueada por acceso concurrente.
+     * Retorna 409 Conflict con información del usuario que tiene el bloqueo.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-5.1-5.4: Transición de bloqueo ACTIVE → VITAL_SIGNS</li>
+     *   <li>REQ-14.1-14.4: Manejo de errores de concurrencia</li>
+     * </ul>
+     */
+    @ExceptionHandler(AppointmentLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAppointmentLocked(
+            AppointmentLockedException ex) {
+        
+        log.warn("Appointment locked: {}", ex.getMessage());
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(java.time.LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflict")
+                .errorCode("APPOINTMENT_LOCKED")
+                .message(ex.getMessage())
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+    
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         log.error("Error interno del servidor", ex);

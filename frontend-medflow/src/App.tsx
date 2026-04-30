@@ -22,7 +22,6 @@ import ExamenesPage from './pages/administrator/ExamenesPage';
 import ServiciosPage from './pages/administrator/ServiciosPage';
 import TriageCatalogPage from './pages/administrator/TriageCatalogPage';
 import ActivateAppointments from './pages/admission/ActivateAppointments';
-import VitalSignsCapture from './pages/vitals/VitalSignsCapture';
 import TriagePendingPage from './pages/vitals/TriagePendingPage';
 import TriageVitalSignsCapture from './pages/vitals/TriageVitalSignsCapture';
 import DoctorConsultation from './pages/doctor/DoctorConsultation';
@@ -106,16 +105,6 @@ function App() {
             element={
               <ProtectedRoute requiredRole="ADMISSION">
                 <ActivateAppointments />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Vital Signs - VITAL_SIGNS y ADMINISTRATOR */}
-          <Route
-            path="/vitals"
-            element={
-              <ProtectedRoute requiredRole="VITAL_SIGNS">
-                <VitalSignsCapture />
               </ProtectedRoute>
             }
           />

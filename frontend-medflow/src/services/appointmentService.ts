@@ -18,7 +18,8 @@ export interface AppointmentResponse {
   status: string;
   notes?: string;
   createdAt: string;
-  qrCodeBase64?: string;  // NEW: QR code for appointment confirmation
+  qrCodeBase64?: string;
+  invoiceId?: string;
 }
 
 export interface AvailableSlotsResponse {
@@ -74,10 +75,144 @@ export const releaseHold = async (sessionId: string): Promise<void> => {
   await api.delete('/api/clinical/appointments/hold', { params: { sessionId } });
 };
 
+/**
+ * Lista citas usando el nuevo endpoint unificado con filtros flexibles.
+ * 
+ * @param params Parámetros de filtrado opcionales
+ * @returns Lista de citas con estructura unificada
+ * 
+ * @example
+ * // Todas las citas
+ * listAppointments()
+ * 
+ * // Cola de admisión
+ * listAppointments({ queue: 'admission' })
+ * 
+ * // Cola de triaje
+ * listAppointments({ queue: 'triage' })
+ * 
+ * // Citas del día
+ * listAppointments({ date: '2026-04-27' })
+ * 
+ * // Citas por estado
+ * listAppointments({ status: ['SCHEDULED', 'PENDING_PAYMENT'] })
+ */
+export const listAppointments = async (params?: ListAppointmentsParams): Promise<AppointmentListItem[]> => {
+  const queryParams: Record<string, any> = {};
+  
+  if (params?.status && params.status.length > 0) {
+    queryParams.status = params.status.join(',');
+  }
+  
+  if (params?.date) {
+    queryParams.date = params.date;
+  }
+  
+  if (params?.queue) {
+    queryParams.queue = params.queue;
+  }
+  
+  if (params?.missingInvoice !== undefined) {
+    queryParams.missingInvoice = params.missingInvoice;
+  }
+  
+  if (params?.includeQR !== undefined) {
+    queryParams.includeQR = params.includeQR;
+  }
+  
+  if (params?.includeClinical !== undefined) {
+    queryParams.includeClinical = params.includeClinical;
+  }
+  
+  const response = await api.get<AppointmentListItem[]>('/api/clinical/appointments', {
+    params: queryParams,
+  });
+  
+  return response.data;
+};
+
 export const listAllAppointments = async (): Promise<AppointmentResponse[]> => {
   const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments');
   return response.data;
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NUEVO DTO UNIFICADO - AppointmentListItem
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface PatientInfo {
+  id: string;
+  fullName: string;
+  dpi?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface DoctorInfo {
+  id: string;
+  name: string;
+  specialty?: string;
+}
+
+export interface PaymentInfo {
+  invoiceId?: string;
+  invoiceNumber?: string;
+  status: 'PAID' | 'PENDING' | 'CANCELLED' | 'NO_INVOICE' | 'ERROR';
+  statusLabel: string;
+  statusColor: string;
+  amount?: number;
+  canActivate: boolean;
+  tooltip: string;
+}
+
+export interface ClinicalInfo {
+  hasVitalSigns: boolean;
+  hasTriage: boolean;
+  manchesterLevel?: string;
+  hasLabOrders: boolean;
+  hasPrescriptions: boolean;
+  hasConsultation: boolean;
+}
+
+export interface QRInfo {
+  hasQR: boolean;
+  qrCodeBase64?: string;
+}
+
+export interface MetadataInfo {
+  isToday: boolean;
+  isPast: boolean;
+  isUpcoming: boolean;
+  canEdit: boolean;
+  canCancel: boolean;
+  canActivate: boolean;
+}
+
+export interface AppointmentListItem {
+  id: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  status: string;
+  statusLabel: string;
+  statusColor: string;
+  notes?: string;
+  createdAt: string;
+  patient: PatientInfo;
+  doctor: DoctorInfo;
+  payment: PaymentInfo;
+  clinical?: ClinicalInfo;
+  qr?: QRInfo;
+  metadata: MetadataInfo;
+}
+
+export interface ListAppointmentsParams {
+  status?: string[];
+  date?: string;
+  queue?: 'payment' | 'lab' | 'pharmacy' | 'triage' | 'admission';
+  missingInvoice?: boolean;
+  includeQR?: boolean;
+  includeClinical?: boolean;
+}
 
 export const listMyAppointments = async (): Promise<AppointmentResponse[]> => {
   const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments/my');

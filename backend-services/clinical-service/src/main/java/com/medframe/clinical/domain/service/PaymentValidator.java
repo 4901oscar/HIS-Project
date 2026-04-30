@@ -124,12 +124,13 @@ public class PaymentValidator {
             }
             
             if ("PENDING".equals(status)) {
-                log.error("Payment validation FAILED for appointment {}, invoice {} is PENDING", 
+                log.error("Payment validation FAILED for appointment {}, invoice {} is PENDING",
                           appointmentId, invoiceId);
                 recordFailure("PAYMENT_PENDING");
-                return PaymentValidationResult.failed(
+                return PaymentValidationResult.failedWithInvoice(
                     PaymentValidationError.PAYMENT_PENDING,
-                    "La cita no puede activarse. El paciente debe pagar en caja primero."
+                    "La cita no puede activarse. El paciente debe pagar en caja primero.",
+                    invoice
                 );
             }
             

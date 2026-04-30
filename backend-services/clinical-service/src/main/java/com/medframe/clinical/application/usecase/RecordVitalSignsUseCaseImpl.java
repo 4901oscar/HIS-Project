@@ -26,16 +26,23 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
     
     private final VitalSignsRecorder vitalSignsRecorder;
     private final PermissionValidator permissionValidator;
+    private final com.medframe.clinical.domain.port.out.AppointmentRepository appointmentRepository;
+    private final com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository;
     
     public RecordVitalSignsUseCaseImpl(VitalSignsRecorder vitalSignsRecorder,
-                                       PermissionValidator permissionValidator) {
+                                       PermissionValidator permissionValidator,
+                                       com.medframe.clinical.domain.port.out.AppointmentRepository appointmentRepository,
+                                       com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository) {
         this.vitalSignsRecorder = vitalSignsRecorder;
         this.permissionValidator = permissionValidator;
+        this.appointmentRepository = appointmentRepository;
+        this.stateTransitionRepository = stateTransitionRepository;
     }
     
     /**
-     * Records vital signs for a patient.
+     * Records vital signs for a patient and transitions appointment to CONSULTATION.
      * 
+     * @param appointmentId The appointment's unique identifier
      * @param patientId The patient's unique identifier
      * @param systolic Systolic blood pressure (50-250 mmHg)
      * @param diastolic Diastolic blood pressure (30-150 mmHg)
@@ -49,25 +56,41 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
      * @return The recorded VitalSigns with calculated BMI
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have VITAL_SIGNS or DOCTOR role
      * @throws com.medframe.clinical.domain.exception.InvalidVitalSignsException if values are out of physiological ranges
+     * @throws com.medframe.clinical.domain.exception.AppointmentNotFoundException if appointment doesn't exist
+     * @throws IllegalStateException if appointment is not in VITAL_SIGNS state
      */
     @Override
-    public VitalSigns recordVitalSigns(String patientId, Integer systolic, Integer diastolic,
+    public VitalSigns recordVitalSigns(String appointmentId, String patientId, Integer systolic, Integer diastolic,
                                        Integer heartRate, Integer respiratoryRate,
                                        Double temperature, Integer oxygenSaturation,
                                        Double weight, Double height, String recordedBy) {
         // 1. Validate permissions - VITAL_SIGNS or DOCTOR role can record vital signs
-        permissionValidator.requireRole("VITAL_SIGNS", "DOCTOR");
+        permissionValidator.requireRole("TRIAGE", "ADMIN");
         
-        // 2. Delegate to domain service for business logic
-        // The domain service will:
-        //    - Create VitalSigns entity
-        //    - Calculate BMI
-        //    - Validate physiological ranges
-        //    - Persist via repository
-        return vitalSignsRecorder.recordVitalSigns(patientId, systolic, diastolic,
+        // 2. Record vital signs
+        VitalSigns vitalSigns = vitalSignsRecorder.recordVitalSigns(patientId, systolic, diastolic,
                                                     heartRate, respiratoryRate,
                                                     temperature, oxygenSaturation,
                                                     weight, height, recordedBy);
+        
+        // 3. Transition appointment to CONSULTATION
+        com.medframe.clinical.domain.model.Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new com.medframe.clinical.domain.exception.AppointmentNotFoundException(
+                        "Cita no encontrada: " + appointmentId));
+        
+        com.medframe.clinical.domain.model.Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        
+        // Transition state
+        appointment.completeVitalSigns();
+        
+        // Persist changes
+        appointmentRepository.update(appointment);
+        
+        // Log state transition
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
+                          "Signos vitales completados");
+        
+        return vitalSigns;
     }
     
     /**
@@ -83,5 +106,37 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
         // No permission validation needed for reading vital signs
         // (access control is handled at the controller/API level)
         return vitalSignsRecorder.getLatestVitalSigns(patientId);
+    }
+    
+    /**
+     * Registra una transición de estado en la tabla de auditoría.
+     * 
+     * @param appointmentId ID de la cita
+     * @param fromState Estado anterior
+     * @param toState Estado nuevo
+     * @param notes Notas opcionales sobre la transición
+     */
+    private void logStateTransition(String appointmentId, 
+                                    com.medframe.clinical.domain.model.Appointment.AppointmentStatus fromState,
+                                    com.medframe.clinical.domain.model.Appointment.AppointmentStatus toState,
+                                    String notes) {
+        try {
+            String userId = permissionValidator.getUserId();
+            
+            com.medframe.clinical.domain.model.AppointmentStateTransition transition = 
+                com.medframe.clinical.domain.model.AppointmentStateTransition.builder()
+                    .appointmentId(appointmentId)
+                    .fromState(fromState)
+                    .toState(toState)
+                    .transitionedBy(userId)
+                    .transitionedAt(java.time.LocalDateTime.now())
+                    .notes(notes)
+                    .build();
+            
+            stateTransitionRepository.save(transition);
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            System.err.println("Error logging state transition: " + e.getMessage());
+        }
     }
 }

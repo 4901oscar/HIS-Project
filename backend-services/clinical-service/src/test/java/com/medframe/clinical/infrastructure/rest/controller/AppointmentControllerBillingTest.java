@@ -81,7 +81,7 @@ class AppointmentControllerBillingTest {
         createRequest = new CreateAppointmentRequest(
             "patient-456", "doctor-789",
             LocalDate.now().plusDays(1), LocalTime.of(10, 0),
-            null, null
+            null, null, null
         );
 
         lenient().when(patientServiceClient.getPatient(anyString())).thenReturn(mockPatient);
@@ -171,7 +171,7 @@ class AppointmentControllerBillingTest {
         when(manageAppointmentUseCase.listAppointmentsWithoutInvoice())
             .thenReturn(List.of(noInvoiceAppt));
 
-        ResponseEntity<?> response = controller.listAll(true);
+        ResponseEntity<?> response = controller.listAppointments(null, null, null, true, false, false);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(manageAppointmentUseCase).listAppointmentsWithoutInvoice();

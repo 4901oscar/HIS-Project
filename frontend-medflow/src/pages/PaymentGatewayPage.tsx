@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { useAuth } from '../hooks/useAuth';
-import { createInvoice, processPayment, type Invoice } from '../services/billingService';
+import { createInvoice, getInvoiceById, processPayment, type Invoice } from '../services/billingService';
 import { createAppointment, releaseHold } from '../services/appointmentService';
 import type { AppointmentResponse } from '../services/appointmentService';
 
@@ -132,7 +132,7 @@ const PaymentGatewayPage: FC = () => {
     setIsLoading(true);
     setPaymentError(null);
     try {
-      // 1. Create the appointment (only after payment is confirmed)
+      // 1. Create the appointment — el backend crea y vincula la factura automáticamente
       const appointmentResponse = await createAppointment({
         appointmentDate: state.date,
         appointmentTime: state.time,
@@ -140,23 +140,29 @@ const PaymentGatewayPage: FC = () => {
         sessionId: state.sessionId,
       });
       setAppointment(appointmentResponse);
-      
-      // 2. Create invoice
-      const inv = await createInvoice({
-        patientId: user!.id,
-        charges: [
-          { type: 'CONSULTATION', description: feeDescription, quantity: 1, unitPrice: feePrice },
-        ],
-      });
-      
-      // 3. Process payment (simulated card → CARD method)
+
+      // 2. Obtener la factura vinculada al appointment (creada por el backend)
+      //    Si no viene invoiceId (billing-service falló), crear una nueva como fallback
+      let inv: Invoice;
+      if (appointmentResponse.invoiceId) {
+        inv = await getInvoiceById(appointmentResponse.invoiceId);
+      } else {
+        inv = await createInvoice({
+          patientId: user!.id,
+          charges: [
+            { type: 'CONSULTATION', description: feeDescription, quantity: 1, unitPrice: feePrice },
+          ],
+        });
+      }
+
+      // 3. Procesar pago sobre la factura vinculada al appointment
       await processPayment(inv.id, {
         amount: feePrice,
         method: 'CARD',
         nit: 'CF',
         customerName: user!.fullName,
       });
-      // 4. Release the slot hold (createAppointment already does this, but ensure cleanup)
+
       releaseHold(state.sessionId).catch(() => {});
       setInvoice(inv);
     } catch {
