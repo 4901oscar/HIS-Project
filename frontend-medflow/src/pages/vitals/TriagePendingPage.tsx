@@ -122,6 +122,7 @@ const TriagePendingPage: FC = () => {
                       <th className="pb-2 pr-4">Paciente</th>
                       <th className="pb-2 pr-4">DPI</th>
                       <th className="pb-2 pr-4">Estado</th>
+                      <th className="pb-2 pr-4">Progreso</th>
                       <th className="pb-2 pr-4">Motivo</th>
                       <th className="pb-2 pr-6">Acción</th>
                     </tr>
@@ -153,6 +154,23 @@ const TriagePendingPage: FC = () => {
                             }`}>
                               {appt.statusLabel}
                             </span>
+                          </td>
+                          <td className="py-3 pr-4">
+                            {appt.clinical?.hasVitalSigns ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Signos vitales
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Pendiente
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 pr-4 max-w-xs truncate text-gray-500 text-xs">
                             {appt.notes ?? '—'}

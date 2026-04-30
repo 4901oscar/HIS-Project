@@ -93,6 +93,17 @@ export const recordVitalSigns = async (data: VitalSignsRequest): Promise<VitalSi
   return response.data;
 };
 
+/**
+ * Get existing vital signs for a specific appointment
+ * @param appointmentId - The appointment ID
+ * @returns Vital signs response
+ * @throws Error if no vital signs found (404)
+ */
+export const getVitalSignsByAppointment = async (appointmentId: string): Promise<VitalSignsResponse> => {
+  const response = await api.get<VitalSignsResponse>(`/api/clinical/appointments/${appointmentId}/vital-signs`);
+  return response.data;
+};
+
 // ─── Triage ───────────────────────────────────────────────────────────────────
 
 export interface TriageResponse {

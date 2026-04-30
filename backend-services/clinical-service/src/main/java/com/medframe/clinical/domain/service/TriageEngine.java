@@ -50,10 +50,11 @@ public class TriageEngine {
                 .orElseThrow(() -> new AppointmentNotFoundException(
                         "Appointment not found"));
 
-        // 2. Validate appointment status is ACTIVE
-        if (appointment.getStatus() != Appointment.AppointmentStatus.ACTIVE) {
+        // 2. Validate appointment status is VITAL_SIGNS (Step 1 must be completed)
+        if (appointment.getStatus() != Appointment.AppointmentStatus.VITAL_SIGNS) {
             throw new IllegalStateException(
-                    "Appointment must be in ACTIVE status for triage");
+                    "Appointment must be in VITAL_SIGNS status for triage. " +
+                    "Current status: " + appointment.getStatus());
         }
 
         // 3. Verify no duplicate triage exists
@@ -82,7 +83,7 @@ public class TriageEngine {
         // 6. Calculate priority level using Manchester algorithm
         PriorityLevel priorityLevel = calculatePriorityLevel(discriminators);
 
-        // 7. Build and return Triage domain object with appointmentId
+        // 7. Build Triage domain object with appointmentId
         Triage triage = new Triage();
         triage.setAppointmentId(appointmentId);
         triage.setPatientId(patientId);
@@ -93,6 +94,11 @@ public class TriageEngine {
         triage.setMaxWaitTimeMinutes(priorityLevel.getMaxWaitMinutes());
         triage.setPerformedAt(LocalDateTime.now());
         triage.setPerformedBy(doctorId);
+
+        // 8. Transition appointment from VITAL_SIGNS to CONSULTATION
+        // This completes the two-step triage workflow
+        appointment.completeVitalSigns();
+        appointmentRepository.update(appointment);
 
         return triage;
     }

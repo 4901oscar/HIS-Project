@@ -1,22 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC, FormEvent } from 'react';
 import { MainLayout } from '../../components/Layout';
 import { MagnifyingGlassIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { listDoctorAppointments } from '../../services/appointmentService';
-import type { AppointmentResponse } from '../../services/appointmentService';
+import { listAppointments } from '../../services/appointmentService';
+import type { AppointmentListItem } from '../../services/appointmentService';
 
-const STATUS_LABEL: Record<string, string> = {
-  SCHEDULED: 'Agendada',
-  ACTIVE: 'Activa',
-  COMPLETED: 'Completada',
-  CANCELLED: 'Cancelada',
-};
-const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  COMPLETED: 'bg-gray-100 text-gray-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-};
 import { searchPatients } from '../../services/patientService';
 import type { PatientResponse } from '../../services/patientService';
 import {
@@ -29,19 +17,49 @@ import axios from 'axios';
 
 type Step = 'patient' | 'consultation' | 'orders';
 
+const AUTO_REFRESH_INTERVAL_MS = 30_000;
+const REFRESH_DEBOUNCE_MS = 500;
+
 const DoctorConsultation: FC = () => {
   const [step, setStep] = useState<Step>('patient');
 
   // ── Mis citas asignadas ───────────────────────────────────────────────────
-  const [myAppointments, setMyAppointments] = useState<AppointmentResponse[]>([]);
+  const [myAppointments, setMyAppointments] = useState<AppointmentListItem[]>([]);
   const [apptLoading, setApptLoading] = useState(true);
+  const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    listDoctorAppointments()
-      .then(setMyAppointments)
-      .catch(() => {})
-      .finally(() => setApptLoading(false));
+    return () => {
+      if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    };
   }, []);
+
+  const fetchAppointments = useCallback(async (showLoading = true) => {
+    if (showLoading) setApptLoading(true);
+    try {
+      // Fetch appointments with status CONSULTATION and include clinical data
+      const data = await listAppointments({ 
+        status: ['CONSULTATION'],
+        includeClinical: true 
+      });
+      setMyAppointments(data);
+    } catch (err) {
+      console.error('Error loading appointments:', err);
+    } finally {
+      if (showLoading) setApptLoading(false);
+    }
+  }, []);
+
+  const handleManualRefresh = useCallback(() => {
+    if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    refreshDebounceRef.current = setTimeout(() => fetchAppointments(true), REFRESH_DEBOUNCE_MS);
+  }, [fetchAppointments]);
+
+  useEffect(() => {
+    fetchAppointments(true);
+    const interval = setInterval(() => fetchAppointments(false), AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [fetchAppointments]);
 
   // ── Búsqueda de paciente ──────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,40 +218,132 @@ const DoctorConsultation: FC = () => {
 
         {/* ── Mis citas ── */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Mis Citas Asignadas</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Mis Citas Asignadas ({myAppointments.length})</h3>
+            <button
+              onClick={handleManualRefresh}
+              disabled={apptLoading}
+              className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50"
+            >
+              {apptLoading ? (
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent" />
+                  Actualizando...
+                </span>
+              ) : 'Actualizar'}
+            </button>
+          </div>
+          
           {apptLoading ? (
-            <div className="text-center py-4">
-              <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-medin-cyan border-t-transparent"></div>
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent"></div>
             </div>
           ) : myAppointments.length === 0 ? (
-            <p className="text-gray-500 text-sm">No tienes citas asignadas.</p>
+            <div className="text-center py-16 text-gray-500">
+              <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-lg font-medium">No hay pacientes en espera</p>
+              <p className="text-sm text-gray-400 mt-1">Todos los pacientes han sido atendidos</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
-                    <th className="pb-2 pr-4">Fecha</th>
+                    <th className="pb-2 pr-4 pl-6">Fecha</th>
                     <th className="pb-2 pr-4">Hora</th>
+                    <th className="pb-2 pr-4">Paciente</th>
+                    <th className="pb-2 pr-4">DPI</th>
                     <th className="pb-2 pr-4">Estado</th>
+                    <th className="pb-2 pr-4">Prioridad</th>
+                    <th className="pb-2 pr-4">Triaje</th>
                     <th className="pb-2 pr-4">Motivo</th>
-                    <th className="pb-2">ID Paciente</th>
+                    <th className="pb-2 pr-6">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {myAppointments
                     .slice()
-                    .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
+                    .sort((a, b) => {
+                      // Sort by Manchester priority first (RED > ORANGE > YELLOW > GREEN > BLUE)
+                      const priorityOrder = { RED: 0, ORANGE: 1, YELLOW: 2, GREEN: 3, BLUE: 4 };
+                      const aPriority = a.clinical?.manchesterLevel ? priorityOrder[a.clinical.manchesterLevel as keyof typeof priorityOrder] ?? 999 : 999;
+                      const bPriority = b.clinical?.manchesterLevel ? priorityOrder[b.clinical.manchesterLevel as keyof typeof priorityOrder] ?? 999 : 999;
+                      if (aPriority !== bPriority) return aPriority - bPriority;
+                      
+                      // Then by date and time
+                      const d = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
+                      if (d !== 0) return d;
+                      return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
+                    })
                     .map((appt) => (
                       <tr key={appt.id} className="hover:bg-gray-50">
-                        <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentDate}</td>
-                        <td className="py-2 pr-4 whitespace-nowrap">{appt.appointmentTime.substring(0, 5)}</td>
-                        <td className="py-2 pr-4">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                            {STATUS_LABEL[appt.status] ?? appt.status}
+                        <td className="py-3 pr-4 pl-6 whitespace-nowrap text-xs">
+                          {new Date(appt.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </td>
+                        <td className="py-3 pr-4 whitespace-nowrap font-medium">
+                          {appt.appointmentTime.toString().substring(0, 5)}
+                        </td>
+                        <td className="py-3 pr-4">{appt.patient.fullName}</td>
+                        <td className="py-3 pr-4 font-mono text-xs">{appt.patient.dpi ?? '—'}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            appt.statusColor === 'green' ? 'bg-green-100 text-green-800' :
+                            appt.statusColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                            appt.statusColor === 'blue' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {appt.statusLabel}
                           </span>
                         </td>
-                        <td className="py-2 pr-4 max-w-xs truncate">{appt.notes ?? '—'}</td>
-                        <td className="py-2 font-mono text-xs">{appt.patientId}</td>
+                        <td className="py-3 pr-4">
+                          {appt.clinical?.manchesterLevel ? (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              appt.clinical.manchesterLevel === 'RED' ? 'bg-red-100 text-red-800' :
+                              appt.clinical.manchesterLevel === 'ORANGE' ? 'bg-orange-100 text-orange-800' :
+                              appt.clinical.manchesterLevel === 'YELLOW' ? 'bg-yellow-100 text-yellow-800' :
+                              appt.clinical.manchesterLevel === 'GREEN' ? 'bg-green-100 text-green-800' :
+                              appt.clinical.manchesterLevel === 'BLUE' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {appt.clinical.manchesterLevel}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4">
+                          {appt.clinical?.hasTriage ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Completo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 max-w-xs truncate text-gray-500 text-xs">
+                          {appt.notes ?? '—'}
+                        </td>
+                        <td className="py-3 pr-6 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => {
+                              // TODO: Implement consultation flow with this appointment
+                              console.log('Atender cita:', appt.id);
+                            }}
+                            className="px-4 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-sm"
+                          >
+                            Atender
+                          </button>
+                        </td>
                       </tr>
                     ))}
                 </tbody>

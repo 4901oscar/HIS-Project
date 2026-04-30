@@ -58,7 +58,7 @@ public class PerformTriageUseCaseImpl implements PerformTriageUseCase {
     public Triage performTriage(String appointmentId, String patientId, String doctorId,
                                 String motifId, List<String> discriminatorIds) {
         // 1. Validate permissions - only DOCTOR role can perform triage
-        permissionValidator.requireRole("DOCTOR");
+        permissionValidator.requireRole("VITAL_SIGNS");
         
         // 2. Delegate to domain service for business logic
         // TriageEngine handles appointment validation (exists, ACTIVE status, no duplicate)
