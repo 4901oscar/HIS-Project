@@ -15,6 +15,7 @@ import com.medframe.clinical.domain.port.in.ManageAppointmentUseCase;
 import com.medframe.clinical.domain.port.out.AppointmentRepository;
 import com.medframe.clinical.domain.port.out.DoctorRepository;
 import com.medframe.clinical.domain.port.out.PatientServiceClient;
+import com.medframe.clinical.domain.port.out.VitalSignsRepository;
 import com.medframe.clinical.domain.service.AppointmentManager;
 import com.medframe.clinical.domain.service.PaymentValidationError;
 import com.medframe.clinical.domain.service.PaymentValidationResult;
@@ -33,6 +34,7 @@ import com.medframe.clinical.infrastructure.rest.dto.response.AppointmentWithPay
 import com.medframe.clinical.infrastructure.rest.dto.response.AvailableSlotsResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.QRStatusResponse;
 import com.medframe.clinical.infrastructure.rest.dto.response.TriageResponse;
+import com.medframe.clinical.infrastructure.rest.dto.response.VitalSignsResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +71,7 @@ public class AppointmentController {
     private final ConsultationPriceConfig consultationPriceConfig;
     private final com.medframe.clinical.domain.service.PaymentValidator paymentValidator;
     private final AppointmentRepository appointmentRepository;
+    private final VitalSignsRepository vitalSignsRepository;
     
     @Value("${billing.service.enabled:true}")
     private boolean billingServiceEnabled;
@@ -1288,6 +1291,67 @@ public class AppointmentController {
         return ResponseEntity.ok(mapTriageToResponse(triage));
     }
     
+    /**
+     * GET /api/clinical/appointments/{id}/vital-signs
+     * Retrieves the latest vital signs for the patient associated with a specific appointment.
+     * This endpoint is used by the triage screen to load existing vital signs when resuming
+     * a triage session (Step 1 already completed).
+     * 
+     * <p>Returns 200 with VitalSignsResponse if vital signs exist for the patient,
+     * or 404 if no vital signs have been recorded yet.</p>
+     * 
+     * <p><strong>Requirements:</strong></p>
+     * <ul>
+     *   <li>REQ-2.5: Resume capability - Load existing vital signs</li>
+     *   <li>REQ-4.2: Display existing vital signs in read-only mode</li>
+     * </ul>
+     * 
+     * @param id Appointment ID
+     * @return VitalSignsResponse with the latest vital signs for the patient
+     * @throws RuntimeException if appointment not found (404)
+     * @throws RuntimeException if no vital signs found for patient (404)
+     */
+    @GetMapping("/{id}/vital-signs")
+    public ResponseEntity<VitalSignsResponse> getAppointmentVitalSigns(@PathVariable String id) {
+        log.info("Getting vital signs for appointment {}", id);
+        
+        // 1. Get the appointment to retrieve the patientId
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Appointment {} not found", id);
+                    return new RuntimeException("Cita no encontrada: " + id);
+                });
+        
+        // 2. Get the latest vital signs for the patient
+        com.medframe.clinical.domain.model.VitalSigns vitalSigns = vitalSignsRepository
+                .findLatestByPatientId(appointment.getPatientId())
+                .orElseThrow(() -> {
+                    log.info("No vital signs found for patient {} (appointment {})", 
+                             appointment.getPatientId(), id);
+                    return new RuntimeException("No se encontraron signos vitales para este paciente");
+                });
+        
+        log.info("Found vital signs {} for appointment {}", vitalSigns.getId(), id);
+        
+        // 3. Map to response DTO
+        VitalSignsResponse response = new VitalSignsResponse(
+                vitalSigns.getId(),
+                vitalSigns.getPatientId(),
+                vitalSigns.getSystolicPressure(),
+                vitalSigns.getDiastolicPressure(),
+                vitalSigns.getHeartRate(),
+                vitalSigns.getRespiratoryRate(),
+                vitalSigns.getTemperature(),
+                vitalSigns.getOxygenSaturation(),
+                vitalSigns.getWeight(),
+                vitalSigns.getHeight(),
+                vitalSigns.getBmi(),
+                vitalSigns.getRecordedAt()
+        );
+        
+        return ResponseEntity.ok(response);
+    }
+    
     private AppointmentResponse mapToResponse(Appointment appointment) {
         String patientName = null;
         String patientDpi = null;
@@ -1527,15 +1591,40 @@ public class AppointmentController {
     
     /**
      * Construye la información clínica de una cita.
-     * TODO: Implementar lógica real cuando se integren triaje, laboratorio y farmacia.
+     * Consulta los datos reales de triaje y determina si tiene signos vitales.
      */
     private AppointmentListItemResponse.ClinicalInfo buildClinicalInfo(Appointment appointment) {
-        // Por ahora retornamos información básica
-        // En el futuro, aquí se consultarían los servicios de triaje, lab, farmacia
+        // Determinar si tiene signos vitales basado en el estado de la cita
+        // Si la cita está en CONSULTATION o estados posteriores, significa que ya pasó por VITAL_SIGNS
+        boolean hasVitalSigns = appointment.getStatus() == AppointmentStatus.CONSULTATION
+                || appointment.getStatus() == AppointmentStatus.PENDING_LAB_PAYMENT
+                || appointment.getStatus() == AppointmentStatus.LABORATORY
+                || appointment.getStatus() == AppointmentStatus.RE_EVALUATION
+                || appointment.getStatus() == AppointmentStatus.PENDING_PHARMACY_PAYMENT
+                || appointment.getStatus() == AppointmentStatus.PHARMACY
+                || appointment.getStatus() == AppointmentStatus.COMPLETED;
+        
+        // Consultar si tiene triaje completo y obtener nivel Manchester
+        boolean hasTriage = false;
+        String manchesterLevel = null;
+        
+        try {
+            var triageOpt = getAppointmentTriageUseCase.getAppointmentTriage(appointment.getId());
+            if (triageOpt.isPresent()) {
+                hasTriage = true;
+                Triage triage = triageOpt.get();
+                manchesterLevel = triage.getPriorityLevel() != null 
+                        ? triage.getPriorityLevel().name() 
+                        : null;
+            }
+        } catch (Exception e) {
+            log.warn("Error al consultar triaje para cita {}: {}", appointment.getId(), e.getMessage());
+        }
+        
         return AppointmentListItemResponse.ClinicalInfo.builder()
-                .hasVitalSigns(false)  // TODO: Consultar si tiene signos vitales
-                .hasTriage(false)      // TODO: Consultar si tiene triaje completo
-                .manchesterLevel(null) // TODO: Obtener nivel Manchester
+                .hasVitalSigns(hasVitalSigns)
+                .hasTriage(hasTriage)
+                .manchesterLevel(manchesterLevel)
                 .hasLabOrders(false)   // TODO: Consultar órdenes de laboratorio
                 .hasPrescriptions(false) // TODO: Consultar recetas
                 .hasConsultation(false)  // TODO: Consultar si tiene consulta

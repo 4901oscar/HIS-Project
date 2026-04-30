@@ -40,7 +40,18 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
     }
     
     /**
-     * Records vital signs for a patient and transitions appointment to CONSULTATION.
+     * Records vital signs for a patient.
+     * 
+     * <p><strong>IMPORTANT:</strong> This method does NOT transition the appointment state.
+     * The appointment remains in VITAL_SIGNS state after saving vital signs (Step 1).
+     * State transition to CONSULTATION happens only when Manchester triage is completed (Step 2)
+     * via PerformTriageUseCase.</p>
+     * 
+     * <p><strong>Two-Step Workflow:</strong></p>
+     * <ul>
+     *   <li>Step 1: Save vital signs → Appointment stays in VITAL_SIGNS (this method)</li>
+     *   <li>Step 2: Save Manchester classification → Appointment transitions to CONSULTATION (PerformTriageUseCase)</li>
+     * </ul>
      * 
      * @param appointmentId The appointment's unique identifier
      * @param patientId The patient's unique identifier
@@ -65,30 +76,27 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
                                        Double temperature, Integer oxygenSaturation,
                                        Double weight, Double height, String recordedBy) {
         // 1. Validate permissions - VITAL_SIGNS or DOCTOR role can record vital signs
-        permissionValidator.requireRole("TRIAGE", "ADMIN");
+        permissionValidator.requireRole("VITAL_SIGNS", "ADMIN");
         
-        // 2. Record vital signs
+        // 2. Verify appointment exists and is in VITAL_SIGNS state
+        com.medframe.clinical.domain.model.Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new com.medframe.clinical.domain.exception.AppointmentNotFoundException(
+                        "Cita no encontrada: " + appointmentId));
+        
+        if (appointment.getStatus() != com.medframe.clinical.domain.model.Appointment.AppointmentStatus.VITAL_SIGNS) {
+            throw new IllegalStateException(
+                "Solo se pueden registrar signos vitales para citas en estado VITAL_SIGNS. " +
+                "Estado actual: " + appointment.getStatus());
+        }
+        
+        // 3. Record vital signs (no state transition - appointment stays in VITAL_SIGNS)
         VitalSigns vitalSigns = vitalSignsRecorder.recordVitalSigns(patientId, systolic, diastolic,
                                                     heartRate, respiratoryRate,
                                                     temperature, oxygenSaturation,
                                                     weight, height, recordedBy);
         
-        // 3. Transition appointment to CONSULTATION
-        com.medframe.clinical.domain.model.Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new com.medframe.clinical.domain.exception.AppointmentNotFoundException(
-                        "Cita no encontrada: " + appointmentId));
-        
-        com.medframe.clinical.domain.model.Appointment.AppointmentStatus oldStatus = appointment.getStatus();
-        
-        // Transition state
-        appointment.completeVitalSigns();
-        
-        // Persist changes
-        appointmentRepository.update(appointment);
-        
-        // Log state transition
-        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
-                          "Signos vitales completados");
+        // Note: Appointment remains in VITAL_SIGNS state
+        // State transition to CONSULTATION will happen when Manchester triage is completed
         
         return vitalSigns;
     }
