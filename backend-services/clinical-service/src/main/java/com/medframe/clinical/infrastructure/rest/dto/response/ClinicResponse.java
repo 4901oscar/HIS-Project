@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * Response DTO for doctor information.
+ * Response DTO for clinic information.
  * 
  * @author MedFlow Team
  * @version 1.0.0
@@ -15,13 +15,15 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DoctorResponse {
+public class ClinicResponse {
     
     private String id;
-    private String name;
-    private String shiftStart;  // Format: HH:mm
-    private String shiftEnd;    // Format: HH:mm
-    private String status;      // ACTIVE or INACTIVE
-    private String clinicId;
+    private String codigo;
+    private String nombre;
+    private String descripcion;
+    private String estado;  // ACTIVE, INACTIVE, or DELETED
     private LocalDateTime createdAt;
+    private String createdBy;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
 }

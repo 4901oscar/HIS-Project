@@ -1,5 +1,6 @@
 package com.medframe.clinical.domain.service;
 
+import com.medframe.clinical.domain.exception.ClinicShiftConflictException;
 import com.medframe.clinical.domain.exception.DoctorNotFoundException;
 import com.medframe.clinical.domain.model.Doctor;
 import com.medframe.clinical.domain.model.DoctorAvailability;
@@ -93,48 +94,40 @@ public class ShiftManager {
      * @throws IllegalArgumentException if shift duration is not exactly 8 hours
      * @throws IllegalStateException if doctor already exists and is active
      */
-    public Doctor createDoctor(String userId, String name, String specialty,
-                               LocalTime shiftStart, LocalTime shiftEnd) {
-        // Check if doctor already exists
+    public Doctor createDoctor(String userId, String name,
+                               LocalTime shiftStart, LocalTime shiftEnd, String clinicId) {
         var existingDoctor = doctorRepository.findById(userId);
-        
+
         if (existingDoctor.isPresent()) {
             Doctor doctor = existingDoctor.get();
-            
-            // If doctor is inactive, reactivate and update information
+
             if (doctor.getStatus() == Doctor.DoctorStatus.INACTIVE) {
                 doctor.setName(name);
-                doctor.setSpecialty(specialty);
                 doctor.setShiftStart(shiftStart);
                 doctor.setShiftEnd(shiftEnd);
-                doctor.activate(); // Reactivate the doctor
-                
-                // Validate shift duration (throws exception if invalid)
+                doctor.setClinicId(clinicId);
+                doctor.activate();
                 doctor.validateShift();
-                
+                validateClinicShift(clinicId, shiftStart, shiftEnd, userId);
                 return doctorRepository.save(doctor);
             } else {
-                // Doctor is already active
                 throw new IllegalStateException(
                     "El usuario ya está registrado como doctor activo en el sistema. " +
                     "ID: " + userId + ", Nombre: " + doctor.getName()
                 );
             }
         }
-        
-        // Create new doctor if doesn't exist
+
         Doctor doctor = new Doctor();
         doctor.setId(userId);
         doctor.setName(name);
-        doctor.setSpecialty(specialty);
         doctor.setShiftStart(shiftStart);
         doctor.setShiftEnd(shiftEnd);
+        doctor.setClinicId(clinicId);
         doctor.setStatus(Doctor.DoctorStatus.ACTIVE);
         doctor.setCreatedAt(LocalDateTime.now());
-        
-        // Validate shift duration (throws exception if invalid)
         doctor.validateShift();
-        
+        validateClinicShift(clinicId, shiftStart, shiftEnd, null);
         return doctorRepository.save(doctor);
     }
     
@@ -153,22 +146,45 @@ public class ShiftManager {
      * @throws DoctorNotFoundException if the doctor doesn't exist
      * @throws IllegalArgumentException if the new shift duration is not exactly 8 hours
      */
-    public Doctor updateDoctor(String doctorId, String name, String specialty,
-                               LocalTime shiftStart, LocalTime shiftEnd) {
+    public Doctor updateDoctor(String doctorId, String name,
+                               LocalTime shiftStart, LocalTime shiftEnd, String clinicId) {
         Doctor doctor = doctorRepository.findById(doctorId)
             .orElseThrow(() -> new DoctorNotFoundException(
                 "Doctor no encontrado con ID: " + doctorId
             ));
-        
+
         doctor.setName(name);
-        doctor.setSpecialty(specialty);
         doctor.setShiftStart(shiftStart);
         doctor.setShiftEnd(shiftEnd);
-        
-        // Validate new shift duration
+        doctor.setClinicId(clinicId);
         doctor.validateShift();
-        
+        validateClinicShift(clinicId, shiftStart, shiftEnd, doctorId);
         return doctorRepository.save(doctor);
+    }
+
+    // Verifica que ningún otro doctor activo en la misma clínica tenga un turno solapado.
+    // excludeDoctorId es el propio doctor al actualizar (se excluye de la comparación).
+    private void validateClinicShift(String clinicId, LocalTime shiftStart, LocalTime shiftEnd,
+                                     String excludeDoctorId) {
+        doctorRepository.findActiveByClinicId(clinicId).stream()
+            .filter(d -> !d.getId().equals(excludeDoctorId))
+            .filter(d -> shiftsOverlap(shiftStart, d.getShiftStart()))
+            .findFirst()
+            .ifPresent(d -> {
+                throw new ClinicShiftConflictException(
+                    "La clínica ya tiene un doctor asignado en ese horario: " +
+                    d.getName() + " (" + d.getShiftStart() + " - " + d.getShiftEnd() + ")"
+                );
+            });
+    }
+
+    // Dos turnos de exactamente 8 horas se solapan si la diferencia circular entre
+    // sus horas de inicio es menor a 480 minutos.
+    private boolean shiftsOverlap(LocalTime s1, LocalTime s2) {
+        int m1 = s1.getHour() * 60 + s1.getMinute();
+        int m2 = s2.getHour() * 60 + s2.getMinute();
+        int diff = Math.abs(m1 - m2);
+        return Math.min(diff, 1440 - diff) < 480;
     }
     
     /**

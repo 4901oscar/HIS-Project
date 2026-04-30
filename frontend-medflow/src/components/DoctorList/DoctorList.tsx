@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { listActiveDoctors, deactivateDoctor, type Doctor } from '../../services/doctorService';
+import { getClinics } from '../../services/clinicService';
+import type { Clinic } from '../../types/clinic';
 
 interface DoctorListProps {
   onCreateClick?: () => void;
@@ -10,19 +12,26 @@ interface DoctorListProps {
 
 const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageDaysOff }) => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [clinicsMap, setClinicsMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    loadDoctors();
+    loadData();
   }, []);
 
-  const loadDoctors = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await listActiveDoctors();
-      setDoctors(data);
+      const [doctorsData, clinicsData] = await Promise.all([
+        listActiveDoctors(),
+        getClinics('ACTIVE'),
+      ]);
+      setDoctors(doctorsData);
+      const map: Record<string, string> = {};
+      clinicsData.forEach((c: Clinic) => { map[c.id] = c.nombre; });
+      setClinicsMap(map);
       setError(null);
     } catch (err) {
       setError('Error al cargar la lista de doctores');
@@ -31,6 +40,8 @@ const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageD
       setIsLoading(false);
     }
   };
+
+  const loadDoctors = loadData;
 
   const handleDeactivate = async (doctor: Doctor) => {
     if (!window.confirm(`¿Estás seguro de desactivar al Dr. ${doctor.name}?`)) {
@@ -47,8 +58,7 @@ const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageD
   };
 
   const filteredDoctors = doctors.filter(doctor =>
-    doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase())
+    doctor.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatShift = (start: string, end: string) => {
@@ -111,7 +121,9 @@ const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageD
                 <h3 className="text-lg font-semibold text-gray-800">
                   Dr. {doctor.name}
                 </h3>
-                <p className="text-sm text-gray-600">{doctor.specialty}</p>
+                <p className="text-sm text-gray-500">
+                  Clínica: {doctor.clinicId ? (clinicsMap[doctor.clinicId] ?? doctor.clinicId) : 'Sin asignar'}
+                </p>
                 <p className="text-sm text-gray-500">
                   Turno: {formatShift(doctor.shiftStart, doctor.shiftEnd)}
                 </p>

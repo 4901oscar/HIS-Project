@@ -154,7 +154,7 @@ const DayOffCalendar: FC<DayOffCalendarProps> = ({ doctor, onDayOffRemoved }) =>
           Calendario de Disponibilidad
         </h2>
         <p className="text-sm text-gray-600 mt-1">
-          Dr. {doctor.name} - {doctor.specialty}
+          Dr. {doctor.name}
         </p>
         <p className="text-xs text-gray-500 mt-1">
           Turno: {doctor.shiftStart} - {doctor.shiftEnd}

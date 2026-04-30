@@ -78,7 +78,7 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
           Gestión de Días Libres
         </h2>
         <p className="text-sm text-gray-600 mt-1">
-          Dr. {doctor.name} - {doctor.specialty}
+          Dr. {doctor.name}
         </p>
       </div>
 

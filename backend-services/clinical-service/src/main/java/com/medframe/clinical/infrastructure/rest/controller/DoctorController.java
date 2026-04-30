@@ -60,9 +60,9 @@ public class DoctorController {
         Doctor doctor = manageDoctorUseCase.createDoctor(
             request.getUserId(),
             request.getName(),
-            request.getSpecialty(),
             shiftStart,
-            shiftEnd
+            shiftEnd,
+            request.getClinicId()
         );
         
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(doctor));
@@ -90,9 +90,9 @@ public class DoctorController {
         Doctor doctor = manageDoctorUseCase.updateDoctor(
             id,
             request.getName(),
-            request.getSpecialty(),
             shiftStart,
-            shiftEnd
+            shiftEnd,
+            request.getClinicId()
         );
         
         return ResponseEntity.ok(toResponse(doctor));
@@ -217,10 +217,10 @@ public class DoctorController {
         return new DoctorResponse(
             doctor.getId(),
             doctor.getName(),
-            doctor.getSpecialty(),
             doctor.getShiftStart().toString(),
             doctor.getShiftEnd().toString(),
             doctor.getStatus().name(),
+            doctor.getClinicId(),
             doctor.getCreatedAt()
         );
     }

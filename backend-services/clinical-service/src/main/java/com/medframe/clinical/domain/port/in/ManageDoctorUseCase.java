@@ -37,7 +37,7 @@ public interface ManageDoctorUseCase {
      * @throws IllegalArgumentException if shift duration is not exactly 8 hours
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMINISTRATOR role
      */
-    Doctor createDoctor(String userId, String name, String specialty, LocalTime shiftStart, LocalTime shiftEnd);
+    Doctor createDoctor(String userId, String name, LocalTime shiftStart, LocalTime shiftEnd, String clinicId);
     
     /**
      * Updates an existing doctor's information.
@@ -52,7 +52,7 @@ public interface ManageDoctorUseCase {
      * @throws IllegalArgumentException if the new shift duration is not exactly 8 hours
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have ADMINISTRATOR role
      */
-    Doctor updateDoctor(String doctorId, String name, String specialty, LocalTime shiftStart, LocalTime shiftEnd);
+    Doctor updateDoctor(String doctorId, String name, LocalTime shiftStart, LocalTime shiftEnd, String clinicId);
     
     /**
      * Deactivates a doctor, preventing them from being assigned to new appointments.

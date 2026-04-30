@@ -21,12 +21,12 @@ public class CreateDoctorRequest {
     @NotBlank(message = "El ID del usuario es obligatorio")
     private String userId;
 
+    @NotBlank(message = "El ID de la clínica es obligatorio")
+    private String clinicId;
+
     @NotBlank(message = "El nombre del doctor es obligatorio")
     private String name;
-    
-    @NotBlank(message = "La especialidad es obligatoria")
-    private String specialty;
-    
+
     @NotNull(message = "La hora de inicio del turno es obligatoria")
     @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "La hora de inicio debe estar en formato HH:mm (ej: 08:00)")
     private String shiftStart;

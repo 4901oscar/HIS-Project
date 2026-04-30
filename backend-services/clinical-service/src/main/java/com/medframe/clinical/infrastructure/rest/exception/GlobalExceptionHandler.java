@@ -126,6 +126,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
     
+    @ExceptionHandler(ClinicShiftConflictException.class)
+    public ResponseEntity<ErrorResponse> handleClinicShiftConflict(
+            ClinicShiftConflictException ex) {
+
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            ex.getMessage(),
+            null
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(
             IllegalStateException ex) {
@@ -215,6 +228,45 @@ public class GlobalExceptionHandler {
         );
         
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+    
+    @ExceptionHandler(ClinicNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleClinicNotFound(
+            ClinicNotFoundException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    
+    @ExceptionHandler(DuplicateClinicCodeException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateClinicCode(
+            DuplicateClinicCodeException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    @ExceptionHandler(InvalidClinicDataException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidClinicData(
+            InvalidClinicDataException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
     }
     
     @ExceptionHandler(ServiceUnavailableException.class)

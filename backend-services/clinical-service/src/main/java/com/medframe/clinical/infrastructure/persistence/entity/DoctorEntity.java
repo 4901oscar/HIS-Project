@@ -35,9 +35,6 @@ public class DoctorEntity {
     @Column(name = "name", nullable = false)
     private String name;
     
-    @Column(name = "specialty", nullable = false)
-    private String specialty;
-    
     @Column(name = "shift_start", nullable = false)
     private LocalTime shiftStart;
     
@@ -48,6 +45,9 @@ public class DoctorEntity {
     @Enumerated(EnumType.STRING)
     private DoctorStatus status;
     
+    @Column(name = "clinic_id", length = 36)
+    private String clinicId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     

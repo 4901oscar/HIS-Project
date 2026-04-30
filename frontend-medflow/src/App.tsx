@@ -17,6 +17,7 @@ import AdministratorDashboard from './pages/administrator/AdministratorDashboard
 import EmployeeManagementPage from './pages/administrator/EmployeeManagementPage';
 import EmployeeFormPage from './pages/administrator/EmployeeFormPage';
 import DoctorManagementPage from './pages/administrator/DoctorManagementPage';
+import ClinicManagementPage from './pages/administrator/ClinicManagementPage';
 import MedicamentosPage from './pages/administrator/MedicamentosPage';
 import ExamenesPage from './pages/administrator/ExamenesPage';
 import ServiciosPage from './pages/administrator/ServiciosPage';
@@ -91,6 +92,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="ADMIN">
                 <DoctorManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/administrator/clinicas"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <ClinicManagementPage />
               </ProtectedRoute>
             }
           />
