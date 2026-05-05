@@ -13,7 +13,9 @@ import {
   generateLabOrder,
   generatePrescription,
 } from '../../services/clinicalService';
-import type { VitalSignsResponse, TriageResponse, MedicationItem } from '../../services/clinicalService';
+import type { VitalSignsResponse, TriageResponse, MedicationItem, ServiceCharge } from '../../services/clinicalService';
+import { getServiceItems } from '../../services/billingCatalogService';
+import type { ServiceItemResponse } from '../../services/billingCatalogService';
 import CIE10 from '../../data/cie10';
 import type { Cie10Item } from '../../data/cie10';
 import axios from 'axios';
@@ -22,29 +24,7 @@ import axios from 'axios';
 
 type Destination = 'LAB' | 'PHARMACY' | 'EXTERNAL_RX' | 'DISCHARGE';
 
-const COMMON_LAB_TESTS = [
-  'Hemograma completo (BHC)',
-  'Química sanguínea (QS)',
-  'Glicemia en ayunas',
-  'Hemoglobina glicosilada (HbA1c)',
-  'Perfil lipídico',
-  'Creatinina sérica',
-  'Ácido úrico',
-  'Uroanálisis',
-  'Urocultivo',
-  'TSH (Tiroides)',
-  'Proteína C reactiva (PCR)',
-  'Velocidad de sedimentación (VSG)',
-  'Transaminasas (TGO/TGP)',
-  'Bilirrubinas totales y fraccionadas',
-  'Serología VDRL',
-  'Prueba de embarazo (HCG)',
-  'Cultivo de secreción',
-  'Radiografía de tórax',
-  'Electrocardiograma (EKG)',
-];
-
-// ─── CIE-10 Autocomplete ──────────────────────────────────────────────────────
+// ─── CIE-10 Combobox ──────────────────────────────────────────────────────────
 
 interface Cie10InputProps {
   value: string;
@@ -54,11 +34,15 @@ interface Cie10InputProps {
 }
 
 const Cie10Input: FC<Cie10InputProps> = ({ value, onChange, required, className }) => {
-  const [query, setQuery] = useState(value);
+  // `value` es el valor seleccionado real (ej: "G43.0 — Migraña sin aura")
+  // `query` es lo que el usuario escribe para buscar
+  const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<Cie10Item[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Cuando el usuario escribe, filtra el catálogo
   useEffect(() => {
     if (!query || query.length < 2) { setResults([]); setOpen(false); return; }
     const q = query.toLowerCase();
@@ -71,38 +55,79 @@ const Cie10Input: FC<Cie10InputProps> = ({ value, onChange, required, className 
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery(''); // descarta texto libre sin seleccionar
+      }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   const handleSelect = (item: Cie10Item) => {
-    const formatted = `${item.code} — ${item.description}`;
-    setQuery(formatted);
-    onChange(formatted);
+    onChange(`${item.code} — ${item.description}`);
+    setQuery('');
     setOpen(false);
   };
+
+  const handleClear = () => {
+    onChange('');
+    setQuery('');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  // Si hay un valor seleccionado, muestra el chip; si no, muestra el input de búsqueda
+  if (value) {
+    const [code, ...rest] = value.split(' — ');
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 border border-medin-cyan rounded-lg bg-cyan-50">
+        <span className="font-mono text-xs font-bold text-medin-navy shrink-0">{code}</span>
+        <span className="text-sm text-gray-800 flex-1 truncate">{rest.join(' — ')}</span>
+        <button
+          type="button"
+          onClick={handleClear}
+          className="shrink-0 text-gray-400 hover:text-red-500 transition-colors text-lg leading-none"
+          title="Cambiar diagnóstico"
+        >
+          ×
+        </button>
+        {/* Hidden input para validación HTML5 */}
+        <input type="text" value={value} required={required} readOnly className="sr-only" tabIndex={-1} />
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapperRef} className="relative">
       <input
+        ref={inputRef}
         value={query}
-        onChange={e => { setQuery(e.target.value); onChange(e.target.value); }}
-        required={required}
-        placeholder="Ej: migraña  o  G43.0"
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Escribe enfermedad o código CIE-10… (ej: migraña, G43)"
         className={className}
         autoComplete="off"
       />
+      {/* Hidden input para validación HTML5 cuando no hay selección */}
+      {required && (
+        <input
+          type="text"
+          value={value}
+          required
+          readOnly
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      )}
       {open && (
         <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto text-sm">
           {results.map(item => (
             <li
               key={item.code}
               onMouseDown={() => handleSelect(item)}
-              className="flex gap-2 px-3 py-2 hover:bg-medin-cyan/10 cursor-pointer"
+              className="flex gap-2 px-3 py-2.5 hover:bg-cyan-50 cursor-pointer border-b border-gray-50 last:border-0"
             >
-              <span className="font-mono text-xs text-medin-navy font-semibold shrink-0 pt-0.5">{item.code}</span>
+              <span className="font-mono text-xs text-medin-navy font-bold shrink-0 pt-0.5 w-14">{item.code}</span>
               <span className="text-gray-700">{item.description}</span>
             </li>
           ))}
@@ -139,17 +164,20 @@ const VitalCard: FC<VitalCardProps> = ({ label, value, unit, icon, alert }) => (
 interface MedRowProps {
   med: MedicationItem;
   index: number;
+  catalog: ServiceItemResponse[];
   onChange: (index: number, field: keyof MedicationItem, value: string | number) => void;
   onRemove: (index: number) => void;
 }
 
-const MedRow: FC<MedRowProps> = ({ med, index, onChange, onRemove }) => {
+const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove }) => {
   const inp = 'w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-medin-cyan focus:border-transparent';
   return (
     <div className="grid grid-cols-12 gap-2 items-start">
       <div className="col-span-3">
-        <input value={med.name} onChange={e => onChange(index, 'name', e.target.value)}
-          required placeholder="Medicamento" className={inp} />
+        <select value={med.name} onChange={e => onChange(index, 'name', e.target.value)} required className={inp}>
+          <option value="">— Medicamento —</option>
+          {catalog.map(m => <option key={m.id} value={m.name}>{m.name} — Q{Number(m.price).toFixed(2)}</option>)}
+        </select>
       </div>
       <div className="col-span-2">
         <input value={med.dosage} onChange={e => onChange(index, 'dosage', e.target.value)}
@@ -187,6 +215,8 @@ const PatientConsultationForm: FC = () => {
   const [appointment, setAppointment] = useState<AppointmentListItem | null>(null);
   const [vitalSigns, setVitalSigns] = useState<VitalSignsResponse | null>(null);
   const [triage, setTriage] = useState<TriageResponse | null>(null);
+  const [labCatalog, setLabCatalog] = useState<ServiceItemResponse[]>([]);
+  const [medCatalog, setMedCatalog] = useState<ServiceItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +232,6 @@ const PatientConsultationForm: FC = () => {
   // Bloque 3 — Decisiones de cierre
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
-  const [customTest, setCustomTest] = useState('');
   const [medications, setMedications] = useState<MedicationItem[]>([]);
   const [followUp, setFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState('');
@@ -212,15 +241,19 @@ const PatientConsultationForm: FC = () => {
     if (!appointmentId) { setError('ID de cita no proporcionado'); setLoading(false); return; }
     const load = async () => {
       try {
-        const [appt, vitals, tri] = await Promise.allSettled([
+        const [appt, vitals, tri, labItems, medItems] = await Promise.allSettled([
           getAppointmentById(appointmentId),
           getVitalSignsByAppointment(appointmentId),
           getAppointmentTriage(appointmentId),
+          getServiceItems('LABORATORY'),
+          getServiceItems('MEDICATION'),
         ]);
         if (appt.status === 'fulfilled') setAppointment(appt.value);
         else setError('Error al cargar la cita');
         if (vitals.status === 'fulfilled') setVitalSigns(vitals.value);
         if (tri.status === 'fulfilled') setTriage(tri.value);
+        if (labItems.status === 'fulfilled') setLabCatalog(labItems.value.filter(t => t.status === 'ACTIVE'));
+        if (medItems.status === 'fulfilled') setMedCatalog(medItems.value.filter(m => m.status === 'ACTIVE'));
       } finally {
         setLoading(false);
       }
@@ -244,10 +277,6 @@ const PatientConsultationForm: FC = () => {
     setSelectedTests(prev => prev.includes(test) ? prev.filter(t => t !== test) : [...prev, test]);
   };
 
-  const addCustomTest = () => {
-    const t = customTest.trim();
-    if (t && !selectedTests.includes(t)) { setSelectedTests(prev => [...prev, t]); setCustomTest(''); }
-  };
 
   const handleDestinationChange = async (dest: Destination) => {
     if (dest === 'PHARMACY') {
@@ -319,18 +348,44 @@ const PatientConsultationForm: FC = () => {
     setError(null);
 
     try {
+      // Extrae solo el código CIE-10 del formato "G43.0 — Migraña sin aura"
+      const cieCode = primaryDiagnosis.includes(' — ')
+        ? primaryDiagnosis.split(' — ')[0].trim()
+        : primaryDiagnosis.trim();
+
+      const hasLabOrders = destination === 'LAB';
+      // Solo farmacia interna activa el flujo de pago — receta externa cierra en COMPLETED
+      const hasPrescription = destination === 'PHARMACY';
+
+      const labCharges: ServiceCharge[] = hasLabOrders
+        ? labCatalog
+            .filter(t => selectedTests.includes(t.name))
+            .map(t => ({ name: t.name, price: t.price }))
+        : [];
+
+      const pharmacyCharges: ServiceCharge[] = hasPrescription
+        ? medications
+            .map(med => medCatalog.find(m => m.name === med.name))
+            .filter((m): m is typeof medCatalog[number] => m !== undefined)
+            .map(m => ({ name: m.name, price: m.price }))
+        : [];
+
       // 1. Registrar consulta
       const consultation = await registerConsultation({
         patientId: appointment.patient.id,
         appointmentId: appointment.id,
         chiefComplaint,
-        symptoms: symptomsText.split(',').map(s => s.trim()).filter(Boolean),
-        primaryDiagnosis: requiresDiagnosis ? primaryDiagnosis : 'Pendiente — resultado de laboratorio',
+        symptoms: symptomsText,
+        primaryDiagnosis: cieCode || '',
         secondaryDiagnoses: secondaryDiagnosesText
           ? secondaryDiagnosesText.split(',').map(s => s.trim()).filter(Boolean)
           : [],
         medicalNotes,
         treatmentPlan,
+        hasLabOrders,
+        hasPrescription,
+        labCharges,
+        pharmacyCharges,
       });
 
       // 2. Generar orden de lab si aplica
@@ -660,29 +715,20 @@ const PatientConsultationForm: FC = () => {
               <div className="space-y-3 pt-2">
                 <p className="text-sm font-medium text-gray-700">Selecciona los exámenes a solicitar:</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                  {COMMON_LAB_TESTS.map(test => (
-                    <label key={test} className="flex items-center gap-2 text-sm cursor-pointer">
+                  {labCatalog.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic col-span-2">No hay exámenes disponibles. Agrega exámenes en Servicios y Precios.</p>
+                  ) : labCatalog.map(test => (
+                    <label key={test.id} className="flex items-center gap-2 text-sm cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={selectedTests.includes(test)}
-                        onChange={() => toggleTest(test)}
+                        checked={selectedTests.includes(test.name)}
+                        onChange={() => toggleTest(test.name)}
                         className="accent-medin-cyan"
                       />
-                      {test}
+                      <span className="flex-1">{test.name}</span>
+                      <span className="text-xs text-medin-navy font-semibold shrink-0">Q {Number(test.price).toFixed(2)}</span>
                     </label>
                   ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={customTest}
-                    onChange={e => setCustomTest(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomTest())}
-                    placeholder="Otro examen..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-medin-cyan focus:border-transparent"
-                  />
-                  <button type="button" onClick={addCustomTest} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    <PlusIcon className="h-4 w-4 text-gray-600" />
-                  </button>
                 </div>
                 {selectedTests.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -717,7 +763,7 @@ const PatientConsultationForm: FC = () => {
                       <span className="col-span-1" />
                     </div>
                     {medications.map((med, i) => (
-                      <MedRow key={i} med={med} index={i} onChange={updateMedication} onRemove={removeMedication} />
+                      <MedRow key={i} med={med} index={i} catalog={medCatalog} onChange={updateMedication} onRemove={removeMedication} />
                     ))}
                   </div>
                 )}

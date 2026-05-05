@@ -1,17 +1,20 @@
 import api from '../api';
 
+export type ExamTypeStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
+
 export interface ExamTypeResponse {
   id: string;
   code: string;
   name: string;
   description: string;
-  active: boolean;
+  status: ExamTypeStatus;
 }
 
 export interface ExamTypeRequest {
   code: string;
   name: string;
   description?: string;
+  status: ExamTypeStatus;
 }
 
 export const getExamTypes = async (): Promise<ExamTypeResponse[]> => {
@@ -26,10 +29,5 @@ export const createExamType = async (data: ExamTypeRequest): Promise<ExamTypeRes
 
 export const updateExamType = async (id: string, data: ExamTypeRequest): Promise<ExamTypeResponse> => {
   const r = await api.put<ExamTypeResponse>(`/api/lab/exam-types/${id}`, data);
-  return r.data;
-};
-
-export const toggleExamType = async (id: string): Promise<ExamTypeResponse> => {
-  const r = await api.patch<ExamTypeResponse>(`/api/lab/exam-types/${id}/toggle`);
   return r.data;
 };

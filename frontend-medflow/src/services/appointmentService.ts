@@ -242,6 +242,10 @@ export const scanAppointment = async (id: string): Promise<ScanResult> => {
   return response.data;
 };
 
+export const confirmLabPayment = async (appointmentId: string, invoiceId: string): Promise<void> => {
+  await api.post(`/api/clinical/appointments/${appointmentId}/confirm-lab-payment`, { invoiceId });
+};
+
 /**
  * Obtiene los detalles de una cita específica por su ID.
  * 

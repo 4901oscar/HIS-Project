@@ -1494,9 +1494,19 @@ public class AppointmentController {
                         .name("Dr. Asignado")
                         .build());
         
-        // 3. Validar estado de pago
+        // 3. Validar estado de pago — usar la factura correspondiente al estado actual
+        String invoiceIdForValidation;
+        if (appointment.getStatus() == AppointmentStatus.PENDING_LAB_PAYMENT) {
+            invoiceIdForValidation = appointment.getLabInvoiceId();
+        } else if (appointment.getStatus() == AppointmentStatus.PENDING_PHARMACY_PAYMENT) {
+            invoiceIdForValidation = appointment.getPharmacyInvoiceId() != null
+                    ? appointment.getPharmacyInvoiceId()
+                    : appointment.getInvoiceId();
+        } else {
+            invoiceIdForValidation = appointment.getInvoiceId();
+        }
         PaymentValidationResult validationResult = paymentValidator.validatePayment(
-                appointment.getInvoiceId(), 
+                invoiceIdForValidation,
                 appointment.getId()
         );
         

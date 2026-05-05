@@ -19,4 +19,6 @@ public class DiscriminatorRequest {
     private String priorityLevel;
 
     private String motifId;
+
+    private Boolean active;
 }

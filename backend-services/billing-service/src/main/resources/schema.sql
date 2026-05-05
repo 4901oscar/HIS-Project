@@ -52,18 +52,21 @@ CREATE TABLE IF NOT EXISTS billing_schema.service_items (
     description VARCHAR(500),
     category VARCHAR(50) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
-    active BOOLEAN NOT NULL DEFAULT true
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
 );
+ALTER TABLE billing_schema.service_items ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE billing_schema.service_items DROP COLUMN IF EXISTS active;
+ALTER TABLE billing_schema.service_items DROP COLUMN IF EXISTS deleted;
 
 CREATE INDEX IF NOT EXISTS idx_service_items_code ON billing_schema.service_items(code);
 CREATE INDEX IF NOT EXISTS idx_service_items_category ON billing_schema.service_items(category);
 
-INSERT INTO billing_schema.service_items (id, code, name, description, category, price, active) VALUES
-  (gen_random_uuid(), 'CONS-GEN', 'Consulta General', 'Consulta médica general', 'CONSULTATION', 150.00, true),
-  (gen_random_uuid(), 'CONS-ESP', 'Consulta Especialista', 'Consulta con médico especialista', 'CONSULTATION', 250.00, true),
-  (gen_random_uuid(), 'LAB-HEM', 'Hemograma Completo', 'Examen de sangre completo', 'LABORATORY', 75.00, true),
-  (gen_random_uuid(), 'LAB-GLU', 'Glucosa en Ayunas', 'Examen de glucosa', 'LABORATORY', 40.00, true),
-  (gen_random_uuid(), 'MED-GEN', 'Medicamento Genérico', 'Dispensación de medicamento genérico', 'MEDICATION', 25.00, true)
+INSERT INTO billing_schema.service_items (id, code, name, description, category, price, status) VALUES
+  (gen_random_uuid(), 'CONS-GEN', 'Consulta General', 'Consulta médica general', 'CONSULTATION', 150.00, 'ACTIVE'),
+  (gen_random_uuid(), 'CONS-ESP', 'Consulta Especialista', 'Consulta con médico especialista', 'CONSULTATION', 250.00, 'ACTIVE'),
+  (gen_random_uuid(), 'LAB-HEM', 'Hemograma Completo', 'Examen de sangre completo', 'LABORATORY', 75.00, 'ACTIVE'),
+  (gen_random_uuid(), 'LAB-GLU', 'Glucosa en Ayunas', 'Examen de glucosa', 'LABORATORY', 40.00, 'ACTIVE'),
+  (gen_random_uuid(), 'MED-GEN', 'Medicamento Genérico', 'Dispensación de medicamento genérico', 'MEDICATION', 25.00, 'ACTIVE')
 ON CONFLICT (code) DO NOTHING;
 
 -- Indexes for Performance

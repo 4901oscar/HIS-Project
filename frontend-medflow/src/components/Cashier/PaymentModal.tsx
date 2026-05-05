@@ -1,13 +1,18 @@
 import { useState, type FC, type FormEvent } from 'react';
 import { processPayment, type Invoice, type PaymentRequest } from '../../services/billingService';
+import { confirmLabPayment } from '../../services/appointmentService';
+
+export type PaymentType = 'CONSULTATION' | 'LAB';
 
 interface PaymentModalProps {
   invoice: Invoice;
   onSuccess: () => void;
   onClose: () => void;
+  paymentType?: PaymentType;
+  appointmentId?: string;
 }
 
-const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose }) => {
+const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paymentType = 'CONSULTATION', appointmentId }) => {
   const [nit, setNit] = useState('CF');
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER'>('CASH');
@@ -55,6 +60,12 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose }) =>
 
       const response = await processPayment(invoice.id, paymentData);
       setChangeAmount(response.change);
+
+      // Para lab: notificar al clinical-service que el pago fue confirmado
+      if (paymentType === 'LAB' && appointmentId) {
+        await confirmLabPayment(appointmentId, invoice.id);
+      }
+
       setPaymentSuccess(true);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al procesar el pago');
@@ -114,7 +125,9 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose }) =>
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-900">Procesar Pago</h3>
+          <h3 className="text-xl font-bold text-gray-900">
+            {paymentType === 'LAB' ? '💊 Pago de Laboratorio' : '🏥 Pago de Consulta'}
+          </h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"

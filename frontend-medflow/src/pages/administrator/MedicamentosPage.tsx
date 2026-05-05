@@ -3,20 +3,30 @@ import type { FC, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
-  getMedications,
-  createMedication,
-  updateStock,
-  type MedicationResponse,
-  type MedicationRequest,
+  getMedications, createMedication, updateMedication, updateStock,
+  type MedicationResponse, type MedicationRequest, type MedicationStatus,
 } from '../../services/pharmacyService';
 
 type Modal =
   | { type: 'create' }
+  | { type: 'edit'; med: MedicationResponse }
   | { type: 'stock'; med: MedicationResponse }
   | null;
 
 const EMPTY_FORM: MedicationRequest = {
-  name: '', description: '', unit: '', currentStock: 0, minStock: 0,
+  name: '', description: '', unit: '', currentStock: 0, minStock: 0, status: 'ACTIVE',
+};
+
+const STATUS_LABELS: Record<MedicationStatus, string> = {
+  ACTIVE: 'Activo',
+  INACTIVE: 'Inactivo',
+  DELETED: 'Eliminado',
+};
+
+const STATUS_BADGE: Record<MedicationStatus, string> = {
+  ACTIVE: 'bg-green-100 text-green-700',
+  INACTIVE: 'bg-gray-100 text-gray-500',
+  DELETED: 'bg-red-100 text-red-500',
 };
 
 const MedicamentosPage: FC = () => {
@@ -53,10 +63,15 @@ const MedicamentosPage: FC = () => {
   });
 
   const openCreate = () => { setForm(EMPTY_FORM); setFormError(null); setModal({ type: 'create' }); };
+  const openEdit = (med: MedicationResponse) => {
+    setForm({ name: med.name, description: med.description ?? '', unit: med.unit, currentStock: med.currentStock, minStock: med.minStock, status: med.status });
+    setFormError(null);
+    setModal({ type: 'edit', med });
+  };
   const openStock = (med: MedicationResponse) => { setNewStock(String(med.currentStock)); setFormError(null); setModal({ type: 'stock', med }); };
   const closeModal = () => setModal(null);
 
-  const handleCreate = async (e: FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.unit.trim()) {
       setFormError('Nombre y unidad son obligatorios.');
@@ -65,7 +80,11 @@ const MedicamentosPage: FC = () => {
     setSaving(true);
     setFormError(null);
     try {
-      await createMedication(form);
+      if (modal?.type === 'edit') {
+        await updateMedication(modal.med.id, form);
+      } else {
+        await createMedication(form);
+      }
       await load();
       closeModal();
     } catch {
@@ -98,7 +117,6 @@ const MedicamentosPage: FC = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/administrator')} className="text-gray-400 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,7 +129,6 @@ const MedicamentosPage: FC = () => {
           </div>
         </div>
 
-        {/* Actions bar */}
         <div className="flex flex-col sm:flex-row gap-3 justify-between">
           <div className="flex gap-2">
             <input
@@ -139,10 +156,8 @@ const MedicamentosPage: FC = () => {
           </button>
         </div>
 
-        {/* Error */}
         {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{error}</div>}
 
-        {/* Table */}
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent" />
@@ -172,18 +187,13 @@ const MedicamentosPage: FC = () => {
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-sm">{m.minStock}</td>
                     <td className="px-4 py-3">
-                      {m.lowStock
-                        ? <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">Stock bajo</span>
-                        : <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Disponible</span>
-                      }
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[m.status]}`}>
+                        {STATUS_LABELS[m.status]}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => openStock(m)}
-                        className="text-sm text-medin-cyan hover:text-medin-blue font-medium"
-                      >
-                        Actualizar stock
-                      </button>
+                    <td className="px-4 py-3 flex gap-3">
+                      <button onClick={() => openEdit(m)} className="text-sm text-medin-cyan hover:text-medin-blue font-medium">Editar</button>
+                      <button onClick={() => openStock(m)} className="text-sm text-gray-400 hover:text-gray-600 font-medium">Stock</button>
                     </td>
                   </tr>
                 ))}
@@ -193,35 +203,47 @@ const MedicamentosPage: FC = () => {
         )}
       </div>
 
-      {/* Modal crear */}
-      {modal?.type === 'create' && (
+      {/* Modal Crear / Editar */}
+      {(modal?.type === 'create' || modal?.type === 'edit') && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Agregar medicamento</h3>
-            <form onSubmit={handleCreate} className="space-y-3">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {modal.type === 'create' ? 'Agregar medicamento' : 'Editar medicamento'}
+            </h3>
+            <form onSubmit={handleSave} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-500">*</span></label>
                 <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej. Amoxicilina 500mg" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <input className={inputCls} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
+                <input className={inputCls} value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Unidad <span className="text-red-500">*</span></label>
                 <input className={inputCls} value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Ej. tabletas, mg, ml" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock actual</label>
-                  <input type="number" min={0} className={inputCls} value={form.currentStock}
-                    onChange={e => setForm(f => ({ ...f, currentStock: parseInt(e.target.value) || 0 }))} />
-                </div>
+                {modal.type === 'create' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Stock inicial</label>
+                    <input type="number" min={0} className={inputCls} value={form.currentStock}
+                      onChange={e => setForm(f => ({ ...f, currentStock: parseInt(e.target.value) || 0 }))} />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stock mínimo</label>
                   <input type="number" min={0} className={inputCls} value={form.minStock}
                     onChange={e => setForm(f => ({ ...f, minStock: parseInt(e.target.value) || 0 }))} />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select className={inputCls} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as MedicationStatus }))}>
+                  <option value="ACTIVE">Activo</option>
+                  <option value="INACTIVE">Inactivo</option>
+                  <option value="DELETED">Eliminado</option>
+                </select>
               </div>
               {formError && <p className="text-red-600 text-sm">{formError}</p>}
               <div className="flex gap-3 pt-2">
@@ -235,7 +257,7 @@ const MedicamentosPage: FC = () => {
         </div>
       )}
 
-      {/* Modal stock */}
+      {/* Modal Actualizar Stock */}
       {modal?.type === 'stock' && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">

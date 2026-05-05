@@ -38,4 +38,10 @@ public class ServiceItemController {
     public ResponseEntity<ServiceItemResponse> toggle(@PathVariable String id) {
         return ResponseEntity.ok(service.toggleActive(id));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

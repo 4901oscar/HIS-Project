@@ -51,6 +51,9 @@ public class ManchesterCatalogController {
         e.setCode(req.getCode().toUpperCase());
         e.setDescription(req.getDescription());
         e.setCategory(req.getCategory());
+        if (req.getActive() != null) {
+            e.setActive(req.getActive());
+        }
         return ResponseEntity.ok(MotifCatalogResponse.from(motifRepo.save(e)));
     }
 
@@ -96,6 +99,9 @@ public class ManchesterCatalogController {
         e.setPriorityLevel(PriorityLevel.valueOf(req.getPriorityLevel()));
         if (req.getMotifId() != null) {
             motifRepo.findById(req.getMotifId()).ifPresent(e::setMotif);
+        }
+        if (req.getActive() != null) {
+            e.setActive(req.getActive());
         }
         return ResponseEntity.ok(DiscriminatorCatalogResponse.from(discriminatorRepo.save(e)));
     }
