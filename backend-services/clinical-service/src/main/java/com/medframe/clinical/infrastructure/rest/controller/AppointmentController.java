@@ -234,10 +234,11 @@ public class AppointmentController {
         }
         
         switch (queueFilter.toLowerCase()) {
+            // "payment" queue: Only consultation payments (PENDING_PAYMENT, SCHEDULED)
+            // Excludes PENDING_LAB_PAYMENT and PENDING_PHARMACY_PAYMENT to prevent
+            // duplicate display (those belong to their respective service queues)
             case "payment":
                 return appointment.getStatus() == AppointmentStatus.PENDING_PAYMENT ||
-                       appointment.getStatus() == AppointmentStatus.PENDING_LAB_PAYMENT ||
-                       appointment.getStatus() == AppointmentStatus.PENDING_PHARMACY_PAYMENT ||
                        appointment.getStatus() == AppointmentStatus.SCHEDULED;
             case "lab":
             case "laboratory":

@@ -1,10 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { MainLayout } from '../../components/Layout';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { getLabOrders, collectSample, uploadResult } from '../../services/labService';
+import { getLabOrders } from '../../services/labService';
 import type { LabOrderResponse, OrderStatus } from '../../services/labService';
-import axios from 'axios';
+import { getAppointmentById } from '../../services/appointmentService';
+import type { AppointmentListItem } from '../../services/appointmentService';
+
+// ─── Tipos combinados ─────────────────────────────────────────────────────────
+
+interface LabOrderWithAppointment {
+  order: LabOrderResponse;
+  appointment: AppointmentListItem | null;
+}
 
 const statusLabel: Record<OrderStatus, string> = {
   PENDING: 'Pendiente',
@@ -18,199 +25,180 @@ const statusColor: Record<OrderStatus, string> = {
   COMPLETED: 'bg-green-100 text-green-800',
 };
 
-const LabSampleManagement: FC = () => {
-  const [filter, setFilter] = useState<OrderStatus | ''>('');
-  const [orders, setOrders] = useState<LabOrderResponse[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pendingUploadId, setPendingUploadId] = useState<string | null>(null);
+// ─── Tabla de órdenes con citas ───────────────────────────────────────────────
 
-  const loadOrders = async () => {
+interface LabOrderTableProps {
+  orders: LabOrderWithAppointment[];
+  loading: boolean;
+  emptyText: string;
+}
+
+const LabOrderTable: FC<LabOrderTableProps> = ({ orders, loading, emptyText }) => {
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-400">
+        <svg className="mx-auto h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p className="text-sm">{emptyText}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+            <th className="pb-2 pr-4 pl-6">Código Orden</th>
+            <th className="pb-2 pr-4">Fecha Cita</th>
+            <th className="pb-2 pr-4">Hora Cita</th>
+            <th className="pb-2 pr-4">Paciente</th>
+            <th className="pb-2 pr-4">DPI</th>
+            <th className="pb-2 pr-4">Doctor</th>
+            <th className="pb-2 pr-4">Exámenes</th>
+            <th className="pb-2 pr-4">Estado</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {orders
+            .slice()
+            .sort((a, b) => {
+              // Ordenar por fecha de orden
+              return new Date(a.order.orderedAt).getTime() - new Date(b.order.orderedAt).getTime();
+            })
+            .map(({ order, appointment }) => (
+              <tr key={order.id} className="hover:bg-gray-50">
+                <td className="py-3 pr-4 pl-6 whitespace-nowrap font-mono text-xs font-medium text-purple-700">
+                  {order.orderCode}
+                </td>
+                <td className="py-3 pr-4 whitespace-nowrap text-xs">
+                  {appointment 
+                    ? new Date(appointment.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : '—'
+                  }
+                </td>
+                <td className="py-3 pr-4 whitespace-nowrap font-medium">
+                  {appointment 
+                    ? appointment.appointmentTime.toString().substring(0, 5)
+                    : '—'
+                  }
+                </td>
+                <td className="py-3 pr-4">
+                  {appointment ? appointment.patient.fullName : order.patientId}
+                </td>
+                <td className="py-3 pr-4 font-mono text-xs">
+                  {appointment?.patient.dpi ?? '—'}
+                </td>
+                <td className="py-3 pr-4">
+                  {appointment ? appointment.doctor.name : order.doctorId}
+                </td>
+                <td className="py-3 pr-4">
+                  <div className="flex flex-wrap gap-1">
+                    {order.testNames.map((test, i) => (
+                      <span key={i} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">
+                        {test}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="py-3 pr-4">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[order.status]}`}>
+                    {statusLabel[order.status]}
+                  </span>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+const LabSampleManagement: FC = () => {
+  const [ordersWithAppointments, setOrdersWithAppointments] = useState<LabOrderWithAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadLabOrders = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await getLabOrders(filter || undefined);
-      setOrders(data);
+      // 1. Obtener todas las órdenes de laboratorio
+      const orders = await getLabOrders();
+      
+      // 2. Para cada orden, obtener la cita asociada
+      const ordersWithAppts = await Promise.all(
+        orders.map(async (order) => {
+          try {
+            // Buscar la cita por appointmentId (asumiendo que está en algún campo de la orden)
+            // Si no existe relación directa, podríamos buscar por patientId y fecha
+            // Por ahora, intentamos obtener la cita si existe un appointmentId
+            const appointment = await getAppointmentById(order.id).catch(() => null);
+            return { order, appointment };
+          } catch (err) {
+            // Si no se encuentra la cita, devolvemos solo la orden
+            return { order, appointment: null };
+          }
+        })
+      );
+      
+      setOrdersWithAppointments(ordersWithAppts);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'Error al cargar órdenes');
-      } else {
-        setError('Error al conectar con el servidor');
-      }
+      console.error('Error cargando órdenes de laboratorio:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadOrders();
-  }, [filter]);
-
-  const flash = (msg: string) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(null), 3000);
-  };
-
-  const handleCollect = async (id: string) => {
-    setActionLoading(id);
-    setError(null);
-    try {
-      const updated = await collectSample(id);
-      setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
-      flash('Muestra recolectada exitosamente');
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'Error al recolectar muestra');
-      } else {
-        setError('Error al conectar con el servidor');
-      }
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleUploadClick = (id: string) => {
-    setPendingUploadId(id);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !pendingUploadId) return;
-    setActionLoading(pendingUploadId);
-    setError(null);
-    try {
-      const updated = await uploadResult(pendingUploadId, file);
-      setOrders((prev) => prev.map((o) => (o.id === pendingUploadId ? updated : o)));
-      flash('Resultado subido exitosamente');
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'Error al subir resultado');
-      } else {
-        setError('Error al conectar con el servidor');
-      }
-    } finally {
-      setActionLoading(null);
-      setPendingUploadId(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
+    loadLabOrders();
+  }, [loadLabOrders]);
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestión de Muestras</h2>
-            <p className="mt-1 text-sm text-gray-600">Administrar órdenes de laboratorio y resultados</p>
-          </div>
-          <button onClick={loadOrders} className="flex items-center gap-2 px-4 py-2 bg-medin-navy text-white rounded-lg text-sm hover:bg-medin-navy/90">
-            <ArrowPathIcon className="h-4 w-4" />
-            Actualizar
-          </button>
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Gestión de Laboratorio</h2>
+          <p className="text-gray-500 text-sm mt-1">Órdenes de laboratorio con información de citas</p>
         </div>
 
-        {successMsg && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">{successMsg}</div>}
-        {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{error}</div>}
-
-        {/* Filtros */}
-        <div className="flex gap-2 flex-wrap">
-          {(['', 'PENDING', 'IN_PROGRESS', 'COMPLETED'] as const).map((s) => (
+        {/* ── Lista: Órdenes de Laboratorio ── */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-500/5 to-transparent">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🔬</span>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Órdenes de Laboratorio</h3>
+                <p className="text-xs text-gray-500">Pacientes con exámenes pendientes, en proceso o completados</p>
+              </div>
+              <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                {loading ? '…' : ordersWithAppointments.length}
+              </span>
+            </div>
             <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                filter === s ? 'bg-medin-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              onClick={loadLabOrders}
+              disabled={loading}
+              className="text-xs text-purple-700 hover:text-purple-500 disabled:opacity-50"
             >
-              {s === '' ? 'Todas' : statusLabel[s as OrderStatus]}
+              Actualizar
             </button>
-          ))}
+          </div>
+          <LabOrderTable
+            orders={ordersWithAppointments}
+            loading={loading}
+            emptyText="No hay órdenes de laboratorio"
+          />
         </div>
-
-        {/* Tabla */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent"></div>
-              <p className="mt-3 text-gray-500 text-sm">Cargando órdenes...</p>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="p-12 text-center text-gray-500 text-sm">No hay órdenes con ese filtro</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {['Código', 'Paciente', 'Exámenes', 'Estado', 'Fecha', 'Acciones'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-mono text-gray-900">{order.orderCode}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 font-mono text-xs">{order.patientId}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        <div className="flex flex-wrap gap-1">
-                          {order.testNames.map((t, i) => (
-                            <span key={i} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{t}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[order.status as OrderStatus]}`}>
-                          {statusLabel[order.status as OrderStatus] || order.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
-                        {new Date(order.orderedAt).toLocaleDateString('es-GT')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          {order.status === 'PENDING' && (
-                            <button
-                              onClick={() => handleCollect(order.id)}
-                              disabled={actionLoading === order.id}
-                              className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium hover:bg-blue-200 disabled:opacity-50"
-                            >
-                              {actionLoading === order.id ? '...' : 'Recolectar'}
-                            </button>
-                          )}
-                          {order.status === 'IN_PROGRESS' && (
-                            <button
-                              onClick={() => handleUploadClick(order.id)}
-                              disabled={actionLoading === order.id}
-                              className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium hover:bg-green-200 disabled:opacity-50"
-                            >
-                              {actionLoading === order.id ? '...' : 'Subir PDF'}
-                            </button>
-                          )}
-                          {order.status === 'COMPLETED' && (
-                            <span className="text-xs text-green-600">✓ Completo</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Input oculto para subir archivo */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf"
-          className="hidden"
-          onChange={handleFileChange}
-        />
       </div>
     </MainLayout>
   );
