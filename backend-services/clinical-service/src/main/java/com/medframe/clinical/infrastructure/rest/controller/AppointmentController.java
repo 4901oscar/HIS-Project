@@ -1352,13 +1352,12 @@ public class AppointmentController {
                     return new RuntimeException("Cita no encontrada: " + id);
                 });
         
-        // 2. Get the latest vital signs for the patient
+        // 2. Get vital signs for this specific appointment (not by patient)
         com.medframe.clinical.domain.model.VitalSigns vitalSigns = vitalSignsRepository
-                .findLatestByPatientId(appointment.getPatientId())
+                .findByAppointmentId(id)
                 .orElseThrow(() -> {
-                    log.info("No vital signs found for patient {} (appointment {})", 
-                             appointment.getPatientId(), id);
-                    return new RuntimeException("No se encontraron signos vitales para este paciente");
+                    log.info("No vital signs found for appointment {}", id);
+                    return new RuntimeException("No se encontraron signos vitales para esta cita");
                 });
         
         log.info("Found vital signs {} for appointment {}", vitalSigns.getId(), id);

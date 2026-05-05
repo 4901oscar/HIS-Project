@@ -135,17 +135,19 @@ const LabSampleManagement: FC = () => {
       // 1. Obtener todas las órdenes de laboratorio
       const orders = await getLabOrders();
       
-      // 2. Para cada orden, obtener la cita asociada
+      // 2. Para cada orden, obtener la cita asociada usando appointmentId
       const ordersWithAppts = await Promise.all(
         orders.map(async (order) => {
           try {
-            // Buscar la cita por appointmentId (asumiendo que está en algún campo de la orden)
-            // Si no existe relación directa, podríamos buscar por patientId y fecha
-            // Por ahora, intentamos obtener la cita si existe un appointmentId
-            const appointment = await getAppointmentById(order.id).catch(() => null);
-            return { order, appointment };
+            // Si la orden tiene appointmentId, obtener la cita
+            if (order.appointmentId) {
+              const appointment = await getAppointmentById(order.appointmentId);
+              return { order, appointment };
+            }
+            // Si no tiene appointmentId, devolver solo la orden
+            return { order, appointment: null };
           } catch (err) {
-            // Si no se encuentra la cita, devolvemos solo la orden
+            console.warn(`No se pudo obtener la cita para la orden ${order.orderCode}:`, err);
             return { order, appointment: null };
           }
         })

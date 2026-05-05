@@ -17,6 +17,7 @@ public class VitalSignsMapper {
 
         VitalSignsEntity entity = new VitalSignsEntity();
         entity.setId(domain.getId());
+        entity.setAppointmentId(domain.getAppointmentId());
         entity.setPatientId(domain.getPatientId());
         entity.setSystolicPressure(domain.getSystolicPressure());
         entity.setDiastolicPressure(domain.getDiastolicPressure());
@@ -40,6 +41,7 @@ public class VitalSignsMapper {
 
         VitalSigns domain = new VitalSigns();
         domain.setId(entity.getId());
+        domain.setAppointmentId(entity.getAppointmentId());
         domain.setPatientId(entity.getPatientId());
         domain.setSystolicPressure(entity.getSystolicPressure());
         domain.setDiastolicPressure(entity.getDiastolicPressure());

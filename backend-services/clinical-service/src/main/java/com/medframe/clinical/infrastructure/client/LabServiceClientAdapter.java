@@ -17,12 +17,12 @@ public class LabServiceClientAdapter implements LabServiceClient {
     
     @Override
     @Async
-    public void notifyNewLabOrder(LabOrder labOrder) {
+    public void notifyNewLabOrder(LabOrder labOrder, String appointmentId) {
         try {
             log.debug("Notifying Lab Service about new lab order: {}", 
                      labOrder.getOrderCode());
             
-            LabOrderNotificationDTO dto = mapToNotificationDTO(labOrder);
+            LabOrderNotificationDTO dto = mapToNotificationDTO(labOrder, appointmentId);
             feignClient.notifyNewLabOrder(dto);
             
             log.info("Successfully notified Lab Service about lab order: {}", 
@@ -37,12 +37,13 @@ public class LabServiceClientAdapter implements LabServiceClient {
         }
     }
     
-    private LabOrderNotificationDTO mapToNotificationDTO(LabOrder labOrder) {
+    private LabOrderNotificationDTO mapToNotificationDTO(LabOrder labOrder, String appointmentId) {
         return new LabOrderNotificationDTO(
             labOrder.getId(),
             labOrder.getOrderCode(),
             labOrder.getPatientId(),
             labOrder.getDoctorId(),
+            appointmentId,
             labOrder.getTestNames(),
             labOrder.getOrderedAt()
         );

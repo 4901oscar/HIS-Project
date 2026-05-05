@@ -26,6 +26,8 @@ public class LabOrderNotificationRequest {
     @NotBlank(message = "El ID del doctor es obligatorio")
     private String doctorId;
 
+    private String appointmentId;
+
     @NotEmpty(message = "La lista de exámenes no puede estar vacía")
     private List<String> testNames;
 }

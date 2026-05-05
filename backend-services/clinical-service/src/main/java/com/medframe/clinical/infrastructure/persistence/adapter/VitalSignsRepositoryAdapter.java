@@ -31,6 +31,12 @@ public class VitalSignsRepositoryAdapter implements VitalSignsRepository {
     }
 
     @Override
+    public Optional<VitalSigns> findByAppointmentId(String appointmentId) {
+        return jpaRepository.findByAppointmentId(appointmentId)
+                .map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<VitalSigns> findLatestByPatientId(String patientId) {
         return jpaRepository.findFirstByPatientIdOrderByRecordedAtDesc(patientId)
                 .map(mapper::toDomain);

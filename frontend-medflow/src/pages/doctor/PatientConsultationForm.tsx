@@ -393,6 +393,7 @@ const PatientConsultationForm: FC = () => {
         await generateLabOrder({
           consultationId: consultation.id,
           patientId: appointment.patient.id,
+          appointmentId: appointment.id,
           testNames: selectedTests,
         });
       }

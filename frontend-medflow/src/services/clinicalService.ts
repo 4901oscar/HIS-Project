@@ -207,6 +207,7 @@ export interface LabOrderResponse {
 export const generateLabOrder = async (data: {
   consultationId: string;
   patientId: string;
+  appointmentId: string;
   testNames: string[];
 }): Promise<LabOrderResponse> => {
   const response = await api.post<LabOrderResponse>('/api/clinical/lab-orders', data);

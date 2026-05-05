@@ -7,6 +7,7 @@ export interface LabOrderResponse {
   orderCode: string;
   patientId: string;
   doctorId: string;
+  appointmentId?: string;
   testNames: string[];
   status: OrderStatus;
   collectedAt?: string;
