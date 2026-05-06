@@ -15,7 +15,7 @@ import RegisterPage from './pages/RegisterPage';
 import ActivateAccountPage from './pages/ActivateAccountPage';
 
 // Páginas protegidas
-import DashboardPage from './pages/DashboardPage';
+
 import AdministratorDashboard from './pages/administrator/AdministratorDashboard';
 import EmployeeManagementPage from './pages/administrator/EmployeeManagementPage';
 import EmployeeFormPage from './pages/administrator/EmployeeFormPage';
@@ -51,16 +51,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/activate" element={<ActivateAccountPage />} />
 
-          {/* Dashboard - Todas las rutas protegidas */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
+          
           {/* Administrator - Solo ADMIN */}
           <Route
             path="/administrator"

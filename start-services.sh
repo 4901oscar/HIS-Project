@@ -57,7 +57,7 @@ check_docker
 
 echo ""
 echo -e "${BLUE}📦 Iniciando servicios con Docker Compose...${NC}"
-docker-compose up -d
+docker compose up -d
 
 echo ""
 echo -e "${BLUE}⏳ Esperando a que los servicios estén listos...${NC}"

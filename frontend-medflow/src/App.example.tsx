@@ -7,7 +7,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
+// import DashboardPage from './pages/DashboardPage';
 
 // Importar páginas por rol
 import AdministratorDashboard from './pages/administrator/AdministratorDashboard';
@@ -27,15 +27,15 @@ function App() {
           {/* Ruta pública - Login */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Rutas protegidas */}
-          <Route
+          {/* Rutas protegidas - EJEMPLO: Descomentar para usar */}
+          {/* <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             }
-          />
+          /> */}
 
           {/* Administrator - Solo ADMINISTRATOR */}
           <Route
