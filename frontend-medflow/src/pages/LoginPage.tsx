@@ -8,6 +8,7 @@ import type { FC, FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import type { LoginCredentials } from '../services/authService';
+import { validateMockCredentials } from '../services/mockData';
 import { useAuth } from '../hooks/useAuth';
 import { Navbar } from '../components';
 import axios from 'axios';
@@ -30,7 +31,22 @@ const LoginPage: FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await login(credentials);
+      let response;
+
+      if (import.meta.env.VITE_USE_MOCK_AUTH === 'true') {
+        response = validateMockCredentials(credentials.username, credentials.password);
+        if (!response) {
+          setError('Usuario o contraseña incorrectos.');
+          setCredentials({ ...credentials, password: '' });
+          setIsLoading(false);
+          return;
+        }
+        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem('user_data', JSON.stringify(response.user));
+      } else {
+        response = await login(credentials);
+      }
+
       setUser(response.user);
 
       const roleRoutes: Record<string, string> = {
@@ -41,7 +57,7 @@ const LoginPage: FC = () => {
         'LABORATORY': '/lab',
         'PHARMACY': '/pharmacy',
         'CASHIER': '/cashier',
-        'PATIENT': '/',
+        'PATIENT': '/patient',
       };
 
       const from = (location.state as { from?: string })?.from;
