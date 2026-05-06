@@ -242,4 +242,23 @@ export const scanAppointment = async (id: string): Promise<ScanResult> => {
   return response.data;
 };
 
+export const confirmLabPayment = async (appointmentId: string, invoiceId: string): Promise<void> => {
+  await api.post(`/api/clinical/appointments/${appointmentId}/confirm-lab-payment`, { invoiceId });
+};
+
+/**
+ * Obtiene los detalles de una cita específica por su ID.
+ * 
+ * @param id ID de la cita
+ * @returns Detalles completos de la cita
+ */
+export const getAppointmentById = async (id: string): Promise<AppointmentListItem> => {
+  const response = await api.get<AppointmentListItem>(`/api/clinical/appointments/${id}`, {
+    params: {
+      includeClinical: true,
+    },
+  });
+  return response.data;
+};
+
 export default { createAppointment, getAvailableSlots, activateAppointment, cancelAppointment };

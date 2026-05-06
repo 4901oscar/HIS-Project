@@ -47,7 +47,7 @@ const menuItems: MenuItem[] = [
   },
   {
     name: 'Doctor',
-    path: '/doctor',
+    path: '/doctor/consultas',
     icon: UserGroupIcon,
     roles: ['DOCTOR', 'ADMINISTRATOR'],
   },

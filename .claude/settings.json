@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\" -Recurse -Include \"*.java\" -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(Remove-Item -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\lab-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\" -Recurse -Force -Confirm:$false)",
+      "Bash(echo \"controller: $?\")",
+      "Bash(echo \"repository: $?\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"V4 migration: $?\")",
+      "Bash(cat)",
+      "Bash(sed -i 's/com\\\\.medframe\\\\.lab/com.medflow.lab/g' C:/Users/LENOVO/HIS-Project/backend-services/lab-service/src/main/java/com/medframe/lab/model/ExamType.java)",
+      "Bash(sed -i 's/com\\\\.medframe\\\\.billing/com.medflow.billing/g' C:/Users/LENOVO/HIS-Project/backend-services/billing-service/src/main/java/com/medframe/billing/model/ServiceItem.java)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\\\\pages\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Head -20)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\" | ForEach-Object { $_.Name })",
+      "PowerShell(Test-Path \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\\\\pharmacy\\\\dto\\\\request\\\\MedicationRequest.java\"; \\(Get-Item \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\\\\pharmacy\\\\dto\\\\request\\\\MedicationRequest.java\" -ErrorAction SilentlyContinue\\).FullName)",
+      "PowerShell(\\(Get-Item \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\\\\pharmacy\\\\dto\\\\request\\\\MedicationRequest.java\"\\).FullName)",
+      "PowerShell($p1 = \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\"; $p2 = \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\"; \"p1=$p1\"; \"p2=$p2\"; \"p1-exists=$\\(Test-Path $p1\\)\"; \"p2-exists=$\\(Test-Path $p2\\)\")",
+      "PowerShell(dir \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\" | ForEach-Object { \"Name=[$\\($_.Name\\)] Length=$\\($_.Name.Length\\)\" })",
+      "PowerShell($actual = \\(Get-ChildItem \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\" | Select-Object -First 2 | ForEach-Object { $_.FullName }\\) ; $actual)"
+    ]
+  }
+}

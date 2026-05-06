@@ -35,7 +35,8 @@ public class ServiceItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     @Builder.Default
-    private boolean active = true;
+    private ServiceItemStatus status = ServiceItemStatus.ACTIVE;
 }

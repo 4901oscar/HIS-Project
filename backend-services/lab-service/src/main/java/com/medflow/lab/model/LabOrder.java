@@ -30,6 +30,9 @@ public class LabOrder {
     @Column(name = "doctor_id", nullable = false, length = 36)
     private String doctorId;
 
+    @Column(name = "appointment_id", length = 36)
+    private String appointmentId;
+
     @Column(name = "test_names", nullable = false, columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
     private List<String> testNames;

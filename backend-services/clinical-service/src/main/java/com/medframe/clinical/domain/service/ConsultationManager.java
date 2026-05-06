@@ -23,7 +23,8 @@ public class ConsultationManager {
                                               String appointmentId, String chiefComplaint,
                                               String symptoms, String primaryDiagnosis,
                                               List<String> secondaryDiagnoses,
-                                              String medicalNotes, String treatmentPlan) {
+                                              String medicalNotes, String treatmentPlan,
+                                              boolean hasLabOrders, boolean hasPrescription) {
 
         Consultation consultation = new Consultation();
         consultation.setPatientId(patientId);
@@ -40,14 +41,18 @@ public class ConsultationManager {
 
         Consultation saved = consultationRepository.save(consultation);
 
-        // Complete associated appointment if provided
         if (appointmentId != null && !appointmentId.isBlank()) {
             appointmentRepository.findById(appointmentId).ifPresent(appointment -> {
                 try {
-                    appointment.complete();
+                    Appointment.AppointmentStatus status = appointment.getStatus();
+                    if (status == Appointment.AppointmentStatus.CONSULTATION) {
+                        appointment.registerConsultation(hasLabOrders, hasPrescription);
+                    } else if (status == Appointment.AppointmentStatus.RE_EVALUATION) {
+                        appointment.completeReEvaluation(hasPrescription);
+                    }
                     appointmentRepository.save(appointment);
                 } catch (IllegalStateException e) {
-                    // Appointment may already be in a different state — log but don't fail
+                    // Estado inesperado — no interrumpir el flujo
                 }
             });
         }

@@ -90,7 +90,7 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
         }
         
         // 3. Record vital signs (no state transition - appointment stays in VITAL_SIGNS)
-        VitalSigns vitalSigns = vitalSignsRecorder.recordVitalSigns(patientId, systolic, diastolic,
+        VitalSigns vitalSigns = vitalSignsRecorder.recordVitalSigns(appointmentId, patientId, systolic, diastolic,
                                                     heartRate, respiratoryRate,
                                                     temperature, oxygenSaturation,
                                                     weight, height, recordedBy);

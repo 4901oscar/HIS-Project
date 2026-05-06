@@ -1,5 +1,7 @@
 import api from '../api';
 
+export type ServiceItemStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
+
 export interface ServiceItemResponse {
   id: string;
   code: string;
@@ -7,7 +9,7 @@ export interface ServiceItemResponse {
   description: string;
   category: string;
   price: number;
-  active: boolean;
+  status: ServiceItemStatus;
 }
 
 export interface ServiceItemRequest {
@@ -16,6 +18,7 @@ export interface ServiceItemRequest {
   description?: string;
   category: string;
   price: number;
+  status?: ServiceItemStatus;
 }
 
 export const SERVICE_CATEGORIES: Record<string, string> = {
@@ -44,4 +47,8 @@ export const updateServiceItem = async (id: string, data: ServiceItemRequest): P
 export const toggleServiceItem = async (id: string): Promise<ServiceItemResponse> => {
   const r = await api.patch<ServiceItemResponse>(`/api/billing/services/${id}/toggle`);
   return r.data;
+};
+
+export const deleteServiceItem = async (id: string): Promise<void> => {
+  await api.delete(`/api/billing/services/${id}`);
 };

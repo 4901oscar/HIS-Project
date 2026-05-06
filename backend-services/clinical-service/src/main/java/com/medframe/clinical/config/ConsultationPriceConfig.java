@@ -63,6 +63,13 @@ public class ConsultationPriceConfig {
     private BigDecimal followup = new BigDecimal("100.00");
 
     /**
+     * Precio para órdenes de laboratorio.
+     * Debe ser mayor a cero. Valor por defecto: 75.00 GTQ.
+     */
+    @DecimalMin(value = "0.01", message = "El precio de laboratorio debe ser mayor a cero")
+    private BigDecimal lab = new BigDecimal("75.00");
+
+    /**
      * Obtiene el precio de consulta por defecto.
      * 
      * <p>Este método es utilizado por el servicio de citas para determinar

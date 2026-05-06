@@ -55,15 +55,15 @@ public class RegisterConsultationUseCaseImpl implements RegisterConsultationUseC
                                               String appointmentId, String chiefComplaint,
                                               String symptoms, String primaryDiagnosis,
                                               List<String> secondaryDiagnoses,
-                                              String medicalNotes, String treatmentPlan) {
-        // 1. Validate permissions - only DOCTOR role can register consultations
+                                              String medicalNotes, String treatmentPlan,
+                                              boolean hasLabOrders, boolean hasPrescription) {
         permissionValidator.requireRole("DOCTOR");
-        
-        // 2. Delegate to domain service for business logic
+
         return consultationManager.registerConsultation(patientId, doctorId,
                                                          appointmentId, chiefComplaint,
                                                          symptoms, primaryDiagnosis,
                                                          secondaryDiagnoses,
-                                                         medicalNotes, treatmentPlan);
+                                                         medicalNotes, treatmentPlan,
+                                                         hasLabOrders, hasPrescription);
     }
 }

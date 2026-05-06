@@ -6,12 +6,18 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "vital_signs", schema = "clinical_schema",
-       indexes = @Index(name = "idx_vital_signs_patient", columnList = "patient_id"))
+       indexes = {
+           @Index(name = "idx_vital_signs_patient", columnList = "patient_id"),
+           @Index(name = "idx_vital_signs_appointment", columnList = "appointment_id")
+       })
 public class VitalSignsEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    @Column(name = "appointment_id", nullable = false, length = 36)
+    private String appointmentId;
 
     @Column(name = "patient_id", nullable = false, length = 36)
     private String patientId;
@@ -55,6 +61,9 @@ public class VitalSignsEntity {
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
 
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }

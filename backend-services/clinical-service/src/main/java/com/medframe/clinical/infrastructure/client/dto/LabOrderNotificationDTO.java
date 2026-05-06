@@ -9,18 +9,20 @@ public class LabOrderNotificationDTO {
     private String orderCode;
     private String patientId;
     private String doctorId;
+    private String appointmentId;
     private List<String> testNames;
     private LocalDateTime orderedAt;
     
     public LabOrderNotificationDTO() {}
     
     public LabOrderNotificationDTO(String labOrderId, String orderCode, 
-                                   String patientId, String doctorId, 
+                                   String patientId, String doctorId, String appointmentId,
                                    List<String> testNames, LocalDateTime orderedAt) {
         this.labOrderId = labOrderId;
         this.orderCode = orderCode;
         this.patientId = patientId;
         this.doctorId = doctorId;
+        this.appointmentId = appointmentId;
         this.testNames = testNames;
         this.orderedAt = orderedAt;
     }
@@ -34,6 +36,8 @@ public class LabOrderNotificationDTO {
     public void setPatientId(String patientId) { this.patientId = patientId; }
     public String getDoctorId() { return doctorId; }
     public void setDoctorId(String doctorId) { this.doctorId = doctorId; }
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
     public List<String> getTestNames() { return testNames; }
     public void setTestNames(List<String> testNames) { this.testNames = testNames; }
     public LocalDateTime getOrderedAt() { return orderedAt; }

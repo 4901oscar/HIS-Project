@@ -30,6 +30,12 @@ public class Appointment {
         LABORATORY,           // Lab payment confirmed, tests in progress
         RE_EVALUATION,        // Lab results ready, waiting for doctor review
         
+        // Laboratory sample workflow (4-step wizard)
+        LAB_SAMPLE_COLLECTION,  // Step 1: Waiting for sample collection
+        LAB_SAMPLE_PENDING,     // Step 2: Samples collected, awaiting validation
+        LAB_PROCESSING,         // Step 3: Samples accepted, tests in progress
+        LAB_RESULTS_READY,      // Step 4: Results uploaded, ready for doctor review
+        
         // Pharmacy workflow
         PENDING_PHARMACY_PAYMENT,  // Prescription issued, waiting for payment
         PHARMACY,                  // Pharmacy payment confirmed, dispensing
@@ -146,7 +152,7 @@ public class Appointment {
     }
 
     /**
-     * Transition: PENDING_LAB_PAYMENT → LABORATORY
+     * Transition: PENDING_LAB_PAYMENT → LAB_SAMPLE_COLLECTION
      * Triggered when lab payment is confirmed.
      * 
      * @throws IllegalStateException if not in PENDING_LAB_PAYMENT state
@@ -157,7 +163,7 @@ public class Appointment {
                 "Solo se puede confirmar pago de laboratorio para citas en estado PENDING_LAB_PAYMENT. " +
                 "Estado actual: " + this.status);
         }
-        this.status = AppointmentStatus.LABORATORY;
+        this.status = AppointmentStatus.LAB_SAMPLE_COLLECTION;
     }
 
     /**
@@ -276,6 +282,81 @@ public class Appointment {
                 "Estado actual: " + this.status);
         }
         this.status = AppointmentStatus.MISSED;
+    }
+
+    /**
+     * Transition: LAB_SAMPLE_COLLECTION → LAB_SAMPLE_PENDING
+     * Triggered when lab technician collects samples from patient.
+     * 
+     * @throws IllegalStateException if not in LAB_SAMPLE_COLLECTION state
+     */
+    public void collectLabSamples() {
+        if (this.status != AppointmentStatus.LAB_SAMPLE_COLLECTION) {
+            throw new IllegalStateException(
+                "Solo se pueden recolectar muestras para citas en estado LAB_SAMPLE_COLLECTION. " +
+                "Estado actual: " + this.status);
+        }
+        this.status = AppointmentStatus.LAB_SAMPLE_PENDING;
+    }
+
+    /**
+     * Transition: LAB_SAMPLE_PENDING → LAB_PROCESSING
+     * Triggered when lab technician accepts collected samples as valid.
+     * 
+     * @throws IllegalStateException if not in LAB_SAMPLE_PENDING state
+     */
+    public void acceptLabSamples() {
+        if (this.status != AppointmentStatus.LAB_SAMPLE_PENDING) {
+            throw new IllegalStateException(
+                "Solo se pueden aceptar muestras para citas en estado LAB_SAMPLE_PENDING. " +
+                "Estado actual: " + this.status);
+        }
+        this.status = AppointmentStatus.LAB_PROCESSING;
+    }
+
+    /**
+     * Transition: LAB_SAMPLE_PENDING → LAB_SAMPLE_COLLECTION
+     * Triggered when lab technician rejects samples and requests new collection.
+     * 
+     * @throws IllegalStateException if not in LAB_SAMPLE_PENDING state
+     */
+    public void rejectLabSamples() {
+        if (this.status != AppointmentStatus.LAB_SAMPLE_PENDING) {
+            throw new IllegalStateException(
+                "Solo se pueden rechazar muestras para citas en estado LAB_SAMPLE_PENDING. " +
+                "Estado actual: " + this.status);
+        }
+        this.status = AppointmentStatus.LAB_SAMPLE_COLLECTION;
+    }
+
+    /**
+     * Transition: LAB_PROCESSING → LAB_RESULTS_READY
+     * Triggered when all lab tests are completed and results are uploaded.
+     * 
+     * @throws IllegalStateException if not in LAB_PROCESSING state
+     */
+    public void completeLabProcessing() {
+        if (this.status != AppointmentStatus.LAB_PROCESSING) {
+            throw new IllegalStateException(
+                "Solo se puede completar procesamiento para citas en estado LAB_PROCESSING. " +
+                "Estado actual: " + this.status);
+        }
+        this.status = AppointmentStatus.LAB_RESULTS_READY;
+    }
+
+    /**
+     * Transition: LAB_RESULTS_READY → CONSULTATION
+     * Triggered when lab technician sends results to doctor for review.
+     * 
+     * @throws IllegalStateException if not in LAB_RESULTS_READY state
+     */
+    public void sendLabResultsToDoctor() {
+        if (this.status != AppointmentStatus.LAB_RESULTS_READY) {
+            throw new IllegalStateException(
+                "Solo se pueden enviar resultados para citas en estado LAB_RESULTS_READY. " +
+                "Estado actual: " + this.status);
+        }
+        this.status = AppointmentStatus.CONSULTATION;
     }
 
     // ═══════════════════════════════════════════════════════════════

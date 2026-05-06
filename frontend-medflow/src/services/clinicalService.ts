@@ -127,15 +127,24 @@ export const performTriage = async (data: {
 
 // ─── Consultations ────────────────────────────────────────────────────────────
 
+export interface ServiceCharge {
+  name: string;
+  price: number;
+}
+
 export interface ConsultationRequest {
   patientId: string;
   appointmentId?: string;
   chiefComplaint: string;
-  symptoms: string[];
+  symptoms: string;
   primaryDiagnosis: string;
   secondaryDiagnoses?: string[];
   medicalNotes?: string;
   treatmentPlan?: string;
+  hasLabOrders: boolean;
+  hasPrescription: boolean;
+  labCharges?: ServiceCharge[];
+  pharmacyCharges?: ServiceCharge[];
 }
 
 export interface ConsultationResponse {
@@ -198,6 +207,7 @@ export interface LabOrderResponse {
 export const generateLabOrder = async (data: {
   consultationId: string;
   patientId: string;
+  appointmentId: string;
   testNames: string[];
 }): Promise<LabOrderResponse> => {
   const response = await api.post<LabOrderResponse>('/api/clinical/lab-orders', data);

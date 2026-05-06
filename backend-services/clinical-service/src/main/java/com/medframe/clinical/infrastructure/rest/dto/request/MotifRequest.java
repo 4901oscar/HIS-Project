@@ -17,4 +17,6 @@ public class MotifRequest {
 
     @Size(max = 100)
     private String category;
+
+    private Boolean active;
 }

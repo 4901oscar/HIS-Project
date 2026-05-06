@@ -19,6 +19,7 @@ public class LabOrderResponse {
     private String orderCode;
     private String patientId;
     private String doctorId;
+    private String appointmentId;
     private List<String> testNames;
     private OrderStatus status;
     private LocalDateTime orderedAt;

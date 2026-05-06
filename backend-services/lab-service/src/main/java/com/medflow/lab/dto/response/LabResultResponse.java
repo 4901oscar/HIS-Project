@@ -15,8 +15,10 @@ public class LabResultResponse {
 
     private String id;
     private String orderId;
-    private String patientId;
-    private String resultFilePath;
+    private String testName;
+    private String originalFilename;
+    private Long fileSize;
     private LocalDateTime uploadedAt;
     private String uploadedBy;
+    private String downloadUrl;
 }

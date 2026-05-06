@@ -18,6 +18,10 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    schemas: lab_schema
   servlet:
     multipart:
       enabled: true
@@ -46,6 +50,11 @@ management:
 lab:
   results:
     storage-path: ${LAB_RESULTS_PATH:./lab-results}
+
+file:
+  upload:
+    max-size: 10485760  # 10 MB in bytes
+    allowed-types: application/pdf,image/jpeg,image/png
 
 logging:
   level:

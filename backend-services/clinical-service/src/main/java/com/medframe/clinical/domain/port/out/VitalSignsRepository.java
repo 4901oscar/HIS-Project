@@ -8,5 +8,6 @@ import java.util.Optional;
 public interface VitalSignsRepository {
     VitalSigns save(VitalSigns vitalSigns);
     Optional<VitalSigns> findLatestByPatientId(String patientId);
+    Optional<VitalSigns> findByAppointmentId(String appointmentId);
     List<VitalSigns> findByPatientIdOrderByRecordedAtDesc(String patientId);
 }

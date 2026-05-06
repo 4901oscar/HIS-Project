@@ -19,6 +19,9 @@ public class LabOrderRequest {
     @NotBlank(message = "Patient ID es requerido")
     private String patientId;
     
+    @NotBlank(message = "Appointment ID es requerido")
+    private String appointmentId;
+    
     @NotEmpty(message = "Debe incluir al menos un examen")
     private List<String> testNames;
 }

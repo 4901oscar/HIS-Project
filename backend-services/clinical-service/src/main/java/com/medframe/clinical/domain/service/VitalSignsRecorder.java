@@ -15,12 +15,13 @@ public class VitalSignsRecorder {
         this.vitalSignsRepository = vitalSignsRepository;
     }
 
-    public VitalSigns recordVitalSigns(String patientId, Integer systolic, Integer diastolic,
+    public VitalSigns recordVitalSigns(String appointmentId, String patientId, Integer systolic, Integer diastolic,
                                        Integer heartRate, Integer respiratoryRate,
                                        Double temperature, Integer oxygenSaturation,
                                        Double weight, Double height, String recordedBy) {
 
         VitalSigns vitalSigns = new VitalSigns();
+        vitalSigns.setAppointmentId(appointmentId);
         vitalSigns.setPatientId(patientId);
         vitalSigns.setSystolicPressure(systolic);
         vitalSigns.setDiastolicPressure(diastolic);
