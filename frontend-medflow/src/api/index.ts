@@ -7,6 +7,18 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Clinical Service requires X-User-Id for audit trail
+  const userData = localStorage.getItem('user_data');
+  if (userData) {
+    try {
+      const user = JSON.parse(userData);
+      if (user?.id) config.headers['X-User-Id'] = user.id;
+    } catch {
+      // ignore malformed user data
+    }
+  }
+
   return config;
 });
 
