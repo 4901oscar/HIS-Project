@@ -15,7 +15,7 @@ import java.util.List;
  */
 class TriageEnginePropertyTest {
 
-    private final TriageEngine engine = new TriageEngine(null, null);
+    private final TriageEngine engine = new TriageEngine(null, null, null, null);
 
     /**
      * Property 1: Manchester Algorithm Selects Maximum Priority

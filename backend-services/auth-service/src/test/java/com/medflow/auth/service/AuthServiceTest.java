@@ -76,7 +76,8 @@ class AuthServiceTest {
             .username("doctor1")
             .password("$2a$10$encodedPasswordHash") // BCrypt encoded
             .email("doctor1@medflow.com")
-            .fullName("Dr. Juan Pérez")
+            .firstName("Juan")
+            .firstLastName("Pérez")
             .active(true)
             .roles(Set.of(doctorRole))
             .build();

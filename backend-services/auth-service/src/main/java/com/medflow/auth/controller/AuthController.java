@@ -15,6 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -39,43 +41,33 @@ public class AuthController {
         this.rateLimiter = rateLimiter;
     }
 
-    /** CU-00.1: Login por username o correo. */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
                                                HttpServletRequest httpRequest) {
         String ip = getClientIp(httpRequest);
         rateLimiter.checkRateLimit(ip);
-
         String token = authService.login(request.getUsername(), request.getPassword());
         rateLimiter.resetAttempts(ip);
-
         User user = userRepository.findByUsername(request.getUsername())
                 .or(() -> userRepository.findByEmail(request.getUsername()))
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
         return ResponseEntity.ok(new LoginResponse(token, jwtService.getExpirationTime(), UserResponse.fromUser(user)));
     }
 
-    /** CU-00.2: Auto-registro de paciente desde el portal web. */
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         log.info("[CU-00.2] Usuario registrado. Email: {}", request.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new RegisterResponse(
-                        "Cuenta creada exitosamente. Ya puedes iniciar sesión.",
-                        request.getEmail()
-                ));
+                .body(new RegisterResponse("Cuenta creada exitosamente. Ya puedes iniciar sesion.", request.getEmail()));
     }
 
-    /** CU-00.2: Activación de cuenta por link de correo. */
     @GetMapping("/activate")
     public ResponseEntity<Void> activate(@RequestParam String token) {
         authService.activate(token);
         return ResponseEntity.ok().build();
     }
 
-    /** CU-01: Admisión crea cuenta de paciente (llamado por patient-service). */
     @PostMapping("/internal/create-patient")
     public ResponseEntity<CreatePatientAccountResponse> createPatientAccount(
             @Valid @RequestBody CreatePatientAccountRequest request) {
@@ -83,14 +75,12 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /** Logout. */
     @PostMapping("/logout")
     public ResponseEntity<LogoutResponse> logout(@RequestHeader("Authorization") String authHeader) {
         authService.logout(extractToken(authHeader));
         return ResponseEntity.ok(new LogoutResponse("Logged out successfully"));
     }
 
-    /** Refresh token. */
     @PostMapping("/refresh")
     public ResponseEntity<RefreshResponse> refresh(@RequestHeader("Authorization") String authHeader) {
         String token = extractToken(authHeader);
@@ -102,21 +92,24 @@ public class AuthController {
         return ResponseEntity.ok(new RefreshResponse(jwtService.generateToken(user), jwtService.getExpirationTime()));
     }
 
-    /** Validar token. */
     @GetMapping("/validate")
     public ResponseEntity<ValidateResponse> validate(@RequestParam String token) {
         if (blacklistService.isBlacklisted(token) || !jwtService.isValid(token)) {
             return ResponseEntity.ok(new ValidateResponse(false, null, null, null));
         }
         return ResponseEntity.ok(new ValidateResponse(
-                true,
-                jwtService.extractUserId(token),
-                jwtService.extractUsername(token),
-                jwtService.extractRoles(token)
+                true, jwtService.extractUserId(token), jwtService.extractUsername(token), jwtService.extractRoles(token)
         ));
     }
 
-    /** Datos del usuario autenticado. */
+    /** Obtener nombre completo de un usuario por ID. */
+    @GetMapping("/users/{id}")
+    public ResponseEntity<Map<String, String>> getUserById(@PathVariable String id) {
+        User user = userRepository.findById(java.util.UUID.fromString(id)).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(Map.of("id", id, "fullName", user.getFullName()));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
         String token = extractToken(authHeader);

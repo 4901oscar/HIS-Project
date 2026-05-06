@@ -43,4 +43,10 @@ public class TriageRepositoryAdapter implements TriageRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public Optional<Triage> findByAppointmentId(String appointmentId) {
+        return jpaRepository.findByAppointmentId(appointmentId)
+                .map(mapper::toDomain);
+    }
 }

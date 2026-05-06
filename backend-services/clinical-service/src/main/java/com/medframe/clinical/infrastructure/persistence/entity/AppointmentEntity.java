@@ -44,6 +44,15 @@ public class AppointmentEntity {
     @Column(name = "created_by", nullable = false, length = 36)
     private String createdBy;
 
+    @Column(name = "invoice_id", length = 36)
+    private String invoiceId;
+
+    @Column(name = "lab_invoice_id", length = 36)
+    private String labInvoiceId;
+
+    @Column(name = "pharmacy_invoice_id", length = 36)
+    private String pharmacyInvoiceId;
+
     // Constructors
     public AppointmentEntity() {}
 
@@ -74,4 +83,13 @@ public class AppointmentEntity {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public String getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(String invoiceId) { this.invoiceId = invoiceId; }
+
+    public String getLabInvoiceId() { return labInvoiceId; }
+    public void setLabInvoiceId(String labInvoiceId) { this.labInvoiceId = labInvoiceId; }
+
+    public String getPharmacyInvoiceId() { return pharmacyInvoiceId; }
+    public void setPharmacyInvoiceId(String pharmacyInvoiceId) { this.pharmacyInvoiceId = pharmacyInvoiceId; }
 }

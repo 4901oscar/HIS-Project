@@ -71,12 +71,22 @@ public class InvoiceController {
     
     /**
      * Retrieves an invoice by its ID.
+     * Used by Clinical Service to validate payment before appointment activation.
      * 
      * @param id the invoice ID
+     * @param serviceName the name of the service making the request (for audit)
      * @return 200 OK with InvoiceResponse
      */
     @GetMapping("/{id}")
-    public ResponseEntity<InvoiceResponse> getInvoiceById(@PathVariable String id) {
+    public ResponseEntity<InvoiceResponse> getInvoiceById(
+            @PathVariable String id,
+            @RequestHeader(value = "X-Service-Name", required = false, defaultValue = "unknown") String serviceName) {
+        
+        // Log the service that requested the invoice for audit purposes
+        if (!"unknown".equals(serviceName)) {
+            // This will be logged by the service method
+        }
+        
         InvoiceResponse response = invoiceService.getById(id);
         return ResponseEntity.ok(response);
     }

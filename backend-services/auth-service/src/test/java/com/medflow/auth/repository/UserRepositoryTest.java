@@ -63,7 +63,8 @@ class UserRepositoryTest {
                 .username("doctor1")
                 .password("hashedPassword123")
                 .email("doctor1@medflow.com")
-                .fullName("Dr. Juan Pérez")
+                .firstName("Juan")
+                .firstLastName("Pérez")
                 .active(true)
                 .roles(Set.of(doctorRole))
                 .build();
@@ -77,7 +78,7 @@ class UserRepositoryTest {
         assertThat(savedUser.getUsername()).isEqualTo("doctor1");
         assertThat(savedUser.getPassword()).isEqualTo("hashedPassword123");
         assertThat(savedUser.getEmail()).isEqualTo("doctor1@medflow.com");
-        assertThat(savedUser.getFullName()).isEqualTo("Dr. Juan Pérez");
+        assertThat(savedUser.getFullName()).isEqualTo("Juan Pérez");
         assertThat(savedUser.isActive()).isTrue();
         assertThat(savedUser.getRoles()).hasSize(1);
         assertThat(savedUser.getRoles()).contains(doctorRole);
@@ -92,7 +93,8 @@ class UserRepositoryTest {
                 .username("doctor2")
                 .password("hashedPassword456")
                 .email("doctor2@medflow.com")
-                .fullName("Dr. María García")
+                .firstName("María")
+                .firstLastName("García")
                 .active(true)
                 .roles(Set.of(doctorRole, adminRole))
                 .build();
@@ -105,7 +107,7 @@ class UserRepositoryTest {
         assertThat(foundUser).isPresent();
         assertThat(foundUser.get().getUsername()).isEqualTo("doctor2");
         assertThat(foundUser.get().getEmail()).isEqualTo("doctor2@medflow.com");
-        assertThat(foundUser.get().getFullName()).isEqualTo("Dr. María García");
+        assertThat(foundUser.get().getFullName()).isEqualTo("María García");
         assertThat(foundUser.get().getRoles()).hasSize(2);
         assertThat(foundUser.get().getRoles()).containsExactlyInAnyOrder(doctorRole, adminRole);
     }
@@ -117,7 +119,8 @@ class UserRepositoryTest {
                 .username("doctor3")
                 .password("hashedPassword789")
                 .email("doctor3@medflow.com")
-                .fullName("Dr. Carlos López")
+                .firstName("Carlos")
+                .firstLastName("López")
                 .active(true)
                 .roles(Set.of(doctorRole))
                 .build();

@@ -31,10 +31,10 @@ const HeroSection: FC = () => {
             {/* CTA Button */}
             <div className="pt-4">
               <Link
-                to="/services"
+                to="/appointment"
                 className="inline-block px-6 md:px-8 py-2 md:py-3 bg-medin-blue text-medin-navy rounded-full font-semibold hover:bg-medin-blue-light transition-colors shadow-md text-sm md:text-base"
               >
-                Nuestros Servicios
+                Agendar Cita
               </Link>
             </div>
           </div>

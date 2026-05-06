@@ -14,4 +14,7 @@ public interface PatientServiceFeignClient {
     
     @GetMapping("/api/patients/{id}")
     PatientDTO getPatient(@PathVariable("id") String id);
+    
+    @GetMapping("/api/patients/by-auth-user/{authUserId}")
+    PatientDTO getPatientByAuthUserId(@PathVariable("authUserId") String authUserId);
 }

@@ -2,12 +2,18 @@ package com.medflow.lab.service;
 
 import com.medflow.lab.dto.request.LabOrderNotificationRequest;
 import com.medflow.lab.dto.response.LabOrderResponse;
+import com.medflow.lab.dto.response.LabOrderWithTestsResponse;
+import com.medflow.lab.dto.response.TestDetail;
 import com.medflow.lab.exception.InvalidOrderStatusException;
 import com.medflow.lab.exception.LabOrderNotFoundException;
+import com.medflow.lab.model.ExamType;
 import com.medflow.lab.model.LabOrder;
+import com.medflow.lab.model.LabResult;
 import com.medflow.lab.model.OrderStatus;
 import com.medflow.lab.model.Sample;
+import com.medflow.lab.repository.ExamTypeRepository;
 import com.medflow.lab.repository.LabOrderRepository;
+import com.medflow.lab.repository.LabResultRepository;
 import com.medflow.lab.repository.SampleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +32,8 @@ public class LabOrderService {
 
     private final LabOrderRepository labOrderRepository;
     private final SampleRepository sampleRepository;
+    private final LabResultRepository labResultRepository;
+    private final ExamTypeRepository examTypeRepository;
 
     @Transactional
     public LabOrderResponse receiveOrder(LabOrderNotificationRequest request) {
@@ -34,6 +43,7 @@ public class LabOrderService {
                 .orderCode(request.getOrderCode())
                 .patientId(request.getPatientId())
                 .doctorId(request.getDoctorId())
+                .appointmentId(request.getAppointmentId())
                 .testNames(request.getTestNames())
                 .status(OrderStatus.PENDING)
                 .orderedAt(LocalDateTime.now())
@@ -103,12 +113,56 @@ public class LabOrderService {
         return response;
     }
 
+    @Transactional(readOnly = true)
+    public LabOrderWithTestsResponse getOrderByAppointmentId(String appointmentId) {
+        log.info("Consultando orden por appointmentId: {}", appointmentId);
+
+        LabOrder order = labOrderRepository.findFirstByAppointmentIdOrderByOrderedAtDesc(appointmentId)
+                .orElseThrow(() -> new LabOrderNotFoundException(
+                        "Orden de laboratorio no encontrada para appointmentId: " + appointmentId));
+
+        // Get all results for this order
+        List<LabResult> results = labResultRepository.findByOrderId(order.getId());
+        
+        // Create a set of test names that have results
+        Set<String> testsWithResults = results.stream()
+                .map(LabResult::getTestName)
+                .collect(Collectors.toSet());
+
+        // Build test details with hasResult flag and exam type information
+        List<TestDetail> testDetails = order.getTestNames().stream()
+                .map(testName -> {
+                    // Try to find exam type by name
+                    ExamType examType = examTypeRepository.findByName(testName).orElse(null);
+                    
+                    return TestDetail.builder()
+                            .testName(testName)
+                            .testType(examType != null ? examType.getTestType() : "No especificado")
+                            .sampleType(examType != null ? examType.getSampleType() : "No especificado")
+                            .hasResult(testsWithResults.contains(testName))
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return LabOrderWithTestsResponse.builder()
+                .id(order.getId())
+                .orderCode(order.getOrderCode())
+                .patientId(order.getPatientId())
+                .doctorId(order.getDoctorId())
+                .appointmentId(order.getAppointmentId())
+                .tests(testDetails)
+                .status(order.getStatus())
+                .orderedAt(order.getOrderedAt())
+                .build();
+    }
+
     private LabOrderResponse mapToResponse(LabOrder order) {
         return LabOrderResponse.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
                 .patientId(order.getPatientId())
                 .doctorId(order.getDoctorId())
+                .appointmentId(order.getAppointmentId())
                 .testNames(order.getTestNames())
                 .status(order.getStatus())
                 .orderedAt(order.getOrderedAt())

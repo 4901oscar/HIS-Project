@@ -28,7 +28,9 @@ class ProcessPaymentRequestTest {
         // Arrange
         ProcessPaymentRequest request = new ProcessPaymentRequest(
             new BigDecimal("100.00"),
-            PaymentMethod.CASH
+            PaymentMethod.CASH,
+            "CF",
+            "Consumidor Final"
         );
         
         // Act
@@ -41,7 +43,7 @@ class ProcessPaymentRequestTest {
     @Test
     void testAmountIsRequired() {
         // Arrange
-        ProcessPaymentRequest request = new ProcessPaymentRequest(null, PaymentMethod.CASH);
+        ProcessPaymentRequest request = new ProcessPaymentRequest(null, PaymentMethod.CASH, "CF", "Consumidor Final");
         
         // Act
         Set<ConstraintViolation<ProcessPaymentRequest>> violations = validator.validate(request);
@@ -57,7 +59,9 @@ class ProcessPaymentRequestTest {
         // Arrange
         ProcessPaymentRequest request = new ProcessPaymentRequest(
             BigDecimal.ZERO,
-            PaymentMethod.CASH
+            PaymentMethod.CASH,
+            "CF",
+            "Consumidor Final"
         );
         
         // Act
@@ -74,7 +78,9 @@ class ProcessPaymentRequestTest {
         // Arrange
         ProcessPaymentRequest request = new ProcessPaymentRequest(
             new BigDecimal("100.00"),
-            null
+            null,
+            "CF",
+            "Consumidor Final"
         );
         
         // Act

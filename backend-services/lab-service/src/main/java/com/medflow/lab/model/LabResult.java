@@ -23,11 +23,20 @@ public class LabResult {
     @Column(name = "order_id", nullable = false, length = 36)
     private String orderId;
 
+    @Column(name = "test_name", nullable = false, length = 255)
+    private String testName;
+
     @Column(name = "patient_id", nullable = false, length = 36)
     private String patientId;
 
     @Column(name = "result_file_path", nullable = false, length = 500)
     private String resultFilePath;
+
+    @Column(name = "original_filename", length = 500)
+    private String originalFilename;
+
+    @Column(name = "file_size")
+    private Long fileSize;
 
     @Column(name = "uploaded_at", nullable = false)
     private LocalDateTime uploadedAt;

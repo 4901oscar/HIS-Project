@@ -29,7 +29,7 @@ public class LabOrderGenerator {
     }
 
     public LabOrder generateLabOrder(String consultationId, String patientId,
-                                      String doctorId, List<String> testNames) {
+                                      String doctorId, String appointmentId, List<String> testNames) {
 
         String code = generateUniqueCode();
 
@@ -47,7 +47,7 @@ public class LabOrderGenerator {
 
         // Notify Lab Service — fire and forget (eventual consistency)
         try {
-            labServiceClient.notifyNewLabOrder(saved);
+            labServiceClient.notifyNewLabOrder(saved, appointmentId);
         } catch (Exception e) {
             log.error("No se pudo notificar a Lab Service sobre la orden {}: {}",
                     code, e.getMessage());

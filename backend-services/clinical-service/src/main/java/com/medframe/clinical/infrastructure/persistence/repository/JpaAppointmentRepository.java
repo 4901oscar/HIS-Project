@@ -2,6 +2,7 @@ package com.medframe.clinical.infrastructure.persistence.repository;
 
 import com.medframe.clinical.infrastructure.persistence.entity.AppointmentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -30,4 +31,44 @@ public interface JpaAppointmentRepository extends JpaRepository<AppointmentEntit
      * @return list of appointment entities for the patient
      */
     List<AppointmentEntity> findByPatientId(String patientId);
+    
+    /**
+     * Find all appointments for a specific date.
+     *
+     * @param appointmentDate the appointment date
+     * @return list of appointment entities on that date
+     */
+    List<AppointmentEntity> findByAppointmentDate(LocalDate appointmentDate);
+
+    /**
+     * Find all appointments for a specific doctor (all dates).
+     *
+     * @param doctorId the doctor ID
+     * @return list of appointment entities for the doctor
+     */
+    List<AppointmentEntity> findByDoctorId(String doctorId);
+
+    /**
+     * Find all VITAL_SIGNS appointments that do not have an associated triage record.
+     * Uses a NOT EXISTS subquery for optimal performance.
+     * 
+     * VITAL_SIGNS: Appointments waiting for vital signs capture (all editable)
+     *
+     * @return list of VITAL_SIGNS appointment entities without triage records
+     */
+    @Query("SELECT a FROM AppointmentEntity a WHERE a.status = 'VITAL_SIGNS' AND NOT EXISTS (SELECT 1 FROM TriageEntity t WHERE t.appointmentId = a.id)")
+    List<AppointmentEntity> findPendingTriage();
+    
+    /**
+     * Find all appointments that do not have an associated invoice.
+     * Used for manual reconciliation when Billing Service was unavailable.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-12.1: Consultar citas sin factura para reconciliación manual</li>
+     * </ul>
+     *
+     * @return list of appointment entities without invoice (invoiceId is NULL)
+     */
+    List<AppointmentEntity> findByInvoiceIdIsNull();
 }

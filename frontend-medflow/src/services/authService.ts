@@ -1,15 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080';
-
-const api = axios.create({ baseURL: API_URL });
-
-// Adjunta el token en cada request si existe
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+import api from '../api';
 
 export interface LoginCredentials {
   username: string;
@@ -40,6 +29,11 @@ export interface RegisterData {
   secondLastName?: string;
   email: string;
   phone: string;
+  birthDate: string; // YYYY-MM-DD
+  gender: string; // M o F
+  department?: string;
+  municipality?: string;
+  zone?: string;
   address?: string;
   password: string;
 }
@@ -47,6 +41,31 @@ export interface RegisterData {
 export interface RegisterResponse {
   message: string;
   email: string;
+}
+
+export interface CreatePatientAccountRequest {
+  dpi: string;
+  nit?: string;
+  firstName: string;
+  secondName?: string;
+  firstLastName: string;
+  secondLastName?: string;
+  email: string;
+  phone: string;
+  birthDate: string; // YYYY-MM-DD
+  gender: string; // M o F
+  department?: string;
+  municipality?: string;
+  zone?: string;
+  address?: string;
+}
+
+export interface CreatePatientAccountResponse {
+  userId: string;
+  patientId: string;
+  username: string;
+  temporaryPassword: string;
+  message: string;
 }
 
 export const register = async (data: RegisterData): Promise<RegisterResponse> => {
@@ -66,21 +85,30 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 };
 
 export const logout = async (): Promise<void> => {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_data');
   try {
     await api.post('/api/auth/logout');
-  } finally {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
+  } catch {
+    // ignore — token already cleared locally
   }
 };
 
-export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem('auth_token');
-};
+export const isAuthenticated = (): boolean => !!localStorage.getItem('auth_token');
 
 export const getCurrentUser = (): AuthUser | null => {
   const data = localStorage.getItem('user_data');
   return data ? JSON.parse(data) : null;
 };
 
-export default { login, logout, isAuthenticated, getCurrentUser };
+export const getUserFullName = async (userId: string): Promise<string> => {
+  const response = await api.get<{ id: string; fullName: string }>(`/api/auth/users/${userId}`);
+  return response.data.fullName;
+};
+
+export const createPatientAccount = async (data: CreatePatientAccountRequest): Promise<CreatePatientAccountResponse> => {
+  const response = await api.post<CreatePatientAccountResponse>('/api/auth/internal/create-patient', data);
+  return response.data;
+};
+
+export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName, createPatientAccount };

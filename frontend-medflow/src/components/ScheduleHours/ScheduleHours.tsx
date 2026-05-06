@@ -6,18 +6,18 @@ import type { FC } from 'react';
 
 const ScheduleHours: FC = () => {
   const schedule = [
-    { day: 'Monday', hours: '09:00 AM - 07:00 PM' },
-    { day: 'Tuesday', hours: '09:00 AM - 07:00 PM' },
-    { day: 'Wednesday', hours: '09:00 AM - 07:00 PM' },
-    { day: 'Thursday', hours: '09:00 AM - 07:00 PM' },
-    { day: 'Friday', hours: '09:00 AM - 07:00 PM' },
-    { day: 'Saturday', hours: '09:00 AM - 07:00 PM' },
-    { day: 'Sunday', hours: 'Closed' },
+    { day: 'Lunes', hours: '09:00 AM - 07:00 PM' },
+    { day: 'Martes', hours: '09:00 AM - 07:00 PM' },
+    { day: 'Miércoles', hours: '09:00 AM - 07:00 PM' },
+    { day: 'Jueves', hours: '09:00 AM - 07:00 PM' },
+    { day: 'Viernes', hours: '09:00 AM - 07:00 PM' },
+    { day: 'Sábado', hours: '09:00 AM - 07:00 PM' },
+    { day: 'Domingo', hours: 'Cerrado' },
   ];
 
   return (
     <div className="bg-medin-navy text-white p-8 rounded-lg">
-      <h2 className="text-3xl font-bold mb-8">Schedule hours</h2>
+      <h2 className="text-3xl font-bold mb-8">Horario de atención</h2>
       
       <div className="space-y-4">
         {schedule.map((item) => (
@@ -43,8 +43,8 @@ const ScheduleHours: FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
           </svg>
           <div>
-            <div className="text-sm text-gray-300">Emergency</div>
-            <div className="text-xl font-bold">(237) 681-812-255</div>
+            <div className="text-sm text-gray-300">Emergencias</div>
+            <div className="text-xl font-bold">(+502) 1122-3344</div>
           </div>
         </div>
       </div>

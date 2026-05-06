@@ -11,13 +11,19 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class PatientDTO {
     private String id;
+    private String dpi;
+    private String nit;
+    private String fullName;
     private String firstName;
-    private String lastName;
-    private String documentType;
-    private String documentNumber;
-    private LocalDate dateOfBirth;
+    private String firstLastName;
+    private LocalDate birthDate;
     private String gender;
     private String email;
     private String phone;
+    private String department;
+    private String municipality;
+    private String zone;
     private String address;
+    private String authUserId;
+    private boolean active;
 }

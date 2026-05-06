@@ -100,6 +100,58 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
     
+    @ExceptionHandler(DuplicateTriageException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateTriage(
+            DuplicateTriageException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+    
+    @ExceptionHandler(TriageNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTriageNotFound(
+            TriageNotFoundException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    
+    @ExceptionHandler(ClinicShiftConflictException.class)
+    public ResponseEntity<ErrorResponse> handleClinicShiftConflict(
+            ClinicShiftConflictException ex) {
+
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            ex.getMessage(),
+            null
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(
+            IllegalStateException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
     @ExceptionHandler(PatientNotFoundException.class)
     public ResponseEntity<ErrorResponse> handlePatientNotFound(
             PatientNotFoundException ex) {
@@ -111,6 +163,45 @@ public class GlobalExceptionHandler {
         );
         
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    
+    @ExceptionHandler(DoctorNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleDoctorNotFound(
+            DoctorNotFoundException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    
+    @ExceptionHandler(InvalidShiftDurationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidShiftDuration(
+            InvalidShiftDurationException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    @ExceptionHandler(NoAvailableDoctorException.class)
+    public ResponseEntity<ErrorResponse> handleNoAvailableDoctor(
+            NoAvailableDoctorException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.UNPROCESSABLE_ENTITY.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
     }
     
     @ExceptionHandler(UnauthorizedException.class)
@@ -139,17 +230,139 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
     
-    @ExceptionHandler(ServiceUnavailableException.class)
-    public ResponseEntity<ErrorResponse> handleServiceUnavailable(
-            ServiceUnavailableException ex) {
+    @ExceptionHandler(ClinicNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleClinicNotFound(
+            ClinicNotFoundException ex) {
         
         ErrorResponse response = new ErrorResponse(
-            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            HttpStatus.NOT_FOUND.value(),
             ex.getMessage(),
             null
         );
         
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    
+    @ExceptionHandler(DuplicateClinicCodeException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateClinicCode(
+            DuplicateClinicCodeException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    @ExceptionHandler(InvalidClinicDataException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidClinicData(
+            InvalidClinicDataException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(
+            ServiceUnavailableException ex) {
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(java.time.LocalDateTime.now())
+                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
+                .error("Service Unavailable")
+                .errorCode("SERVICE_UNAVAILABLE")
+                .message(ex.getMessage())
+                .build();
+        
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+    
+    /**
+     * Maneja excepciones de validación de pago.
+     * Retorna 400 Bad Request con código de error específico.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-5.6: Manejo de errores de validación de pago</li>
+     *   <li>REQ-8.1-8.8: Formato de respuesta de error</li>
+     * </ul>
+     */
+    @ExceptionHandler(PaymentValidationException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentValidation(
+            PaymentValidationException ex) {
+        
+        log.error("Payment validation failed: {} - {}", ex.getErrorCode(), ex.getMessage());
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(java.time.LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Bad Request")
+                .errorCode(ex.getErrorCode() != null ? ex.getErrorCode().name() : "PAYMENT_VALIDATION_ERROR")
+                .message(ex.getMessage())
+                .build();
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    /**
+     * Maneja excepciones de estado de cita inválido.
+     * Retorna 400 Bad Request.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-5.2-5.3: Validación de estado de cita antes de activación</li>
+     *   <li>REQ-8.1-8.8: Formato de respuesta de error</li>
+     * </ul>
+     */
+    @ExceptionHandler(InvalidAppointmentStatusException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidAppointmentStatus(
+            InvalidAppointmentStatusException ex) {
+        
+        log.error("Invalid appointment status: {}", ex.getMessage());
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(java.time.LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Bad Request")
+                .errorCode("INVALID_APPOINTMENT_STATUS")
+                .message(ex.getMessage())
+                .build();
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    /**
+     * Maneja excepciones de cita bloqueada por acceso concurrente.
+     * Retorna 409 Conflict con información del usuario que tiene el bloqueo.
+     * 
+     * <p><strong>Requisitos relacionados:</strong></p>
+     * <ul>
+     *   <li>REQ-5.1-5.4: Transición de bloqueo ACTIVE → VITAL_SIGNS</li>
+     *   <li>REQ-14.1-14.4: Manejo de errores de concurrencia</li>
+     * </ul>
+     */
+    @ExceptionHandler(AppointmentLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAppointmentLocked(
+            AppointmentLockedException ex) {
+        
+        log.warn("Appointment locked: {}", ex.getMessage());
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(java.time.LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflict")
+                .errorCode("APPOINTMENT_LOCKED")
+                .message(ex.getMessage())
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
     
     @ExceptionHandler(Exception.class)

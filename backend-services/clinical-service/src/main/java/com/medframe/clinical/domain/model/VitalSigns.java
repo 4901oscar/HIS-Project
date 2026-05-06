@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class VitalSigns {
 
     private String id;
+    private String appointmentId;
     private String patientId;
     private Integer systolicPressure;   // 50-250 mmHg
     private Integer diastolicPressure;  // 30-150 mmHg
@@ -53,6 +54,9 @@ public class VitalSigns {
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
 
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }

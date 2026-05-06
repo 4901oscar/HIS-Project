@@ -14,6 +14,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Build argument for API Gateway URL
+ARG VITE_API_GATEWAY_URL=http://localhost:8080
+ENV VITE_API_GATEWAY_URL=$VITE_API_GATEWAY_URL
+
 # Build the application
 RUN npm run build
 
@@ -31,7 +35,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:3000 || exit 1
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:3000/health || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

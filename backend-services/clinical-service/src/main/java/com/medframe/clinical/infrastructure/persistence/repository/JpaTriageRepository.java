@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JPA Repository for Triage entities.
@@ -20,4 +21,12 @@ public interface JpaTriageRepository extends JpaRepository<TriageEntity, String>
      * @return list of triage entities for the patient
      */
     List<TriageEntity> findByPatientId(String patientId);
+    
+    /**
+     * Find triage by appointment ID.
+     * 
+     * @param appointmentId the appointment ID
+     * @return optional triage entity for the appointment
+     */
+    Optional<TriageEntity> findByAppointmentId(String appointmentId);
 }

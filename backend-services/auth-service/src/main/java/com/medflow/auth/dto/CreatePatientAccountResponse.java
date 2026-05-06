@@ -7,6 +7,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class CreatePatientAccountResponse {
     private String userId;
+    private String patientId;
     private String username;
     private String temporaryPassword;
     private String message;

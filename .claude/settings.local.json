@@ -5,7 +5,31 @@
       "Bash(python3 *)",
       "Bash(py *)",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -r \"throw new RuntimeException\\\\|//.*stub\\\\|//.*incomplete\\\\|unimplemented\" /c/Users/LENOVO/HIS-Project/backend-services --include=\"*.java\")",
+      "Bash(mvn compile *)",
+      "Bash(grep -E \"^\\\\\\\\[ERROR\\\\\\\\]\")",
+      "Bash(java -version)",
+      "Bash(mvn -version)",
+      "Bash(docker compose *)",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(grep -E \"\\\\.java$\")",
+      "Bash(docker version *)",
+      "Bash(docker-compose up *)",
+      "Bash(docker build *)",
+      "Bash(grep -E \"ERROR|error|failed|✓|Started|done$|naming to\")",
+      "Bash(docker-compose down *)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"noexiste\\\\\",\\\\\"password\\\\\":\\\\\"wrong\\\\\"}\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/patients/dpi/1234567890123 -H \"Authorization: Bearer test\")",
+      "Bash(docker restart *)",
+      "Bash(xargs cat *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/lab/exam-types)",
+      "Bash(curl -s http://localhost:8080/api/lab/exam-types)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/billing/services)",
+      "Bash(curl -s http://localhost:8080/api/billing/services)",
+      "Bash(docker-compose build *)",
+      "Bash(python -c \"import sys,json; h=json.load\\(sys.stdin\\); print\\(h.get\\('Status'\\)\\); [print\\(l['Output']\\) for l in h.get\\('Log',[]\\)]\")"
     ]
   }
 }

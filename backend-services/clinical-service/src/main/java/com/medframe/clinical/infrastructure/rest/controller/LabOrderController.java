@@ -28,6 +28,7 @@ public class LabOrderController {
             request.getConsultationId(),
             request.getPatientId(),
             userId,
+            request.getAppointmentId(),
             request.getTestNames()
         );
         
