@@ -3,6 +3,7 @@ package com.medflow.billing.service;
 import com.medflow.billing.dto.request.ServiceItemRequest;
 import com.medflow.billing.dto.response.ServiceItemResponse;
 import com.medflow.billing.model.ServiceItem;
+import com.medflow.billing.model.ServiceItemStatus;
 import com.medflow.billing.repository.ServiceItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,8 @@ public class ServiceItemService {
 
     public List<ServiceItemResponse> getAll(String category) {
         List<ServiceItem> items = (category != null && !category.isBlank())
-                ? repository.findByCategory(category)
-                : repository.findAll();
+                ? repository.findByCategoryAndStatusNot(category, ServiceItemStatus.DELETED)
+                : repository.findByStatusNot(ServiceItemStatus.DELETED);
         return items.stream().map(ServiceItemResponse::from).collect(Collectors.toList());
     }
 
@@ -30,7 +31,7 @@ public class ServiceItemService {
                 .description(req.getDescription())
                 .category(req.getCategory())
                 .price(req.getPrice())
-                .active(true)
+                .status(ServiceItemStatus.ACTIVE)
                 .build();
         return ServiceItemResponse.from(repository.save(item));
     }
@@ -43,13 +44,29 @@ public class ServiceItemService {
         item.setDescription(req.getDescription());
         item.setCategory(req.getCategory());
         item.setPrice(req.getPrice());
+        if (req.getStatus() != null) {
+            item.setStatus(req.getStatus());
+        }
         return ServiceItemResponse.from(repository.save(item));
     }
 
     public ServiceItemResponse toggleActive(String id) {
         ServiceItem item = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
-        item.setActive(!item.isActive());
+        if (item.getStatus() == ServiceItemStatus.DELETED) {
+            throw new IllegalStateException("No se puede cambiar el estado de un servicio eliminado");
+        }
+        ServiceItemStatus next = item.getStatus() == ServiceItemStatus.ACTIVE
+                ? ServiceItemStatus.INACTIVE
+                : ServiceItemStatus.ACTIVE;
+        item.setStatus(next);
         return ServiceItemResponse.from(repository.save(item));
+    }
+
+    public void delete(String id) {
+        ServiceItem item = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
+        item.setStatus(ServiceItemStatus.DELETED);
+        repository.save(item);
     }
 }

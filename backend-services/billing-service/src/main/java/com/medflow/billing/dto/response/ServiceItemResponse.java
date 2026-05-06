@@ -1,6 +1,7 @@
 package com.medflow.billing.dto.response;
 
 import com.medflow.billing.model.ServiceItem;
+import com.medflow.billing.model.ServiceItemStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,7 +14,7 @@ public class ServiceItemResponse {
     private String description;
     private String category;
     private BigDecimal price;
-    private boolean active;
+    private ServiceItemStatus status;
 
     public static ServiceItemResponse from(ServiceItem s) {
         ServiceItemResponse r = new ServiceItemResponse();
@@ -23,7 +24,7 @@ public class ServiceItemResponse {
         r.setDescription(s.getDescription());
         r.setCategory(s.getCategory());
         r.setPrice(s.getPrice());
-        r.setActive(s.isActive());
+        r.setStatus(s.getStatus());
         return r;
     }
 }

@@ -12,6 +12,7 @@ export interface MotifRequest {
   code: string;
   description: string;
   category?: string;
+  active?: boolean;
 }
 
 export interface DiscriminatorResponse {
@@ -28,6 +29,7 @@ export interface DiscriminatorRequest {
   description: string;
   priorityLevel: string;
   motifId?: string;
+  active?: boolean;
 }
 
 export const PRIORITY_LEVELS: Record<string, string> = {

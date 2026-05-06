@@ -191,6 +191,8 @@ consultation:
     emergency: 300.00
     # Precio para consultas de seguimiento (GTQ)
     followup: 100.00
+    # Precio para órdenes de laboratorio (GTQ)
+    lab: 75.00
 
 # Configuración de validación de pago antes de activar citas
 # REQ-9.1, REQ-9.2, REQ-9.3, REQ-9.4 (payment-validation-before-activation)

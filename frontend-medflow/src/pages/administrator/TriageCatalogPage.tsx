@@ -3,8 +3,8 @@ import type { FC, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
-  getMotifs, createMotif, updateMotif, toggleMotif,
-  getDiscriminators, createDiscriminator, updateDiscriminator, toggleDiscriminator,
+  getMotifs, createMotif, updateMotif,
+  getDiscriminators, createDiscriminator, updateDiscriminator,
   PRIORITY_LEVELS,
   type MotifResponse, type MotifRequest,
   type DiscriminatorResponse, type DiscriminatorRequest,
@@ -22,8 +22,8 @@ type Tab = 'motifs' | 'discriminators';
 type MotifModal = { type: 'create' } | { type: 'edit'; item: MotifResponse } | null;
 type DiscModal = { type: 'create' } | { type: 'edit'; item: DiscriminatorResponse } | null;
 
-const EMPTY_MOTIF: MotifRequest = { code: '', description: '', category: '' };
-const EMPTY_DISC: DiscriminatorRequest = { code: '', description: '', priorityLevel: 'GREEN' };
+const EMPTY_MOTIF: MotifRequest = { code: '', description: '', category: '', active: true };
+const EMPTY_DISC: DiscriminatorRequest = { code: '', description: '', priorityLevel: 'GREEN', active: true };
 
 const TriageCatalogPage: FC = () => {
   const navigate = useNavigate();
@@ -54,7 +54,6 @@ const TriageCatalogPage: FC = () => {
   const filteredMotifs = motifs.filter(m => m.description.toLowerCase().includes(search.toLowerCase()) || m.code.toLowerCase().includes(search.toLowerCase()));
   const filteredDiscs = discs.filter(d => d.description.toLowerCase().includes(search.toLowerCase()) || d.code.toLowerCase().includes(search.toLowerCase()));
 
-  // Motif handlers
   const handleMotifSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!motifForm.code.trim() || !motifForm.description.trim()) { setFormError('Código y descripción son obligatorios.'); return; }
@@ -67,7 +66,6 @@ const TriageCatalogPage: FC = () => {
     finally { setSaving(false); }
   };
 
-  // Discriminator handlers
   const handleDiscSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!discForm.code.trim() || !discForm.description.trim()) { setFormError('Código y descripción son obligatorios.'); return; }
@@ -111,7 +109,9 @@ const TriageCatalogPage: FC = () => {
           <input type="text" placeholder={`Buscar ${tab === 'motifs' ? 'motivo' : 'discriminador'}...`} value={search} onChange={e => setSearch(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-medin-cyan w-64" />
           <button
-            onClick={() => tab === 'motifs' ? (setMotifForm(EMPTY_MOTIF), setFormError(null), setMotifModal({ type: 'create' })) : (setDiscForm(EMPTY_DISC), setFormError(null), setDiscModal({ type: 'create' }))}
+            onClick={() => tab === 'motifs'
+              ? (setMotifForm(EMPTY_MOTIF), setFormError(null), setMotifModal({ type: 'create' }))
+              : (setDiscForm(EMPTY_DISC), setFormError(null), setDiscModal({ type: 'create' }))}
             className="flex items-center gap-2 px-4 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-sm">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Agregar {tab === 'motifs' ? 'motivo' : 'discriminador'}
@@ -140,15 +140,14 @@ const TriageCatalogPage: FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-900">{m.description}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">{m.category || '—'}</td>
                       <td className="px-4 py-3">
-                        {m.active ? <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Activo</span>
+                        {m.active
+                          ? <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Activo</span>
                           : <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">Inactivo</span>}
                       </td>
-                      <td className="px-4 py-3 flex gap-3">
-                        <button onClick={() => { setMotifForm({ code: m.code, description: m.description, category: m.category }); setFormError(null); setMotifModal({ type: 'edit', item: m }); }}
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => { setMotifForm({ code: m.code, description: m.description, category: m.category, active: m.active }); setFormError(null); setMotifModal({ type: 'edit', item: m }); }}
                           className="text-sm text-medin-cyan hover:text-medin-blue font-medium">Editar</button>
-                        <button onClick={async () => { await toggleMotif(m.id); load(); }} className="text-sm text-gray-400 hover:text-gray-600 font-medium">
-                          {m.active ? 'Desactivar' : 'Activar'}
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -174,15 +173,14 @@ const TriageCatalogPage: FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {d.active ? <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Activo</span>
+                        {d.active
+                          ? <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Activo</span>
                           : <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">Inactivo</span>}
                       </td>
-                      <td className="px-4 py-3 flex gap-3">
-                        <button onClick={() => { setDiscForm({ code: d.code, description: d.description, priorityLevel: d.priorityLevel, motifId: d.motifId }); setFormError(null); setDiscModal({ type: 'edit', item: d }); }}
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => { setDiscForm({ code: d.code, description: d.description, priorityLevel: d.priorityLevel, motifId: d.motifId, active: d.active }); setFormError(null); setDiscModal({ type: 'edit', item: d }); }}
                           className="text-sm text-medin-cyan hover:text-medin-blue font-medium">Editar</button>
-                        <button onClick={async () => { await toggleDiscriminator(d.id); load(); }} className="text-sm text-gray-400 hover:text-gray-600 font-medium">
-                          {d.active ? 'Desactivar' : 'Activar'}
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -212,6 +210,13 @@ const TriageCatalogPage: FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción <span className="text-red-500">*</span></label>
                 <input className={inputCls} value={motifForm.description} onChange={e => setMotifForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción del motivo" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select className={inputCls} value={motifForm.active ? 'true' : 'false'} onChange={e => setMotifForm(f => ({ ...f, active: e.target.value === 'true' }))}>
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
               </div>
               {formError && <p className="text-red-600 text-sm">{formError}</p>}
               <div className="flex gap-3 pt-2">
@@ -252,6 +257,13 @@ const TriageCatalogPage: FC = () => {
                 <select className={inputCls} value={discForm.motifId ?? ''} onChange={e => setDiscForm(f => ({ ...f, motifId: e.target.value || undefined }))}>
                   <option value="">Sin motivo</option>
                   {motifs.filter(m => m.active).map(m => <option key={m.id} value={m.id}>{m.code} — {m.description}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select className={inputCls} value={discForm.active ? 'true' : 'false'} onChange={e => setDiscForm(f => ({ ...f, active: e.target.value === 'true' }))}>
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
                 </select>
               </div>
               {formError && <p className="text-red-600 text-sm">{formError}</p>}

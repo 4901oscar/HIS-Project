@@ -8,6 +8,8 @@ import {
   type CreateDoctorRequest,
   type DoctorEmployee,
 } from '../../services/doctorService';
+import { getClinics } from '../../services/clinicService';
+import type { Clinic } from '../../types/clinic';
 
 interface DoctorFormProps {
   doctor?: Doctor | null;
@@ -25,21 +27,36 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
   const [employeesError, setEmployeesError] = useState<string | null>(null);
 
   // Shared state
-  const [specialty, setSpecialty] = useState('');
   const [shiftStart, setShiftStart] = useState('');
   const [shiftEnd, setShiftEnd] = useState('');
+  const [clinicId, setClinicId] = useState('');
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [loadingClinics, setLoadingClinics] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    loadClinics();
     if (isEditMode && doctor) {
-      setSpecialty(doctor.specialty);
       setShiftStart(doctor.shiftStart);
       setShiftEnd(doctor.shiftEnd);
+      setClinicId(doctor.clinicId ?? '');
     } else {
       loadEmployees();
     }
   }, [doctor]);
+
+  const loadClinics = async () => {
+    setLoadingClinics(true);
+    try {
+      const data = await getClinics('ACTIVE');
+      setClinics(data);
+    } catch {
+      // silently fail; validation will catch if no clinic selected
+    } finally {
+      setLoadingClinics(false);
+    }
+  };
 
   const loadEmployees = async () => {
     setLoadingEmployees(true);
@@ -61,8 +78,8 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
       newErrors.employee = 'Debe seleccionar un doctor';
     }
 
-    if (!specialty.trim()) {
-      newErrors.specialty = 'La especialidad es obligatoria';
+    if (!clinicId) {
+      newErrors.clinicId = 'Debe seleccionar una clínica';
     }
 
     if (!shiftStart) {
@@ -96,12 +113,12 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
     setIsLoading(true);
     try {
       if (isEditMode && doctor) {
-        await updateDoctor(doctor.id, { name: doctor.name, specialty: specialty.trim(), shiftStart, shiftEnd });
+        await updateDoctor(doctor.id, { name: doctor.name, clinicId, shiftStart, shiftEnd });
       } else {
         const data: CreateDoctorRequest = {
           userId: selectedEmployee!.id,
+          clinicId,
           name: selectedEmployee!.fullName,
-          specialty: specialty.trim(),
           shiftStart,
           shiftEnd,
         };
@@ -176,22 +193,31 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
         </div>
       )}
 
-      {/* Specialty */}
+      {/* Clinic selector */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Especialidad <span className="text-red-500">*</span>
+          Clínica <span className="text-red-500">*</span>
         </label>
-        <input
-          type="text"
-          value={specialty}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            setSpecialty(e.target.value);
-            if (errors.specialty) setErrors((prev) => ({ ...prev, specialty: '' }));
-          }}
-          placeholder="Cardiología"
-          className={fieldClass('specialty')}
-        />
-        {errors.specialty && <p className="text-red-500 text-xs mt-1">{errors.specialty}</p>}
+        {loadingClinics ? (
+          <p className="text-sm text-gray-500">Cargando clínicas...</p>
+        ) : (
+          <select
+            value={clinicId}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              setClinicId(e.target.value);
+              if (errors.clinicId) setErrors((prev) => ({ ...prev, clinicId: '' }));
+            }}
+            className={fieldClass('clinicId')}
+          >
+            <option value="">-- Seleccione una clínica --</option>
+            {clinics.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} ({c.codigo})
+              </option>
+            ))}
+          </select>
+        )}
+        {errors.clinicId && <p className="text-red-500 text-xs mt-1">{errors.clinicId}</p>}
       </div>
 
       {/* Shift Start */}

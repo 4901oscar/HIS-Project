@@ -3,13 +3,27 @@ import type { FC, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
-  getServiceItems, createServiceItem, updateServiceItem, toggleServiceItem,
+  getServiceItems, createServiceItem, updateServiceItem,
   SERVICE_CATEGORIES,
-  type ServiceItemResponse, type ServiceItemRequest,
+  type ServiceItemResponse, type ServiceItemRequest, type ServiceItemStatus,
 } from '../../services/billingCatalogService';
+import { getExamTypes, type ExamTypeResponse } from '../../services/labCatalogService';
+import { getMedications, type MedicationResponse } from '../../services/pharmacyService';
 
 type Modal = { type: 'create' } | { type: 'edit'; item: ServiceItemResponse } | null;
-const EMPTY: ServiceItemRequest = { code: '', name: '', description: '', category: 'CONSULTATION', price: 0 };
+const EMPTY: ServiceItemRequest = { code: '', name: '', description: '', category: 'CONSULTATION', price: 0, status: 'ACTIVE' };
+
+const STATUS_LABELS: Record<ServiceItemStatus, string> = {
+  ACTIVE: 'Activo',
+  INACTIVE: 'Inactivo',
+  DELETED: 'Eliminado',
+};
+
+const STATUS_BADGE: Record<ServiceItemStatus, string> = {
+  ACTIVE: 'bg-green-100 text-green-700',
+  INACTIVE: 'bg-gray-100 text-gray-500',
+  DELETED: 'bg-red-100 text-red-500',
+};
 
 const ServiciosPage: FC = () => {
   const navigate = useNavigate();
@@ -23,6 +37,10 @@ const ServiciosPage: FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Catálogos para selects
+  const [examCatalog, setExamCatalog] = useState<ExamTypeResponse[]>([]);
+  const [medCatalog, setMedCatalog] = useState<MedicationResponse[]>([]);
+
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try { setItems(await getServiceItems()); }
@@ -30,7 +48,11 @@ const ServiciosPage: FC = () => {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    getExamTypes().then(data => setExamCatalog(data.filter(e => e.status === 'ACTIVE'))).catch(() => {});
+    getMedications().then(data => setMedCatalog(data.filter(m => m.status === 'ACTIVE'))).catch(() => {});
+  }, [load]);
 
   const filtered = items.filter(i => {
     const matchSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.code.toLowerCase().includes(search.toLowerCase());
@@ -40,10 +62,22 @@ const ServiciosPage: FC = () => {
 
   const openCreate = () => { setForm(EMPTY); setFormError(null); setModal({ type: 'create' }); };
   const openEdit = (item: ServiceItemResponse) => {
-    setForm({ code: item.code, name: item.name, description: item.description, category: item.category, price: item.price });
+    setForm({ code: item.code, name: item.name, description: item.description, category: item.category, price: item.price, status: item.status });
     setFormError(null); setModal({ type: 'edit', item });
   };
   const closeModal = () => setModal(null);
+
+  // Cuando se selecciona un item del catálogo, autocompleta nombre y código
+  const handleCatalogSelect = (value: string) => {
+    if (!value) return;
+    if (form.category === 'LABORATORY') {
+      const exam = examCatalog.find(e => e.id === value);
+      if (exam) setForm(f => ({ ...f, name: exam.name, code: `LAB-${exam.code}`, description: exam.description ?? '' }));
+    } else if (form.category === 'MEDICATION') {
+      const med = medCatalog.find(m => m.id === value);
+      if (med) setForm(f => ({ ...f, name: med.name, code: `MED-${med.name.replace(/\s+/g, '').slice(0, 6).toUpperCase()}`, description: med.description ?? '' }));
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -57,12 +91,8 @@ const ServiciosPage: FC = () => {
     finally { setSaving(false); }
   };
 
-  const handleToggle = async (id: string) => {
-    try { await toggleServiceItem(id); await load(); }
-    catch { setError('Error al cambiar estado.'); }
-  };
-
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm';
+  const showCatalogSelect = form.category === 'LABORATORY' || form.category === 'MEDICATION';
 
   return (
     <MainLayout>
@@ -117,15 +147,12 @@ const ServiciosPage: FC = () => {
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900 text-sm">Q {Number(item.price).toFixed(2)}</td>
                     <td className="px-4 py-3">
-                      {item.active
-                        ? <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Activo</span>
-                        : <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">Inactivo</span>}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[item.status as ServiceItemStatus]}`}>
+                        {STATUS_LABELS[item.status as ServiceItemStatus]}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 flex gap-3">
+                    <td className="px-4 py-3">
                       <button onClick={() => openEdit(item)} className="text-sm text-medin-cyan hover:text-medin-blue font-medium">Editar</button>
-                      <button onClick={() => handleToggle(item.id)} className="text-sm text-gray-400 hover:text-gray-600 font-medium">
-                        {item.active ? 'Desactivar' : 'Activar'}
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -140,18 +167,45 @@ const ServiciosPage: FC = () => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">{modal.type === 'create' ? 'Agregar servicio' : 'Editar servicio'}</h3>
             <form onSubmit={handleSubmit} className="space-y-3">
+
+              {/* Categoría primero para mostrar select de catálogo si aplica */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría <span className="text-red-500">*</span></label>
+                <select className={inputCls} value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value, code: '', name: '' }))}>
+                  {Object.entries(SERVICE_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+
+              {/* Select del catálogo cuando aplica */}
+              {showCatalogSelect && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {form.category === 'LABORATORY' ? 'Seleccionar examen del catálogo' : 'Seleccionar medicamento del catálogo'}
+                  </label>
+                  <select className={inputCls} defaultValue="" onChange={e => handleCatalogSelect(e.target.value)}>
+                    <option value="">— Elige para autocompletar —</option>
+                    {form.category === 'LABORATORY'
+                      ? examCatalog.map(e => <option key={e.id} value={e.id}>{e.code} — {e.name}</option>)
+                      : medCatalog.map(m => <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>)
+                    }
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">Seleccionar autocompleta el código y nombre. Puedes editarlos después.</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Código <span className="text-red-500">*</span></label>
                   <input className={inputCls} value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="Ej. CONS-GEN" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría <span className="text-red-500">*</span></label>
-                  <select className={inputCls} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                    {Object.entries(SERVICE_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio (Q) <span className="text-red-500">*</span></label>
+                  <input type="number" min={0} step={0.01} className={inputCls} value={form.price}
+                    onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-500">*</span></label>
                 <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre del servicio" />
@@ -161,10 +215,14 @@ const ServiciosPage: FC = () => {
                 <input className={inputCls} value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Precio (Q) <span className="text-red-500">*</span></label>
-                <input type="number" min={0} step={0.01} className={inputCls} value={form.price}
-                  onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select className={inputCls} value={form.status ?? 'ACTIVE'} onChange={e => setForm(f => ({ ...f, status: e.target.value as ServiceItemStatus }))}>
+                  <option value="ACTIVE">Activo</option>
+                  <option value="INACTIVE">Inactivo</option>
+                  <option value="DELETED">Eliminado</option>
+                </select>
               </div>
+
               {formError && <p className="text-red-600 text-sm">{formError}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={closeModal} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>

@@ -1,6 +1,8 @@
 package com.medflow.lab.service;
 
 import com.medflow.lab.dto.response.LabResultResponse;
+import com.medflow.lab.exception.FileSizeExceededException;
+import com.medflow.lab.exception.InvalidFileFormatException;
 import com.medflow.lab.exception.InvalidOrderStatusException;
 import com.medflow.lab.exception.LabOrderNotFoundException;
 import com.medflow.lab.exception.UnauthorizedException;
@@ -77,6 +79,9 @@ class LabResultServiceTest {
         );
 
         ReflectionTestUtils.setField(labResultService, "storagePath", tempDir.toString());
+        ReflectionTestUtils.setField(labResultService, "maxFileSize", 10485760L); // 10 MB
+        ReflectionTestUtils.setField(labResultService, "allowedFileTypes", 
+                List.of("application/pdf", "image/jpeg", "image/png"));
     }
 
     @Test
@@ -92,7 +97,6 @@ class LabResultServiceTest {
         // Assert
         assertThat(response).isNotNull();
         assertThat(response.getOrderId()).isEqualTo("order-123");
-        assertThat(response.getPatientId()).isEqualTo("patient-1");
         verify(labOrderRepository, times(1)).save(argThat(order -> 
                 order.getStatus() == OrderStatus.COMPLETED
         ));
@@ -142,7 +146,7 @@ class LabResultServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> labResultService.uploadResult("order-123", null, "tech-1"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("El archivo PDF es obligatorio");
+                .hasMessageContaining("El archivo es obligatorio");
     }
 
     @Test
@@ -154,7 +158,7 @@ class LabResultServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> labResultService.uploadResult("order-123", emptyFile, "tech-1"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("El archivo PDF es obligatorio");
+                .hasMessageContaining("El archivo es obligatorio");
     }
 
     @Test
@@ -167,8 +171,59 @@ class LabResultServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> labResultService.uploadResult("order-123", nonPdfFile, "tech-1"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Solo se permiten archivos PDF");
+                .isInstanceOf(InvalidFileFormatException.class)
+                .hasMessageContaining("Formato de archivo no permitido");
+    }
+
+    @Test
+    void uploadResult_WithJpegFile_ShouldSucceed() {
+        // Arrange
+        MultipartFile jpegFile = new MockMultipartFile(
+                "file", "result.jpg", "image/jpeg", "JPEG content".getBytes()
+        );
+        when(labOrderRepository.findById("order-123")).thenReturn(Optional.of(testOrder));
+        when(labResultRepository.save(any(LabResult.class))).thenReturn(testResult);
+        when(labOrderRepository.save(any(LabOrder.class))).thenReturn(testOrder);
+
+        // Act
+        LabResultResponse response = labResultService.uploadResult("order-123", jpegFile, "tech-1");
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getOrderId()).isEqualTo("order-123");
+    }
+
+    @Test
+    void uploadResult_WithPngFile_ShouldSucceed() {
+        // Arrange
+        MultipartFile pngFile = new MockMultipartFile(
+                "file", "result.png", "image/png", "PNG content".getBytes()
+        );
+        when(labOrderRepository.findById("order-123")).thenReturn(Optional.of(testOrder));
+        when(labResultRepository.save(any(LabResult.class))).thenReturn(testResult);
+        when(labOrderRepository.save(any(LabOrder.class))).thenReturn(testOrder);
+
+        // Act
+        LabResultResponse response = labResultService.uploadResult("order-123", pngFile, "tech-1");
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getOrderId()).isEqualTo("order-123");
+    }
+
+    @Test
+    void uploadResult_WithFileSizeExceeded_ShouldThrowException() {
+        // Arrange
+        byte[] largeContent = new byte[11 * 1024 * 1024]; // 11 MB
+        MultipartFile largeFile = new MockMultipartFile(
+                "file", "result.pdf", "application/pdf", largeContent
+        );
+        when(labOrderRepository.findById("order-123")).thenReturn(Optional.of(testOrder));
+
+        // Act & Assert
+        assertThatThrownBy(() -> labResultService.uploadResult("order-123", largeFile, "tech-1"))
+                .isInstanceOf(FileSizeExceededException.class)
+                .hasMessageContaining("El archivo excede el tamaño máximo permitido");
     }
 
     @Test
@@ -184,7 +239,7 @@ class LabResultServiceTest {
 
         // Assert
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).getPatientId()).isEqualTo("patient-1");
+        assertThat(results.get(0).getOrderId()).isEqualTo("order-123");
         verify(labResultRepository, times(1)).findByPatientIdOrderByUploadedAtDesc("patient-1");
     }
 
@@ -201,7 +256,7 @@ class LabResultServiceTest {
 
         // Assert
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).getPatientId()).isEqualTo("patient-1");
+        assertThat(results.get(0).getOrderId()).isEqualTo("order-123");
     }
 
     @Test

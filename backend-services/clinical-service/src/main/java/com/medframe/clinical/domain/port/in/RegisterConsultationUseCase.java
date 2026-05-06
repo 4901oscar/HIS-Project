@@ -9,5 +9,6 @@ public interface RegisterConsultationUseCase {
                                       String appointmentId, String chiefComplaint,
                                       String symptoms, String primaryDiagnosis,
                                       List<String> secondaryDiagnoses,
-                                      String medicalNotes, String treatmentPlan);
+                                      String medicalNotes, String treatmentPlan,
+                                      boolean hasLabOrders, boolean hasPrescription);
 }

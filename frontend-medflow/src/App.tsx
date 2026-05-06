@@ -20,6 +20,7 @@ import AdministratorDashboard from './pages/administrator/AdministratorDashboard
 import EmployeeManagementPage from './pages/administrator/EmployeeManagementPage';
 import EmployeeFormPage from './pages/administrator/EmployeeFormPage';
 import DoctorManagementPage from './pages/administrator/DoctorManagementPage';
+import ClinicManagementPage from './pages/administrator/ClinicManagementPage';
 import MedicamentosPage from './pages/administrator/MedicamentosPage';
 import ExamenesPage from './pages/administrator/ExamenesPage';
 import ServiciosPage from './pages/administrator/ServiciosPage';
@@ -28,7 +29,9 @@ import ActivateAppointments from './pages/admission/ActivateAppointments';
 import TriagePendingPage from './pages/vitals/TriagePendingPage';
 import TriageVitalSignsCapture from './pages/vitals/TriageVitalSignsCapture';
 import DoctorConsultation from './pages/doctor/DoctorConsultation';
+import PatientConsultationForm from './pages/doctor/PatientConsultationForm';
 import LabSampleManagement from './pages/lab/LabSampleManagement';
+import LabSampleWorkflow from './pages/lab/LabSampleWorkflow';
 import PharmacyDispense from './pages/pharmacy/PharmacyDispense';
 import CashierPage from './pages/cashier/CashierPage';
 import PatientDashboard from './pages/patient/PatientDashboard';
@@ -99,6 +102,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/administrator/clinicas"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <ClinicManagementPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/administrator/medicamentos" element={<ProtectedRoute requiredRole="ADMIN"><MedicamentosPage /></ProtectedRoute>} />
           <Route path="/administrator/examenes" element={<ProtectedRoute requiredRole="ADMIN"><ExamenesPage /></ProtectedRoute>} />
           <Route path="/administrator/servicios" element={<ProtectedRoute requiredRole="ADMIN"><ServiciosPage /></ProtectedRoute>} />
@@ -136,10 +147,18 @@ function App() {
 
           {/* Doctor - DOCTOR y ADMINISTRATOR */}
           <Route
-            path="/doctor"
+            path="/doctor/consultas"
             element={
               <ProtectedRoute requiredRole="DOCTOR">
                 <DoctorConsultation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/consulta/:appointmentId"
+            element={
+              <ProtectedRoute requiredRole="DOCTOR">
+                <PatientConsultationForm />
               </ProtectedRoute>
             }
           />
@@ -150,6 +169,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="LABORATORY">
                 <LabSampleManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/lab/workflow/:appointmentId"
+            element={
+              <ProtectedRoute requiredRole="LABORATORY">
+                <LabSampleWorkflow />
               </ProtectedRoute>
             }
           />

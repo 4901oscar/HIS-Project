@@ -11,59 +11,51 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controlador REST para gestionar el inventario de medicamentos.
- */
 @RestController
 @RequestMapping("/api/pharmacy/medications")
 public class MedicationController {
-    
+
     private final InventoryService inventoryService;
-    
+
     public MedicationController(InventoryService inventoryService) {
         this.inventoryService = inventoryService;
     }
-    
-    /**
-     * GET /api/pharmacy/medications
-     * Lista todos los medicamentos activos.
-     */
+
     @GetMapping
     public ResponseEntity<List<MedicationResponse>> getMedications() {
-        List<MedicationResponse> medications = inventoryService.getMedications();
-        return ResponseEntity.ok(medications);
+        return ResponseEntity.ok(inventoryService.getMedications());
     }
-    
-    /**
-     * POST /api/pharmacy/medications
-     * Agrega un nuevo medicamento al catálogo.
-     */
+
     @PostMapping
-    public ResponseEntity<MedicationResponse> addMedication(
-            @Valid @RequestBody MedicationRequest request) {
-        MedicationResponse response = inventoryService.addMedication(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<MedicationResponse> addMedication(@Valid @RequestBody MedicationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(inventoryService.addMedication(request));
     }
-    
-    /**
-     * PUT /api/pharmacy/medications/{id}/stock
-     * Actualiza el stock de un medicamento.
-     */
+
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MedicationResponse> updateMedication(
+            @PathVariable String id, @Valid @RequestBody MedicationRequest request) {
+        return ResponseEntity.ok(inventoryService.updateMedication(id, request));
+    }
     @PutMapping("/{id}/stock")
     public ResponseEntity<MedicationResponse> updateStock(
-            @PathVariable String id,
-            @Valid @RequestBody StockUpdateRequest request) {
-        MedicationResponse response = inventoryService.updateStock(id, request.getNewStock());
-        return ResponseEntity.ok(response);
+            @PathVariable String id, @Valid @RequestBody StockUpdateRequest request) {
+        return ResponseEntity.ok(inventoryService.updateStock(id, request.getNewStock()));
     }
-    
-    /**
-     * GET /api/pharmacy/medications/low-stock
-     * Obtiene medicamentos con stock bajo (menor al mínimo).
-     */
+
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<MedicationResponse> toggleActive(@PathVariable String id) {
+        return ResponseEntity.ok(inventoryService.toggleActive(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        inventoryService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/low-stock")
     public ResponseEntity<List<MedicationResponse>> getLowStockMedications() {
-        List<MedicationResponse> medications = inventoryService.getLowStockMedications();
-        return ResponseEntity.ok(medications);
+        return ResponseEntity.ok(inventoryService.getLowStockMedications());
     }
 }

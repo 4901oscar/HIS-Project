@@ -2,6 +2,8 @@ import api from '../api';
 
 // ── Medicamentos ──────────────────────────────────────────────────────────────
 
+export type MedicationStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
+
 export interface MedicationResponse {
   id: string;
   name: string;
@@ -9,7 +11,7 @@ export interface MedicationResponse {
   unit: string;
   currentStock: number;
   minStock: number;
-  active: boolean;
+  status: MedicationStatus;
   lowStock: boolean;
 }
 
@@ -19,6 +21,7 @@ export interface MedicationRequest {
   unit: string;
   currentStock: number;
   minStock: number;
+  status?: MedicationStatus;
 }
 
 export const getMedications = async (): Promise<MedicationResponse[]> => {
@@ -31,9 +34,23 @@ export const createMedication = async (data: MedicationRequest): Promise<Medicat
   return response.data;
 };
 
+export const updateMedication = async (id: string, data: MedicationRequest): Promise<MedicationResponse> => {
+  const response = await api.put<MedicationResponse>(`/api/pharmacy/medications/${id}`, data);
+  return response.data;
+};
+
 export const updateStock = async (id: string, newStock: number): Promise<MedicationResponse> => {
   const response = await api.put<MedicationResponse>(`/api/pharmacy/medications/${id}/stock`, { newStock });
   return response.data;
+};
+
+export const toggleMedication = async (id: string): Promise<MedicationResponse> => {
+  const response = await api.patch<MedicationResponse>(`/api/pharmacy/medications/${id}/toggle`);
+  return response.data;
+};
+
+export const deleteMedication = async (id: string): Promise<void> => {
+  await api.delete(`/api/pharmacy/medications/${id}`);
 };
 
 export const getLowStockMedications = async (): Promise<MedicationResponse[]> => {

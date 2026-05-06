@@ -41,18 +41,19 @@ public class GenerateLabOrderUseCaseImpl implements GenerateLabOrderUseCase {
      * @param consultationId The consultation ID this lab order is associated with
      * @param patientId The patient's unique identifier
      * @param doctorId The doctor ordering the tests
+     * @param appointmentId The appointment ID this lab order is associated with
      * @param testNames List of laboratory test names to order
      * @return The generated LabOrder with unique code and PENDING status
      * @throws com.medframe.clinical.domain.exception.ForbiddenException if user doesn't have DOCTOR role
      */
     @Override
     public LabOrder generateLabOrder(String consultationId, String patientId,
-                                      String doctorId, List<String> testNames) {
+                                      String doctorId, String appointmentId, List<String> testNames) {
         // 1. Validate permissions - only DOCTOR role can generate lab orders
         permissionValidator.requireRole("DOCTOR");
         
         // 2. Delegate to domain service for business logic
         return labOrderGenerator.generateLabOrder(consultationId, patientId,
-                                                    doctorId, testNames);
+                                                    doctorId, appointmentId, testNames);
     }
 }

@@ -27,7 +27,14 @@ public class ExamType {
     @Column(length = 500)
     private String description;
 
-    @Column(nullable = false)
+    @Column(name = "test_type", length = 100)
+    private String testType;
+
+    @Column(name = "sample_type", length = 100)
+    private String sampleType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     @Builder.Default
-    private boolean active = true;
+    private ExamTypeStatus status = ExamTypeStatus.ACTIVE;
 }

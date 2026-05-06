@@ -19,9 +19,9 @@ public class DoctorResponse {
     
     private String id;
     private String name;
-    private String specialty;
     private String shiftStart;  // Format: HH:mm
     private String shiftEnd;    // Format: HH:mm
     private String status;      // ACTIVE or INACTIVE
+    private String clinicId;
     private LocalDateTime createdAt;
 }

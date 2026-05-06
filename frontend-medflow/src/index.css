@@ -43,3 +43,55 @@ button {
   font-family: inherit;
   cursor: pointer;
 }
+
+/* ── SweetAlert2 — botones sin Tailwind reset ── */
+.swal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  width: 100%;
+  padding: 0 16px;
+}
+
+.swal-btn-confirm {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: #0891b2;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.swal-btn-confirm:hover { background-color: #0e7490; }
+
+.swal-btn-deny {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: #f59e0b;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.swal-btn-deny:hover { background-color: #d97706; }
+
+.swal-btn-cancel {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: transparent;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.swal-btn-cancel:hover { background-color: #f9fafb; }
