@@ -58,8 +58,11 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
       setReason('');
       setErrors({});
       onSuccess?.();
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Error al marcar días libres';
+    } catch (err: unknown) {
+      const { isAxiosError } = await import('axios');
+      const errorMessage = isAxiosError(err)
+        ? (err.response?.data as { message?: string })?.message ?? 'Error al marcar días libres'
+        : 'Error al marcar días libres';
       setErrors({ submit: errorMessage });
     } finally {
       setIsLoading(false);

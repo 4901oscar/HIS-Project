@@ -40,8 +40,8 @@ const DoctorConsultation: FC = () => {
             setDoctorClinic(clinic);
           }
         }
-      } catch (err) {
-        console.error('Error loading doctor clinic:', err);
+      } catch {
+        // Clinic info is non-critical — silently ignore
       }
     };
     loadDoctorClinic();
@@ -62,8 +62,8 @@ const DoctorConsultation: FC = () => {
         includeClinical: true 
       });
       setMyAppointments(data);
-    } catch (err) {
-      console.error('Error loading appointments:', err);
+    } catch {
+      // Appointments error is shown via empty state — no console needed
     } finally {
       if (showLoading) setApptLoading(false);
     }

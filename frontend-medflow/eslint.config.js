@@ -19,5 +19,21 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Prohibit console.log in production code (use error reporting instead)
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // Prohibit explicit `any` type — use unknown or proper types
+      '@typescript-eslint/no-explicit-any': 'error',
+      // Enforce exhaustive deps in useEffect/useCallback
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+  // Relax rules for test files
+  {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
   },
 ])

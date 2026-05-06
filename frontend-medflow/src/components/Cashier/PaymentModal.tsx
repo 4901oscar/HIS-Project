@@ -67,9 +67,9 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
       }
 
       setPaymentSuccess(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al procesar el pago');
-      console.error(err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al procesar el pago';
+      setError(message);
     } finally {
       setProcessing(false);
     }

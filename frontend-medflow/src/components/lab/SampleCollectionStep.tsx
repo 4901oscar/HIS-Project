@@ -35,7 +35,7 @@ const SampleCollectionStep: FC<SampleCollectionStepProps> = ({
       // Refresh wizard to show step 2
       onRefresh();
     } catch (err) {
-      console.error('Error al recolectar muestras:', err);
+
       const errorMessage =
         err instanceof Error
           ? err.message

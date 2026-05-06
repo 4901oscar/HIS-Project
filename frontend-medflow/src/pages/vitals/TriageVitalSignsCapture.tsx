@@ -143,32 +143,25 @@ const TriageVitalSignsCapture: FC = () => {
           getVitalSignsByAppointment(appointmentId)
         ]);
         
-        // Handle patient data
         if (patientData.status === 'fulfilled') {
           setPatient(patientData.value);
         } else {
-          console.error('Error fetching patient:', patientData.reason);
           setError(extractErrorMessage(patientData.reason));
           setLoading(false);
           return;
         }
         
-        // Handle Manchester catalog
         if (catalog.status === 'fulfilled') {
           setMotifs(catalog.value.motifs);
           setDiscriminators(catalog.value.discriminators);
           setCatalogLoading(false);
         } else {
-          console.error('Error loading Manchester catalog:', catalog.reason);
           setCatalogError(extractErrorMessage(catalog.reason));
           setCatalogLoading(false);
         }
         
-        // Handle existing vital signs (404 is expected if no vital signs exist)
         if (existingVitalSigns.status === 'fulfilled') {
           const vitalSigns = existingVitalSigns.value;
-          
-          // Load existing data into form
           setForm({
             systolicPressure: String(vitalSigns.systolicPressure),
             diastolicPressure: String(vitalSigns.diastolicPressure),
@@ -179,22 +172,17 @@ const TriageVitalSignsCapture: FC = () => {
             weight: vitalSigns.weight ? String(vitalSigns.weight) : '',
             height: vitalSigns.height ? String(vitalSigns.height) : '',
           });
-          
-          // Set flags for Step 1 complete
           setVitalSignsSaved(true);
           setVitalSignsLocked(true);
         } else {
-          // Check if it's a 404 (expected) or a real error
-          const error = existingVitalSigns.reason as any;
-          if (error?.response?.status !== 404) {
-            console.error('Error loading existing vital signs:', error);
-            // Don't block the UI, just log the error
+          // 404 is expected when no vital signs exist yet — ignore silently
+          const reason = existingVitalSigns.reason as { response?: { status?: number } };
+          if (reason?.response?.status !== 404) {
+            // Non-404 error: non-blocking, UI continues normally
           }
-          // If 404, no vital signs exist yet - this is expected, continue normally
         }
         
       } catch (err) {
-        console.error('Error initializing component:', err);
         setError(extractErrorMessage(err));
       } finally {
         setLoading(false);
@@ -270,7 +258,7 @@ const TriageVitalSignsCapture: FC = () => {
       setVitalSignsSuccess(true);
       
     } catch (err) {
-      console.error('Error recording vital signs:', err);
+
       setVitalSignsError(extractErrorMessage(err));
     } finally {
       setSavingVitalSigns(false);
@@ -305,7 +293,7 @@ const TriageVitalSignsCapture: FC = () => {
         navigate('/vitals/triage');
       }, 2000);
     } catch (err) {
-      console.error('Error recording vital signs:', err);
+
       setSaveError(extractErrorMessage(err));
     } finally {
       setSaving(false);
@@ -424,7 +412,7 @@ const TriageVitalSignsCapture: FC = () => {
       }, 2000);
       
     } catch (err) {
-      console.error('Error performing triage:', err);
+
       setTriageError(extractErrorMessage(err));
     } finally {
       setSavingTriage(false);

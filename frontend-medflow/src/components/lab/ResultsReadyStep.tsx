@@ -46,7 +46,7 @@ const ResultsReadyStep: FC<ResultsReadyStepProps> = ({
         const data = await getLabOrderResults(labOrder.id);
         setResults(data);
       } catch (err) {
-        console.error('Error al cargar resultados:', err);
+  
         const errorMessage =
           err instanceof Error
             ? err.message
@@ -78,7 +78,7 @@ const ResultsReadyStep: FC<ResultsReadyStepProps> = ({
         navigate('/lab');
       }, 2000);
     } catch (err) {
-      console.error('Error al enviar resultados al doctor:', err);
+
       const errorMessage =
         err instanceof Error
           ? err.message

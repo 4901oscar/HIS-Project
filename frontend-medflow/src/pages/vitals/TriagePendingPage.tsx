@@ -28,9 +28,8 @@ const TriagePendingPage: FC = () => {
     try {
       const data = await listAppointments({ queue: 'triage' });
       setAppointments(data);
-    } catch (err) {
+    } catch {
       if (showLoading) setError('No se pudo cargar la lista de citas pendientes de triaje.');
-      console.error(err);
     } finally {
       if (showLoading) setLoading(false);
     }

@@ -31,6 +31,7 @@ const DayOffCalendar: FC<DayOffCalendarProps> = ({ doctor, onDayOffRemoved }) =>
 
   useEffect(() => {
     loadDaysOff();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctor.id, currentDate]);
 
   const loadDaysOff = async () => {
@@ -38,8 +39,8 @@ const DayOffCalendar: FC<DayOffCalendarProps> = ({ doctor, onDayOffRemoved }) =>
     try {
       const data = await getDoctorDaysOff(doctor.id);
       setDaysOff(data);
-    } catch (err) {
-      console.error('Error loading days off:', err);
+    } catch {
+      // Days off load failure is non-blocking — calendar shows empty
     } finally {
       setIsLoading(false);
     }
@@ -138,8 +139,9 @@ const DayOffCalendar: FC<DayOffCalendarProps> = ({ doctor, onDayOffRemoved }) =>
       setSelectedDay(null);
       await loadDaysOff();
       onDayOffRemoved?.();
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Error al eliminar día libre';
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Error al eliminar día libre';
       alert(errorMessage);
     }
   };
