@@ -50,7 +50,14 @@ const ExamenesPage: FC = () => {
 
   const openCreate = () => { setForm(EMPTY); setFormError(null); setModal({ type: 'create' }); };
   const openEdit = (item: ExamTypeResponse) => {
-    setForm({ code: item.code, name: item.name, description: item.description, status: item.status });
+    setForm({ 
+      code: item.code, 
+      name: item.name, 
+      description: item.description,
+      testType: item.testType,
+      sampleType: item.sampleType,
+      status: item.status 
+    });
     setFormError(null);
     setModal({ type: 'edit', item });
   };
@@ -150,6 +157,41 @@ const ExamenesPage: FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                 <input className={inputCls} value={form.description ?? ''}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de examen</label>
+                <select className={inputCls} value={form.testType ?? ''}
+                  onChange={e => setForm(f => ({ ...f, testType: e.target.value }))}>
+                  <option value="">Seleccionar tipo de examen</option>
+                  <option value="Hematología">Hematología</option>
+                  <option value="Química Clínica">Química Clínica</option>
+                  <option value="Uroanálisis">Uroanálisis</option>
+                  <option value="Microbiología">Microbiología</option>
+                  <option value="Inmunología">Inmunología</option>
+                  <option value="Serología">Serología</option>
+                  <option value="Coagulación">Coagulación</option>
+                  <option value="Parasitología">Parasitología</option>
+                  <option value="Hormonas">Hormonas</option>
+                  <option value="Marcadores Tumorales">Marcadores Tumorales</option>
+                  <option value="Toxicología">Toxicología</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Categoría general del examen de laboratorio</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de muestra</label>
+                <select className={inputCls} value={form.sampleType ?? ''}
+                  onChange={e => setForm(f => ({ ...f, sampleType: e.target.value }))}>
+                  <option value="">Seleccionar tipo de muestra</option>
+                  <option value="Sangre">Sangre</option>
+                  <option value="Orina">Orina</option>
+                  <option value="Heces">Heces</option>
+                  <option value="Saliva">Saliva</option>
+                  <option value="Líquido cefalorraquídeo">Líquido cefalorraquídeo</option>
+                  <option value="Tejido">Tejido</option>
+                  <option value="Esputo">Esputo</option>
+                  <option value="Otro">Otro</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>

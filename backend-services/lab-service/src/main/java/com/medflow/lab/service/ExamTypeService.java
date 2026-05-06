@@ -18,21 +18,25 @@ public class ExamTypeService {
         return repository.findByStatusNot(ExamTypeStatus.DELETED);
     }
 
-    public ExamType create(String code, String name, String description, ExamTypeStatus status) {
+    public ExamType create(String code, String name, String description, String testType, String sampleType, ExamTypeStatus status) {
         return repository.save(ExamType.builder()
                 .code(code.toUpperCase())
                 .name(name)
                 .description(description)
+                .testType(testType)
+                .sampleType(sampleType)
                 .status(status != null ? status : ExamTypeStatus.ACTIVE)
                 .build());
     }
 
-    public ExamType update(String id, String code, String name, String description, ExamTypeStatus status) {
+    public ExamType update(String id, String code, String name, String description, String testType, String sampleType, ExamTypeStatus status) {
         ExamType examType = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Examen no encontrado"));
         examType.setCode(code.toUpperCase());
         examType.setName(name);
         examType.setDescription(description);
+        examType.setTestType(testType);
+        examType.setSampleType(sampleType);
         if (status != null) examType.setStatus(status);
         return repository.save(examType);
     }

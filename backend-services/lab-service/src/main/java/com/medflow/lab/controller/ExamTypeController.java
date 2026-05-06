@@ -27,13 +27,15 @@ public class ExamTypeController {
     public ResponseEntity<ExamType> create(@RequestBody ExamTypeRequest req) {
         ExamTypeStatus status = parseStatus(req.getStatus(), ExamTypeStatus.ACTIVE);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(examTypeService.create(req.getCode(), req.getName(), req.getDescription(), status));
+                .body(examTypeService.create(req.getCode(), req.getName(), req.getDescription(), 
+                        req.getTestType(), req.getSampleType(), status));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ExamType> update(@PathVariable String id, @RequestBody ExamTypeRequest req) {
         ExamTypeStatus status = parseStatus(req.getStatus(), null);
-        return ResponseEntity.ok(examTypeService.update(id, req.getCode(), req.getName(), req.getDescription(), status));
+        return ResponseEntity.ok(examTypeService.update(id, req.getCode(), req.getName(), req.getDescription(), 
+                req.getTestType(), req.getSampleType(), status));
     }
 
     private ExamTypeStatus parseStatus(String value, ExamTypeStatus fallback) {
@@ -47,6 +49,8 @@ public class ExamTypeController {
         private String code;
         private String name;
         private String description;
+        private String testType;
+        private String sampleType;
         private String status;
     }
 }

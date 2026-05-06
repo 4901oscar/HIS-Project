@@ -7,6 +7,8 @@ export interface ExamTypeResponse {
   code: string;
   name: string;
   description: string;
+  testType?: string;
+  sampleType?: string;
   status: ExamTypeStatus;
 }
 
@@ -14,6 +16,8 @@ export interface ExamTypeRequest {
   code: string;
   name: string;
   description?: string;
+  testType?: string;
+  sampleType?: string;
   status: ExamTypeStatus;
 }
 

@@ -19,6 +19,7 @@ import type { ServiceItemResponse } from '../../services/billingCatalogService';
 import CIE10 from '../../data/cie10';
 import type { Cie10Item } from '../../data/cie10';
 import axios from 'axios';
+import LabResultsSection from '../../components/doctor/LabResultsSection';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -568,6 +569,9 @@ const PatientConsultationForm: FC = () => {
             <p className="text-sm text-gray-400 italic">No se encontraron signos vitales registrados para esta cita.</p>
           )}
         </div>
+
+        {/* ── Lab Results Section ── */}
+        {appointment && <LabResultsSection appointmentId={appointment.id} />}
 
         {/* ── BLOQUE 2 + 3 en un mismo form ── */}
         <form onSubmit={handleSubmit} className="space-y-6">
