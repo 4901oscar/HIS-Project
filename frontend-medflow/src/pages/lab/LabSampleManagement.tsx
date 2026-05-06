@@ -136,8 +136,8 @@ const LabSampleManagement: FC = () => {
       });
       
       setLabAppointments(appointments);
-    } catch (err) {
-      console.error('Error cargando citas de laboratorio:', err);
+    } catch {
+      // Error shown via empty state
     } finally {
       setLoading(false);
     }

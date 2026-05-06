@@ -79,8 +79,11 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
         });
       }
       onSuccess?.();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Error al guardar la clínica';
+    } catch (err: unknown) {
+      const { isAxiosError } = await import('axios');
+      const msg = isAxiosError(err)
+        ? (err.response?.data as { message?: string })?.message ?? 'Error al guardar la clínica'
+        : 'Error al guardar la clínica';
       setSubmitError(msg);
     } finally {
       setIsLoading(false);

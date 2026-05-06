@@ -123,8 +123,8 @@ const CashierPage: FC = () => {
     try {
       const data = await listAppointments({ queue: 'payment' });
       setConsultations(data.filter(a => a.payment.status !== 'PAID' && a.payment.status !== 'CANCELLED'));
-    } catch (err) {
-      console.error('Error cargando cola de consultas:', err);
+    } catch {
+      // Error shown via empty state
     } finally {
       setLoadingConsultations(false);
     }
@@ -135,8 +135,8 @@ const CashierPage: FC = () => {
     try {
       const data = await listAppointments({ status: ['PENDING_LAB_PAYMENT'] });
       setLabPayments(data);
-    } catch (err) {
-      console.error('Error cargando cola de laboratorio:', err);
+    } catch {
+      // Error shown via empty state
     } finally {
       setLoadingLab(false);
     }

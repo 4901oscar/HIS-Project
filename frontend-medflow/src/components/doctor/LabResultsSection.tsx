@@ -19,7 +19,7 @@ const LabResultsSection: FC<LabResultsSectionProps> = ({ appointmentId }) => {
         const data = await getLabResultsByAppointmentId(appointmentId);
         setResults(data);
       } catch (err) {
-        console.error('Error loading lab results:', err);
+  
         setError(err instanceof Error ? err.message : 'Error al cargar resultados');
       } finally {
         setLoading(false);
@@ -37,7 +37,7 @@ const LabResultsSection: FC<LabResultsSectionProps> = ({ appointmentId }) => {
     try {
       await downloadLabResult(result.id, result.originalFilename);
     } catch (err) {
-      console.error('Error downloading file:', err);
+
       alert('Error al descargar el archivo. Por favor, intente nuevamente.');
     }
   };

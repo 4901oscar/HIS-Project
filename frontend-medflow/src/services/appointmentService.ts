@@ -64,8 +64,10 @@ export const holdSlot = async (sessionId: string, date: string, time: string): P
   try {
     await api.post('/api/clinical/appointments/hold', { sessionId, date, time });
     return true;
-  } catch (err: any) {
-    if (err.response?.status === 409) return false;
+  } catch (err: unknown) {
+    if (err instanceof Error) throw err;
+    const axiosErr = err as { response?: { status?: number } };
+    if (axiosErr.response?.status === 409) return false;
     throw err;
   }
 };

@@ -125,8 +125,11 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
         await createDoctor(data);
       }
       onSuccess?.();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Error al guardar el doctor';
+    } catch (err: unknown) {
+      const { isAxiosError } = await import('axios');
+      const msg = isAxiosError(err)
+        ? (err.response?.data as { message?: string })?.message ?? 'Error al guardar el doctor'
+        : 'Error al guardar el doctor';
       setErrors({ submit: msg });
     } finally {
       setIsLoading(false);

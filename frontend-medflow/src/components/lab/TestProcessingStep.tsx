@@ -60,7 +60,7 @@ const TestProcessingStep: FC<TestProcessingStepProps> = ({
         });
         setExistingResults(resultsMap);
       } catch (err) {
-        console.error('Error al cargar resultados existentes:', err);
+  
       }
     };
 
@@ -94,7 +94,7 @@ const TestProcessingStep: FC<TestProcessingStepProps> = ({
         return newResults;
       });
     } catch (err) {
-      console.error(`Error al cargar resultado para ${testName}:`, err);
+
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -121,41 +121,25 @@ const TestProcessingStep: FC<TestProcessingStepProps> = ({
    * Validates that all tests have results, then completes the processing.
    */
   const handleMarkComplete = async () => {
-    console.log('=== handleMarkComplete called ===');
     setIsCompleting(true);
     setError(null);
 
     try {
-      console.log('About to call validateAllTestsComplete with orderId:', labOrder.id);
-      
-      // Step 1: Validate that all tests have uploaded results
       const validation = await validateAllTestsComplete(labOrder.id);
 
-      console.log('Validation result:', validation);
-
       if (!validation.valid) {
-        // Validation failed - display error with missing test names
-        const missingTestsList = validation.missingTests?.length > 0 
+        const missingTestsList = validation.missingTests?.length > 0
           ? validation.missingTests.join(', ')
           : 'No especificados';
-        console.log('Validation failed. Missing tests:', missingTestsList);
         setError(
           `No se puede completar el procesamiento. Faltan resultados para los siguientes exámenes: ${missingTestsList}`
         );
         return;
       }
 
-      console.log('Validation passed! Calling completeLabProcessing...');
-
-      // Step 2: Validation passed - call completeLabProcessing API
       await completeLabProcessing(appointment.id);
-
-      console.log('Lab processing completed successfully!');
-
-      // Step 3: Refresh wizard to show step 4
       onRefresh();
     } catch (err) {
-      console.error('Error al completar procesamiento:', err);
       const errorMessage =
         err instanceof Error
           ? err.message

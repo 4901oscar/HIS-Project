@@ -29,9 +29,8 @@ const ClinicList: FC<ClinicListProps> = ({ onCreateClick, onEditClick }) => {
       const data = await getClinics(statusFilter || undefined);
       setClinics(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Error al cargar la lista de clínicas');
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -44,10 +43,9 @@ const ClinicList: FC<ClinicListProps> = ({ onCreateClick, onEditClick }) => {
 
     try {
       await deleteClinic(clinic.id);
-      await loadClinics(); // Reload list
-    } catch (err) {
+      await loadClinics();
+    } catch {
       alert('Error al eliminar la clínica');
-      console.error(err);
     }
   };
 

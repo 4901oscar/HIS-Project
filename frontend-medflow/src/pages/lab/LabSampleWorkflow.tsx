@@ -74,8 +74,7 @@ const LabSampleWorkflow: FC = () => {
       // Determine current step from appointment status
       const step = getStepFromStatus(apptData.status);
       setCurrentStep(step);
-    } catch (err) {
-      console.error('Error cargando datos del flujo de laboratorio:', err);
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar los datos. Por favor, intente nuevamente.';
       setError(errorMessage);
     } finally {

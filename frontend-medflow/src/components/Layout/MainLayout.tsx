@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import type { FC, ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
   CalendarIcon,
@@ -28,16 +28,16 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    name: 'Administrator',
+    name: 'Administración',
     path: '/administrator',
     icon: Cog6ToothIcon,
-    roles: ['ADMINISTRATOR'],
+    roles: ['ADMINISTRATOR', 'ADMIN'],
   },
   {
-    name: 'Admission',
+    name: 'Admisión',
     path: '/admission',
     icon: CalendarIcon,
-    roles: ['ADMISSION', 'ADMINISTRATOR'],
+    roles: ['ADMISSION', 'ADMINISTRATOR', 'ADMIN'],
   },
   {
     name: 'Triaje Pendiente',
@@ -46,28 +46,28 @@ const menuItems: MenuItem[] = [
     roles: ['VITAL_SIGNS', 'DOCTOR'],
   },
   {
-    name: 'Doctor',
+    name: 'Consultas',
     path: '/doctor/consultas',
     icon: UserGroupIcon,
-    roles: ['DOCTOR', 'ADMINISTRATOR'],
+    roles: ['DOCTOR', 'ADMINISTRATOR', 'ADMIN'],
   },
   {
-    name: 'Laboratory',
+    name: 'Laboratorio',
     path: '/lab',
     icon: BeakerIcon,
-    roles: ['LABORATORY', 'ADMINISTRATOR'],
+    roles: ['LABORATORY', 'ADMINISTRATOR', 'ADMIN'],
   },
   {
-    name: 'Pharmacy',
+    name: 'Farmacia',
     path: '/pharmacy',
     icon: BuildingStorefrontIcon,
-    roles: ['PHARMACY', 'ADMINISTRATOR'],
+    roles: ['PHARMACY', 'ADMINISTRATOR', 'ADMIN'],
   },
   {
-    name: 'Cashier',
+    name: 'Caja',
     path: '/cashier',
     icon: BanknotesIcon,
-    roles: ['CASHIER', 'ADMINISTRATOR'],
+    roles: ['CASHIER', 'ADMINISTRATOR', 'ADMIN'],
   },
 ];
 
@@ -77,23 +77,31 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Valores por defecto si no hay usuario
   const userRole = user?.roles?.[0] || 'ADMISSION';
-  const userName = user?.fullName || 'Staff Member';
+  const userName = user?.fullName || 'Personal';
 
-  // Filtrar menú según rol
   const filteredMenu = menuItems.filter((item) =>
     item.roles.includes(userRole)
   );
 
   const handleLogout = () => {
     logout();
-    // Redirigir al login se puede hacer aquí o en el componente padre
-    window.location.href = '/login';
+    navigate('/login', { replace: true });
   };
+
+  const currentPageName =
+    filteredMenu.find((item) => location.pathname.startsWith(item.path))?.name ?? 'MedFlow HIS';
+
+  const today = new Date().toLocaleDateString('es-GT', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -102,6 +110,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         <div
           className="fixed inset-0 bg-gray-600 bg-opacity-75 z-20 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
@@ -110,11 +119,12 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         className={`fixed inset-y-0 left-0 z-30 w-64 bg-medin-navy transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        aria-label="Navegación principal"
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 bg-medin-navy border-b border-medin-cyan/20">
           <div className="flex items-center space-x-2">
-            <img src="/icono.svg" alt="MedFlow" className="h-8 w-auto" />
+            <img src="/icono.svg" alt="Logo MedFlow" className="h-8 w-auto" />
             <span className="text-xl font-bold">
               <span className="text-white">Med</span>
               <span className="text-medin-cyan">Flow</span>
@@ -123,16 +133,20 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white"
+            aria-label="Cerrar menú"
           >
-            <XMarkIcon className="h-6 w-6" />
+            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
 
         {/* User Info */}
         <div className="px-6 py-4 border-b border-medin-cyan/20">
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-full bg-medin-cyan flex items-center justify-center text-medin-navy font-bold">
-              {userName.charAt(0)}
+            <div
+              className="h-10 w-10 rounded-full bg-medin-cyan flex items-center justify-center text-medin-navy font-bold"
+              aria-hidden="true"
+            >
+              {userName.charAt(0).toUpperCase()}
             </div>
             <div>
               <p className="text-white font-medium text-sm">{userName}</p>
@@ -142,23 +156,24 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="px-3 py-4 space-y-1">
+        <nav className="px-3 py-4 space-y-1" aria-label="Módulos del sistema">
           {filteredMenu.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname.startsWith(item.path);
-            
+
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-medin-cyan text-medin-navy font-medium'
                     : 'text-gray-300 hover:bg-medin-navy/50 hover:text-white'
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-5 w-5" aria-hidden="true" />
                 <span className="text-sm">{item.name}</span>
               </Link>
             );
@@ -170,9 +185,10 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
           <button
             onClick={handleLogout}
             className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-300 hover:bg-red-600/20 hover:text-red-400 transition-colors w-full"
+            aria-label="Cerrar sesión"
           >
-            <ArrowLeftOnRectangleIcon className="h-5 w-5" />
-            <span className="text-sm">Logout</span>
+            <ArrowLeftOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
+            <span className="text-sm">Cerrar sesión</span>
           </button>
         </div>
       </aside>
@@ -184,32 +200,22 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-600 hover:text-gray-900"
+            aria-label="Abrir menú"
           >
-            <Bars3Icon className="h-6 w-6" />
+            <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
-          
+
           <div className="flex-1 lg:flex-none">
-            <h1 className="text-lg font-semibold text-gray-900">
-              {filteredMenu.find((item) => location.pathname.startsWith(item.path))?.name || 'MedFlow HIS'}
-            </h1>
+            <h1 className="text-lg font-semibold text-gray-900">{currentPageName}</h1>
           </div>
 
           <div className="flex items-center space-x-4">
-            <span className="hidden sm:block text-sm text-gray-600">
-              {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </span>
+            <span className="hidden sm:block text-sm text-gray-600 capitalize">{today}</span>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-8">
-          {children}
-        </main>
+        <main className="p-4 lg:p-8">{children}</main>
       </div>
     </div>
   );

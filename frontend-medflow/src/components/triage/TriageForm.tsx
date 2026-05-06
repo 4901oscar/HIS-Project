@@ -64,7 +64,7 @@ const TriageForm: FC<TriageFormProps> = ({
         setMotifs(catalog.motifs);
         setDiscriminators(catalog.discriminators);
       } catch (err) {
-        console.error('Error loading Manchester catalog:', err);
+  
         setCatalogError('Error al cargar el catálogo Manchester');
       } finally {
         setCatalogLoading(false);

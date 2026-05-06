@@ -36,7 +36,7 @@ const SampleValidationStep: FC<SampleValidationStepProps> = ({
       // Refresh wizard to show step 3
       onRefresh();
     } catch (err) {
-      console.error('Error al aceptar muestras:', err);
+
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -59,7 +59,7 @@ const SampleValidationStep: FC<SampleValidationStepProps> = ({
       // Refresh wizard to show step 1
       onRefresh();
     } catch (err) {
-      console.error('Error al solicitar nueva muestra:', err);
+
       const errorMessage =
         err instanceof Error
           ? err.message

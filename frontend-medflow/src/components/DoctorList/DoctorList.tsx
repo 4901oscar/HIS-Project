@@ -33,9 +33,8 @@ const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageD
       clinicsData.forEach((c: Clinic) => { map[c.id] = c.nombre; });
       setClinicsMap(map);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Error al cargar la lista de doctores');
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -50,10 +49,9 @@ const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageD
 
     try {
       await deactivateDoctor(doctor.id);
-      await loadDoctors(); // Reload list
-    } catch (err) {
+      await loadDoctors();
+    } catch {
       alert('Error al desactivar el doctor');
-      console.error(err);
     }
   };
 
