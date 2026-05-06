@@ -43,8 +43,8 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children, requiredRole }) => 
           <p className="text-gray-600 mb-6">
             No tienes permiso para acceder a esta página.
           </p>
-          <a href="/dashboard" className="inline-block px-6 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors">
-            Ir al Dashboard
+          <a href="/" className="inline-block px-6 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors">
+            Ir al inicio
           </a>
         </div>
       </div>
