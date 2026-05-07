@@ -1,3 +1,8 @@
+management:
+  health:
+    mail:
+      enabled: false
+
 spring:
   datasource:
     url: jdbc:postgresql://postgres:5432/medflow_db?currentSchema=auth_schema

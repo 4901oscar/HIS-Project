@@ -5,7 +5,7 @@ export { default as clinicalService } from './clinicalService';
 export { default as labService } from './labService';
 export { default as pharmacyService } from './pharmacyService';
 export { default as manchesterService } from './manchesterService';
-export { MOCK_USERS, getMockAuthResponse, validateMockCredentials, printAvailableUsers } from './mockData';
+// export { MOCK_USERS, getMockAuthResponse, validateMockCredentials, printAvailableUsers } from './mockData'; // solo desarrollo
 
 export type { LoginCredentials, AuthUser, AuthResponse, RegisterData, RegisterResponse } from './authService';
 export type { CreatePatientRequest, PatientResponse } from './patientService';
