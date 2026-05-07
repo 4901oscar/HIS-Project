@@ -145,6 +145,8 @@ export interface ConsultationRequest {
   hasPrescription: boolean;
   labCharges?: ServiceCharge[];
   pharmacyCharges?: ServiceCharge[];
+  followUpDate?: string;
+  followUpTime?: string;
 }
 
 export interface ConsultationResponse {
@@ -171,6 +173,11 @@ export interface MedicationItem {
   durationDays: number;
   route: string;
   specialInstructions?: string;
+  // Campos adicionales para farmacia interna (cálculo automático)
+  dosageAmount?: number;        // Cantidad numérica por toma (ej: 1, 2, 0.5)
+  dosageUnit?: string;           // Unidad (pastilla, ml, cucharada)
+  frequencyHours?: number;       // Horas entre tomas (ej: 8, 12, 24)
+  totalQuantity?: number;        // Cantidad total calculada automáticamente
 }
 
 export interface PrescriptionResponse {
@@ -183,6 +190,32 @@ export interface PrescriptionResponse {
   issuedAt: string;
 }
 
+export interface PrescriptionDetailResponse {
+  id: string;
+  prescriptionCode: string;
+  status: 'PENDING' | 'DISPENSED' | 'CANCELLED';
+  issuedAt: string; // ISO 8601 datetime
+  
+  // Patient information
+  patient: {
+    id: string;
+    fullName: string;
+    dpi?: string;
+    phone?: string;
+    email?: string;
+  };
+  
+  // Doctor information
+  doctor: {
+    id: string;
+    name: string;
+    specialty?: string;
+  };
+  
+  // Medications
+  medications: MedicationItem[];
+}
+
 export const generatePrescription = async (data: {
   consultationId: string;
   patientId: string;
@@ -190,6 +223,15 @@ export const generatePrescription = async (data: {
 }): Promise<PrescriptionResponse> => {
   const response = await api.post<PrescriptionResponse>('/api/clinical/prescriptions', data);
   return response.data;
+};
+
+export const getPrescriptionByAppointment = async (appointmentId: string): Promise<PrescriptionDetailResponse> => {
+  const response = await api.get<PrescriptionDetailResponse>(`/api/clinical/appointments/${appointmentId}/prescription`);
+  return response.data;
+};
+
+export const dispenseMedication = async (appointmentId: string): Promise<void> => {
+  await api.patch(`/api/clinical/appointments/${appointmentId}/dispense-medication`);
 };
 
 // ─── Lab Orders ───────────────────────────────────────────────────────────────
@@ -236,9 +278,12 @@ export default {
   getPendingTriageAppointments,
   getAppointmentTriage,
   recordVitalSigns,
+  getVitalSignsByAppointment,
   performTriage,
   registerConsultation,
   generatePrescription,
+  getPrescriptionByAppointment,
+  dispenseMedication,
   generateLabOrder,
   getMedicalHistory,
 };

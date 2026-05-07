@@ -47,4 +47,11 @@ public class PrescriptionRepositoryAdapter implements PrescriptionRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Prescription> findByConsultationId(String consultationId) {
+        return jpaRepository.findByConsultationId(consultationId).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JPA Repository for Consultation entities.
@@ -28,4 +29,12 @@ public interface JpaConsultationRepository extends JpaRepository<ConsultationEnt
      * @return list of consultation entities for the doctor
      */
     List<ConsultationEntity> findByDoctorId(String doctorId);
+    
+    /**
+     * Find consultation by appointment ID.
+     * 
+     * @param appointmentId the appointment ID
+     * @return optional consultation entity
+     */
+    Optional<ConsultationEntity> findByAppointmentId(String appointmentId);
 }

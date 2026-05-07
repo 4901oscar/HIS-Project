@@ -10,4 +10,5 @@ public interface PrescriptionRepository {
     Optional<Prescription> findById(String id);
     boolean existsByCode(String code);
     List<Prescription> findByPatientIdOrderByIssuedAtDesc(String patientId);
+    List<Prescription> findByConsultationId(String consultationId);
 }

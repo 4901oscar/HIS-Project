@@ -5,6 +5,8 @@ import { listAppointments } from '../../services/appointmentService';
 import type { AppointmentListItem } from '../../services/appointmentService';
 import PaymentModal from '../../components/Cashier/PaymentModal';
 import type { PaymentType } from '../../components/Cashier/PaymentModal';
+import { getInvoiceById } from '../../services/billingService';
+import type { Invoice } from '../../services/billingService';
 
 // ─── Tabla de citas ───────────────────────────────────────────────────────────
 
@@ -114,9 +116,15 @@ const CashierPage: FC = () => {
   const [labPayments, setLabPayments] = useState<AppointmentListItem[]>([]);
   const [loadingLab, setLoadingLab] = useState(true);
 
+  // Cola de farmacia (PENDING_PHARMACY_PAYMENT)
+  const [pharmacyPayments, setPharmacyPayments] = useState<AppointmentListItem[]>([]);
+  const [loadingPharmacy, setLoadingPharmacy] = useState(true);
+
   // Modal
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentListItem | null>(null);
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentType>('CONSULTATION');
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
 
   const loadConsultations = useCallback(async () => {
     setLoadingConsultations(true);
@@ -142,21 +150,50 @@ const CashierPage: FC = () => {
     }
   }, []);
 
+  const loadPharmacyPayments = useCallback(async () => {
+    setLoadingPharmacy(true);
+    try {
+      const data = await listAppointments({ status: ['PENDING_PHARMACY_PAYMENT'] });
+      setPharmacyPayments(data);
+    } catch (err) {
+      console.error('Error cargando cola de farmacia:', err);
+    } finally {
+      setLoadingPharmacy(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadConsultations();
     loadLabPayments();
-  }, [loadConsultations, loadLabPayments]);
+    loadPharmacyPayments();
+  }, [loadConsultations, loadLabPayments, loadPharmacyPayments]);
 
-  const handlePay = (appt: AppointmentListItem, type: PaymentType) => {
+  const handlePay = async (appt: AppointmentListItem, type: PaymentType) => {
+    if (!appt.payment.invoiceId) return;
+    
     setSelectedAppointment(appt);
     setSelectedPaymentType(type);
+    setLoadingInvoice(true);
+    
+    try {
+      const invoice = await getInvoiceById(appt.payment.invoiceId);
+      setSelectedInvoice(invoice);
+    } catch (err) {
+      console.error('Error cargando factura:', err);
+      alert('Error al cargar los detalles de la factura');
+      setSelectedAppointment(null);
+    } finally {
+      setLoadingInvoice(false);
+    }
   };
 
   const handlePaymentSuccess = () => {
     setSelectedAppointment(null);
-    // Recarga ambas listas
+    setSelectedInvoice(null);
+    // Recarga todas las listas
     loadConsultations();
     loadLabPayments();
+    loadPharmacyPayments();
   };
 
   return (
@@ -225,45 +262,59 @@ const CashierPage: FC = () => {
             emptyText="No hay cobros de laboratorio pendientes"
           />
         </div>
+
+        {/* ── Lista 3: Cobros de Farmacia ── */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-green-500/5 to-transparent">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">💊</span>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Cobros de Farmacia</h3>
+                <p className="text-xs text-gray-500">Pacientes con medicamentos pendientes de pago</p>
+              </div>
+              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                {loadingPharmacy ? '…' : pharmacyPayments.length}
+              </span>
+            </div>
+            <button
+              onClick={loadPharmacyPayments}
+              disabled={loadingPharmacy}
+              className="text-xs text-green-700 hover:text-green-500 disabled:opacity-50"
+            >
+              Actualizar
+            </button>
+          </div>
+          <AppointmentTable
+            appointments={pharmacyPayments}
+            loading={loadingPharmacy}
+            onPay={appt => handlePay(appt, 'PHARMACY')}
+            emptyText="No hay cobros de farmacia pendientes"
+          />
+        </div>
       </div>
 
       {/* Modal de pago */}
-      {selectedAppointment && (
-        selectedAppointment.payment.invoiceId ? (
-          <PaymentModal
-            invoice={{
-              id: selectedAppointment.payment.invoiceId,
-              invoiceNumber: selectedAppointment.payment.invoiceNumber || '',
-              patientId: selectedAppointment.patient.id,
-              total: selectedAppointment.payment.amount || 0,
-              subtotal: selectedAppointment.payment.amount || 0,
-              discountAmount: 0,
-              status: selectedAppointment.payment.status as any,
-              createdAt: selectedAppointment.createdAt,
-              createdBy: '',
-              charges: [],
-            }}
-            paymentType={selectedPaymentType}
-            appointmentId={selectedAppointment.id}
-            onSuccess={handlePaymentSuccess}
-            onClose={() => setSelectedAppointment(null)}
-          />
-        ) : (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 text-center">
-              <p className="text-gray-700 mb-4">
-                No se encontró información de factura para esta cita.<br />
-                Consulta al administrador o recarga la página.
-              </p>
-              <button
-                onClick={() => setSelectedAppointment(null)}
-                className="px-4 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg"
-              >
-                Cerrar
-              </button>
-            </div>
+      {selectedAppointment && selectedInvoice && !loadingInvoice && (
+        <PaymentModal
+          invoice={selectedInvoice}
+          paymentType={selectedPaymentType}
+          appointmentId={selectedAppointment.id}
+          onSuccess={handlePaymentSuccess}
+          onClose={() => {
+            setSelectedAppointment(null);
+            setSelectedInvoice(null);
+          }}
+        />
+      )}
+
+      {/* Loading invoice */}
+      {selectedAppointment && loadingInvoice && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent mb-4" />
+            <p className="text-gray-700">Cargando detalles de la factura...</p>
           </div>
-        )
+        </div>
       )}
     </MainLayout>
   );

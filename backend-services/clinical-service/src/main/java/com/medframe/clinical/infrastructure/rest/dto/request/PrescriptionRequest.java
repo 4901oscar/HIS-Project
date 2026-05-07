@@ -48,5 +48,11 @@ public class PrescriptionRequest {
         private String route;
         
         private String specialInstructions;
+        
+        // Campos adicionales para farmacia interna (cálculo automático de cantidad)
+        private Integer dosageAmount;      // Cantidad por dosis (ej: 1, 2, 0.5)
+        private String dosageUnit;         // Unidad de medida (ej: "pastilla(s)", "ml", "mg")
+        private Integer frequencyHours;    // Frecuencia en horas (ej: 8, 12, 24)
+        private Integer totalQuantity;     // Cantidad total calculada
     }
 }

@@ -1,8 +1,8 @@
 import { useState, type FC, type FormEvent } from 'react';
 import { processPayment, type Invoice, type PaymentRequest } from '../../services/billingService';
-import { confirmLabPayment } from '../../services/appointmentService';
+import { confirmLabPayment, confirmPharmacyPayment } from '../../services/appointmentService';
 
-export type PaymentType = 'CONSULTATION' | 'LAB';
+export type PaymentType = 'CONSULTATION' | 'LAB' | 'PHARMACY';
 
 interface PaymentModalProps {
   invoice: Invoice;
@@ -66,6 +66,11 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
         await confirmLabPayment(appointmentId, invoice.id);
       }
 
+      // Para pharmacy: notificar al clinical-service que el pago fue confirmado
+      if (paymentType === 'PHARMACY' && appointmentId) {
+        await confirmPharmacyPayment(appointmentId, invoice.id);
+      }
+
       setPaymentSuccess(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al procesar el pago';
@@ -126,7 +131,7 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <h3 className="text-xl font-bold text-gray-900">
-            {paymentType === 'LAB' ? '💊 Pago de Laboratorio' : '🏥 Pago de Consulta'}
+            {paymentType === 'LAB' ? '🔬 Pago de Laboratorio' : paymentType === 'PHARMACY' ? '💊 Pago de Farmacia' : '🏥 Pago de Consulta'}
           </h3>
           <button
             onClick={onClose}
@@ -152,7 +157,7 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
               {invoice.charges.map((charge, index) => (
                 <div key={index} className="flex justify-between text-sm">
                   <span className="text-gray-600">
-                    {charge.description} (x{charge.quantity})
+                    {charge.description}
                   </span>
                   <span className="font-medium text-gray-900">
                     Q {charge.subtotal.toFixed(2)}

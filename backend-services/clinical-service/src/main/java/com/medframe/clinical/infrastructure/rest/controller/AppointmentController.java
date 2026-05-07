@@ -70,8 +70,11 @@ public class AppointmentController {
     private final BillingServiceClient billingServiceClient;
     private final ConsultationPriceConfig consultationPriceConfig;
     private final com.medframe.clinical.domain.service.PaymentValidator paymentValidator;
+    private final com.medframe.clinical.application.service.PermissionValidator permissionValidator;
     private final AppointmentRepository appointmentRepository;
     private final VitalSignsRepository vitalSignsRepository;
+    private final com.medframe.clinical.domain.port.out.ConsultationRepository consultationRepository;
+    private final com.medframe.clinical.domain.port.out.PrescriptionRepository prescriptionRepository;
     
     @Value("${billing.service.enabled:true}")
     private boolean billingServiceEnabled;
@@ -1076,6 +1079,125 @@ public class AppointmentController {
         manageAppointmentUseCase.completeLab(id);
         log.info("Appointment {} transitioned to RE_EVALUATION state", id);
         return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * GET /api/clinical/appointments/{appointmentId}/prescription
+     * Retrieves prescription details for a specific appointment.
+     * Used by pharmacy module to display prescription information.
+     * 
+     * <p><strong>Requirements:</strong></p>
+     * <ul>
+     *   <li>REQ-6.1: Provide endpoint to retrieve prescription by appointment ID</li>
+     *   <li>REQ-6.2: Return prescription with patient and doctor details</li>
+     *   <li>REQ-6.3: Return 404 if prescription not found</li>
+     *   <li>REQ-6.4: Return 404 if consultation not found</li>
+     *   <li>REQ-6.5: Include all medication details</li>
+     *   <li>REQ-6.6: Require PHARMACY role</li>
+     * </ul>
+     * 
+     * @param appointmentId Appointment ID
+     * @return PrescriptionDetailResponse with complete prescription information
+     * @throws RuntimeException if appointment not found (404)
+     * @throws RuntimeException if consultation not found (404)
+     * @throws RuntimeException if prescription not found (404)
+     */
+    @GetMapping("/{appointmentId}/prescription")
+    public ResponseEntity<com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse> getPrescriptionByAppointment(
+            @PathVariable String appointmentId) {
+        log.info("Fetching prescription for appointment {}", appointmentId);
+        
+        // Validate permissions - only PHARMACY role can access prescriptions
+        permissionValidator.requireRole("PHARMACY", "ADMIN");
+        
+        // 1. Find consultation by appointmentId
+        com.medframe.clinical.domain.model.Consultation consultation = consultationRepository
+                .findByAppointmentId(appointmentId)
+                .orElseThrow(() -> {
+                    log.error("No consultation found for appointment {}", appointmentId);
+                    return new RuntimeException("No se encontró consulta para esta cita");
+                });
+        
+        log.info("Found consultation {} for appointment {}", consultation.getId(), appointmentId);
+        
+        // 2. Find prescription by consultationId
+        java.util.List<com.medframe.clinical.domain.model.Prescription> prescriptions = 
+                prescriptionRepository.findByConsultationId(consultation.getId());
+        
+        if (prescriptions.isEmpty()) {
+            log.error("No prescription found for consultation {}", consultation.getId());
+            throw new RuntimeException("No se encontró receta para esta cita");
+        }
+        
+        // Get the most recent prescription
+        com.medframe.clinical.domain.model.Prescription prescription = prescriptions.get(0);
+        log.info("Found prescription {} for consultation {}", prescription.getId(), consultation.getId());
+        
+        // 3. Fetch patient details from PatientServiceClient
+        com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.PatientInfo patientInfo;
+        try {
+            com.medframe.clinical.infrastructure.client.dto.PatientDTO patient = 
+                    (com.medframe.clinical.infrastructure.client.dto.PatientDTO) 
+                    patientServiceClient.getPatientById(prescription.getPatientId());
+            
+            patientInfo = com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.PatientInfo.builder()
+                    .id(patient.getId())
+                    .fullName(patient.getFullName())
+                    .dpi(patient.getDpi())
+                    .phone(patient.getPhone())
+                    .email(patient.getEmail())
+                    .build();
+        } catch (Exception e) {
+            log.error("Patient service unavailable for patient {}: {}", prescription.getPatientId(), e.getMessage());
+            throw new com.medframe.clinical.domain.exception.ServiceUnavailableException(
+                    "Servicio de pacientes no disponible");
+        }
+        
+        // 4. Fetch doctor details from DoctorRepository
+        com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.DoctorInfo doctorInfo = 
+                doctorRepository.findById(prescription.getDoctorId())
+                .map(doctor -> com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.DoctorInfo.builder()
+                        .id(doctor.getId())
+                        .name(doctor.getName())
+                        .specialty(null) // Specialty not available in current Doctor model
+                        .build())
+                .orElse(com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.DoctorInfo.builder()
+                        .id(prescription.getDoctorId())
+                        .name("Dr. Asignado")
+                        .specialty(null)
+                        .build());
+        
+        // 5. Map medications
+        java.util.List<com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.MedicationItemResponse> medications = 
+                prescription.getMedications().stream()
+                .map(med -> com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.MedicationItemResponse.builder()
+                        .name(med.getName())
+                        .dosage(med.getDosage())
+                        .frequency(med.getFrequency())
+                        .durationDays(med.getDurationDays())
+                        .route(med.getRoute())
+                        .specialInstructions(med.getSpecialInstructions())
+                        .dosageAmount(med.getDosageAmount())
+                        .dosageUnit(med.getDosageUnit())
+                        .frequencyHours(med.getFrequencyHours())
+                        .totalQuantity(med.getTotalQuantity())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 6. Build response
+        com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse response = 
+                com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.builder()
+                .id(prescription.getId())
+                .prescriptionCode(prescription.getPrescriptionCode())
+                .status(prescription.getStatus().name())
+                .issuedAt(prescription.getIssuedAt())
+                .patient(patientInfo)
+                .doctor(doctorInfo)
+                .medications(medications)
+                .build();
+        
+        log.info("Successfully retrieved prescription {} for appointment {}", prescription.getId(), appointmentId);
+        return ResponseEntity.ok(response);
     }
     
     /**
