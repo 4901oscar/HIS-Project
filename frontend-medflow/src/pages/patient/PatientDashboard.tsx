@@ -163,7 +163,6 @@ const PatientDashboard: FC = () => {
                         {appt.appointmentDate} — {appt.appointmentTime.substring(0, 5)}
                       </p>
                       {appt.notes && <p className="text-sm text-gray-600 mt-1">{appt.notes}</p>}
-                      <p className="text-xs text-gray-400 mt-1 font-mono">ID: {appt.id}</p>
                     </div>
                     <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
                       {STATUS_LABEL[appt.status] ?? appt.status}

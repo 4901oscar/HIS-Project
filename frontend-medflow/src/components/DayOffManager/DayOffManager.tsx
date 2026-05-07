@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
+import Swal from 'sweetalert2';
 import { markDaysOff, type Doctor } from '../../services/doctorService';
 
 interface DayOffManagerProps {
@@ -52,13 +53,12 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
         reason: reason.trim(),
       });
 
-      alert('Días libres marcados exitosamente');
+      Swal.fire({ title: '¡Listo!', text: 'Días libres marcados exitosamente', icon: 'success', timer: 2000, showConfirmButton: false });
       setStartDate('');
       setEndDate('');
       setReason('');
       setErrors({});
-      onSuccess?.();
-    } catch (err: unknown) {
+      onSuccess?.();    } catch (err: unknown) {
       const { isAxiosError } = await import('axios');
       const errorMessage = isAxiosError(err)
         ? (err.response?.data as { message?: string })?.message ?? 'Error al marcar días libres'

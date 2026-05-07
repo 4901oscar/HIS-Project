@@ -28,6 +28,10 @@ const HeroSection: FC = () => {
               en Excelencia Médica
             </h1>
 
+            <p className="text-gray-600 text-base md:text-lg max-w-md mx-auto lg:mx-0">
+              Gestiona tus citas, consulta resultados y accede a tu historial médico desde un solo lugar.
+            </p>
+
           </div>
 
           {/* Right Content - Doctor Image */}
@@ -49,15 +53,21 @@ const HeroSection: FC = () => {
         </div>
 
         {/* Appointment Button - Floating */}
-        <div className="flex justify-center mt-8 md:mt-12">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 mt-8 md:mt-12">
           <Link
             to="/appointment"
-            className="inline-flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 bg-medin-navy text-white rounded-lg font-semibold hover:bg-medin-navy-dark transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-sm md:text-base"
+            className="inline-flex items-center justify-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 bg-medin-navy text-white rounded-lg font-semibold hover:bg-medin-navy-dark transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-sm md:text-base"
           >
             <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             Agendar Cita
+          </Link>
+          <Link
+            to="/login"
+            className="inline-flex items-center justify-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 border-2 border-medin-navy text-medin-navy rounded-lg font-semibold hover:bg-medin-navy hover:text-white transition-all text-sm md:text-base"
+          >
+            Iniciar Sesión
           </Link>
         </div>
       </div>

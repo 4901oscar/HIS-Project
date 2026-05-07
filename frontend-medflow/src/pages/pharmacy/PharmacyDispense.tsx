@@ -124,7 +124,12 @@ const PharmacyDispense: FC = () => {
                         {statusLabel[rx.status]}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">Paciente: <span className="font-mono">{rx.patientId}</span></p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Paciente:{' '}
+                      <span className={rx.patientName ? 'font-medium text-gray-700' : 'font-mono text-gray-400'}>
+                        {rx.patientName ?? `${rx.patientId.substring(0, 8)}…`}
+                      </span>
+                    </p>
                     <div className="space-y-1">
                       {rx.medications.map((m, i) => (
                         <div key={i} className="text-sm text-gray-700">
