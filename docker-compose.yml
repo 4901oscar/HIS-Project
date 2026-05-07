@@ -304,7 +304,7 @@ services:
         VITE_API_GATEWAY_URL: http://localhost:8080
     container_name: medflow-frontend
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - VITE_API_GATEWAY_URL=http://localhost:8080
     depends_on:

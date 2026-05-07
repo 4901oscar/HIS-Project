@@ -8,7 +8,7 @@ import type { FC, FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import type { LoginCredentials } from '../services/authService';
-import { validateMockCredentials } from '../services/mockData';
+// import { validateMockCredentials } from '../services/mockData'; // solo desarrollo
 import { useAuth } from '../hooks/useAuth';
 import { Navbar } from '../components';
 import axios from 'axios';
@@ -31,8 +31,11 @@ const LoginPage: FC = () => {
     setIsLoading(true);
 
     try {
-      let response;
+      const response = await login(credentials);
 
+      setUser(response.user);
+
+      /* // mock auth — solo desarrollo
       if (import.meta.env.VITE_USE_MOCK_AUTH === 'true') {
         response = validateMockCredentials(credentials.username, credentials.password);
         if (!response) {
@@ -46,8 +49,7 @@ const LoginPage: FC = () => {
       } else {
         response = await login(credentials);
       }
-
-      setUser(response.user);
+      */
 
       const roleRoutes: Record<string, string> = {
         'ADMIN': '/administrator',
