@@ -263,7 +263,7 @@ const PaymentGatewayPage: FC = () => {
             )}
 
             <button
-              onClick={() => navigate('/patient-dashboard')}
+              onClick={() => navigate('/patient')}
               className="w-full py-3 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors"
             >
               Ver mis citas

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import Swal from 'sweetalert2';
 import { getClinics, deleteClinic } from '../../services/clinicService';
 import type { Clinic, ClinicStatus } from '../../types/clinic';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,15 +38,22 @@ const ClinicList: FC<ClinicListProps> = ({ onCreateClick, onEditClick }) => {
   };
 
   const handleDelete = async (clinic: Clinic) => {
-    if (!window.confirm(`¿Estás seguro de eliminar la clínica "${clinic.nombre}"?`)) {
-      return;
-    }
-
+    const result = await Swal.fire({
+      title: '¿Eliminar clínica?',
+      text: `"${clinic.nombre}" será eliminada permanentemente.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteClinic(clinic.id);
       await loadClinics();
     } catch {
-      alert('Error al eliminar la clínica');
+      Swal.fire({ title: 'Error', text: 'No se pudo eliminar la clínica. Intenta de nuevo.', icon: 'error' });
     }
   };
 

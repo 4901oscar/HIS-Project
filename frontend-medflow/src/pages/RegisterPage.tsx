@@ -34,8 +34,8 @@ type FieldErrors = Partial<Record<keyof FormState, string>>;
 
 const RegisterPage: FC = () => {
   const today = new Date();
-const minDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+  const minDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  const maxDateString = minDate.toISOString().split('T')[0];
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -76,7 +76,7 @@ const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
     return Object.keys(next).length === 0;
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormState])
@@ -243,7 +243,7 @@ const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
                 {errors.dpi && <p className="mt-1 text-xs text-red-600">{errors.dpi}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   NIT <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -271,7 +271,7 @@ const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
                 {errors.firstName && <p className="mt-1 text-xs text-red-600">{errors.firstName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Segundo nombre
                 </label>
                 <input
@@ -298,7 +298,7 @@ const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
                 {errors.firstLastName && <p className="mt-1 text-xs text-red-600">{errors.firstLastName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Segundo apellido
                 </label>
                 <input
@@ -326,7 +326,7 @@ const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
                 {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Teléfono <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -354,12 +354,12 @@ const maxDateString = minDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
                 {errors.birthDate && <p className="mt-1 text-xs text-red-600">{errors.birthDate}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-700 mb-2">
                   Género <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="gender" value={form.gender}
-                  onChange={handleChange as any}
+                  onChange={handleChange}
                   className={inputClass('gender')}
                 >
                   <option value="">Selecciona...</option>

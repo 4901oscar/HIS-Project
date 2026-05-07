@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import Swal from 'sweetalert2';
 import { listActiveDoctors, deactivateDoctor, type Doctor } from '../../services/doctorService';
 import { getClinics } from '../../services/clinicService';
 import type { Clinic } from '../../types/clinic';
@@ -43,15 +44,22 @@ const DoctorList: FC<DoctorListProps> = ({ onCreateClick, onEditClick, onManageD
   const loadDoctors = loadData;
 
   const handleDeactivate = async (doctor: Doctor) => {
-    if (!window.confirm(`¿Estás seguro de desactivar al Dr. ${doctor.name}?`)) {
-      return;
-    }
-
+    const result = await Swal.fire({
+      title: '¿Desactivar doctor?',
+      text: `Dr. ${doctor.name} no podrá recibir citas mientras esté inactivo.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, desactivar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
     try {
       await deactivateDoctor(doctor.id);
       await loadDoctors();
     } catch {
-      alert('Error al desactivar el doctor');
+      Swal.fire({ title: 'Error', text: 'No se pudo desactivar el doctor. Intenta de nuevo.', icon: 'error' });
     }
   };
 

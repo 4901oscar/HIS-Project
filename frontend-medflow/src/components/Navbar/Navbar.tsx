@@ -144,9 +144,6 @@ const Navbar: FC = () => {
                       <Link to="/register" className="block text-center px-4 py-2 border-2 border-white text-white rounded-full font-semibold hover:bg-white hover:text-medin-navy transition-colors text-sm" onClick={() => setIsMobileMenuOpen(false)}>
                         Registrar
                       </Link>
-                      <Link to="/appointment" className="block text-center px-4 py-2 bg-medin-blue text-medin-navy rounded-full font-semibold transition-colors text-sm" onClick={() => setIsMobileMenuOpen(false)}>
-                        Agendar Cita
-                      </Link>
                     </>
                   )}
                 </li>

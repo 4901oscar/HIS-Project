@@ -75,6 +75,7 @@ export interface PrescriptionResponse {
   id: string;
   prescriptionCode: string;
   patientId: string;
+  patientName?: string;
   doctorId?: string;
   medications: PharmacyMedication[];
   status: PrescriptionStatus;

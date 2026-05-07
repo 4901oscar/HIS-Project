@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import Swal from 'sweetalert2';
 import { getLabResultsByAppointmentId, viewLabResult, downloadLabResult } from '../../api/labApi';
 import type { LabResultResponse } from '../../api/labApi';
 

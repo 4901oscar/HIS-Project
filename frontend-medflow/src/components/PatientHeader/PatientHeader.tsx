@@ -13,7 +13,7 @@ const PatientHeader: FC<PatientHeaderProps> = ({ onProfileClick }) => {
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
+    navigate('/login', { replace: true });
   };
 
   return (

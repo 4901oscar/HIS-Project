@@ -145,7 +145,7 @@ const ActivateAccountPage: FC = () => {
               <span className="text-medin-cyan">Flow</span>
             </h1>
           </div>
-          <p className="text-gray-300 text-sm">Hospital Information System</p>
+          <p className="text-gray-300 text-sm">Sistema de Información Hospitalaria</p>
         </div>
 
         {/* Card */}
