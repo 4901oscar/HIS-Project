@@ -16,6 +16,11 @@ public class Prescription {
         private Integer durationDays;
         private String route;               // Oral, IV, IM, etc.
         private String specialInstructions;
+        // Campos adicionales para farmacia interna (cálculo automático)
+        private Double dosageAmount;        // Cantidad numérica por toma (ej: 1, 2, 0.5)
+        private String dosageUnit;          // Unidad (pastilla, ml, cucharada)
+        private Integer frequencyHours;     // Horas entre tomas (ej: 8, 12, 24)
+        private Double totalQuantity;       // Cantidad total calculada automáticamente
 
         public Medication() {}
 
@@ -27,6 +32,21 @@ public class Prescription {
             this.durationDays = durationDays;
             this.route = route;
             this.specialInstructions = specialInstructions;
+        }
+
+        public Medication(String name, String dosage, String frequency,
+                          Integer durationDays, String route, String specialInstructions,
+                          Integer dosageAmount, String dosageUnit, Integer frequencyHours, Integer totalQuantity) {
+            this.name = name;
+            this.dosage = dosage;
+            this.frequency = frequency;
+            this.durationDays = durationDays;
+            this.route = route;
+            this.specialInstructions = specialInstructions;
+            this.dosageAmount = dosageAmount != null ? dosageAmount.doubleValue() : null;
+            this.dosageUnit = dosageUnit;
+            this.frequencyHours = frequencyHours;
+            this.totalQuantity = totalQuantity != null ? totalQuantity.doubleValue() : null;
         }
 
         public String getName() { return name; }
@@ -41,6 +61,14 @@ public class Prescription {
         public void setRoute(String route) { this.route = route; }
         public String getSpecialInstructions() { return specialInstructions; }
         public void setSpecialInstructions(String specialInstructions) { this.specialInstructions = specialInstructions; }
+        public Double getDosageAmount() { return dosageAmount; }
+        public void setDosageAmount(Double dosageAmount) { this.dosageAmount = dosageAmount; }
+        public String getDosageUnit() { return dosageUnit; }
+        public void setDosageUnit(String dosageUnit) { this.dosageUnit = dosageUnit; }
+        public Integer getFrequencyHours() { return frequencyHours; }
+        public void setFrequencyHours(Integer frequencyHours) { this.frequencyHours = frequencyHours; }
+        public Double getTotalQuantity() { return totalQuantity; }
+        public void setTotalQuantity(Double totalQuantity) { this.totalQuantity = totalQuantity; }
     }
 
     private String id;

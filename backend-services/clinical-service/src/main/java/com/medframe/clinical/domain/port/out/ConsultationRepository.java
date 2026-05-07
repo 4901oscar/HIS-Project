@@ -9,4 +9,5 @@ public interface ConsultationRepository {
     Consultation save(Consultation consultation);
     Optional<Consultation> findById(String id);
     List<Consultation> findByPatientIdOrderByConsultationDateDesc(String patientId);
+    Optional<Consultation> findByAppointmentId(String appointmentId);
 }

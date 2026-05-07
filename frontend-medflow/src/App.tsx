@@ -32,7 +32,7 @@ import DoctorConsultation from './pages/doctor/DoctorConsultation';
 import PatientConsultationForm from './pages/doctor/PatientConsultationForm';
 import LabSampleManagement from './pages/lab/LabSampleManagement';
 import LabSampleWorkflow from './pages/lab/LabSampleWorkflow';
-import PharmacyDispense from './pages/pharmacy/PharmacyDispense';
+import PharmacyPage from './pages/pharmacy/PharmacyPage';
 import CashierPage from './pages/cashier/CashierPage';
 import PatientDashboard from './pages/patient/PatientDashboard';
 
@@ -177,7 +177,7 @@ function App() {
             path="/pharmacy"
             element={
               <ProtectedRoute requiredRole="PHARMACY">
-                <PharmacyDispense />
+                <PharmacyPage />
               </ProtectedRoute>
             }
           />

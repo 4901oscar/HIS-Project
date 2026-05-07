@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -46,4 +48,9 @@ public class ConsultationRequest {
     private List<ServiceCharge> labCharges;
 
     private List<ServiceCharge> pharmacyCharges;
+
+    // Follow-up appointment fields
+    private LocalDate followUpDate;
+
+    private LocalTime followUpTime;
 }

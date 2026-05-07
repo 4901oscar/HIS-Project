@@ -1,9 +1,11 @@
 package com.medframe.clinical.infrastructure.rest.controller;
 
 import com.medframe.clinical.config.ConsultationPriceConfig;
+import com.medframe.clinical.domain.model.Appointment;
 import com.medframe.clinical.domain.model.Consultation;
 import com.medframe.clinical.domain.port.in.RegisterConsultationUseCase;
 import com.medframe.clinical.domain.port.out.AppointmentRepository;
+import com.medframe.clinical.domain.service.AppointmentManager;
 import com.medframe.clinical.infrastructure.client.BillingServiceClient;
 import com.medframe.clinical.infrastructure.client.dto.ChargeRequest;
 import com.medframe.clinical.infrastructure.client.dto.CreateInvoiceRequest;
@@ -18,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +36,7 @@ public class ConsultationController {
     private final RegisterConsultationUseCase registerConsultationUseCase;
     private final BillingServiceClient billingServiceClient;
     private final AppointmentRepository appointmentRepository;
+    private final AppointmentManager appointmentManager;
     private final ConsultationPriceConfig priceConfig;
 
     @PostMapping
@@ -61,7 +66,78 @@ public class ConsultationController {
             createPharmacyInvoice(request.getPatientId(), request.getAppointmentId(), userId, request.getPharmacyCharges());
         }
 
+        // Create follow-up appointment if requested
+        if (request.getFollowUpDate() != null && request.getFollowUpTime() != null) {
+            createFollowUpAppointment(
+                request.getPatientId(),
+                userId, // doctorId is the current user (doctor)
+                request.getFollowUpDate(),
+                request.getFollowUpTime(),
+                userId
+            );
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToResponse(consultation));
+    }
+
+    private void createFollowUpAppointment(String patientId, String doctorId, 
+                                           LocalDate followUpDate, LocalTime followUpTime, 
+                                           String userId) {
+        try {
+            log.info("Creating follow-up appointment for patient {} with doctor {} on {} at {}", 
+                     patientId, doctorId, followUpDate, followUpTime);
+            
+            // 1. Create the follow-up appointment
+            Appointment followUpAppointment = appointmentManager.createAppointment(
+                patientId,
+                doctorId,
+                followUpDate,
+                followUpTime,
+                "Cita de seguimiento",
+                userId,
+                false, // skipAvailabilityCheck = false (validate availability)
+                false  // hasPaid = false (requires payment)
+            );
+            
+            log.info("Follow-up appointment created successfully with ID: {}", followUpAppointment.getId());
+            
+            // 2. Create invoice for the follow-up appointment
+            try {
+                ChargeRequest followUpCharge = new ChargeRequest(
+                        "CONSULTATION",
+                        "Consulta de seguimiento",
+                        1,
+                        priceConfig.getFollowup() // Use follow-up price from config
+                );
+                
+                CreateInvoiceRequest invoiceRequest = new CreateInvoiceRequest(
+                        patientId,
+                        followUpAppointment.getId(),
+                        Collections.singletonList(followUpCharge)
+                );
+                
+                InvoiceResponse invoiceResponse = billingServiceClient.createInvoice(invoiceRequest, userId);
+                
+                if (invoiceResponse != null) {
+                    followUpAppointment.setInvoiceId(invoiceResponse.getId());
+                    appointmentRepository.save(followUpAppointment);
+                    log.info("Invoice created for follow-up appointment {}. InvoiceId: {}, InvoiceNumber: {}",
+                            followUpAppointment.getId(), invoiceResponse.getId(), invoiceResponse.getInvoiceNumber());
+                } else {
+                    log.warn("Billing Service unavailable — follow-up appointment {} created without invoice",
+                            followUpAppointment.getId());
+                }
+            } catch (Exception e) {
+                log.error("Failed to create invoice for follow-up appointment {}: {}", 
+                         followUpAppointment.getId(), e.getMessage(), e);
+                // Continue - invoice creation failure shouldn't block appointment creation
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to create follow-up appointment for patient {}: {}", 
+                     patientId, e.getMessage(), e);
+            // Don't throw - follow-up appointment creation failure shouldn't block consultation registration
+        }
     }
 
     private void createLabInvoice(String patientId, String appointmentId, String userId,

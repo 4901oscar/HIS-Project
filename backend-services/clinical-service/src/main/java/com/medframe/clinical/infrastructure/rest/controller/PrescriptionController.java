@@ -35,7 +35,11 @@ public class PrescriptionController {
                 med.getFrequency(),
                 med.getDurationDays(),
                 med.getRoute(),
-                med.getSpecialInstructions()
+                med.getSpecialInstructions(),
+                med.getDosageAmount(),
+                med.getDosageUnit(),
+                med.getFrequencyHours(),
+                med.getTotalQuantity()
             ))
             .collect(Collectors.toList());
         

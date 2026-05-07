@@ -248,6 +248,10 @@ export const confirmLabPayment = async (appointmentId: string, invoiceId: string
   await api.post(`/api/clinical/appointments/${appointmentId}/confirm-lab-payment`, { invoiceId });
 };
 
+export const confirmPharmacyPayment = async (appointmentId: string, invoiceId: string): Promise<void> => {
+  await api.post(`/api/clinical/appointments/${appointmentId}/confirm-pharmacy-payment`, { invoiceId });
+};
+
 /**
  * Obtiene los detalles de una cita específica por su ID.
  * 

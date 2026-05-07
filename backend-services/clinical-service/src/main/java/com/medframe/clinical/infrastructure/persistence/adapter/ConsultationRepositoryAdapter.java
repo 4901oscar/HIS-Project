@@ -42,4 +42,10 @@ public class ConsultationRepositoryAdapter implements ConsultationRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public Optional<Consultation> findByAppointmentId(String appointmentId) {
+        return jpaRepository.findByAppointmentId(appointmentId)
+                .map(mapper::toDomain);
+    }
 }

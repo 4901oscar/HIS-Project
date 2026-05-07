@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { FC } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { MainLayout } from '../../components/Layout';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { getAppointmentById } from '../../services/appointmentService';
+import { getAvailableSlotsForDate } from '../../services/appointmentService';
 import type { AppointmentListItem } from '../../services/appointmentService';
 import {
   getVitalSignsByAppointment,
@@ -16,6 +17,8 @@ import {
 import type { VitalSignsResponse, TriageResponse, MedicationItem, ServiceCharge } from '../../services/clinicalService';
 import { getServiceItems } from '../../services/billingCatalogService';
 import type { ServiceItemResponse } from '../../services/billingCatalogService';
+import { listActiveDoctors, getDoctorDaysOff, type Doctor, type DayOff } from '../../services/doctorService';
+import { Calendar, shiftSlots, fmt } from '../../components/Calendar';
 import CIE10 from '../../data/cie10';
 import type { Cie10Item } from '../../data/cie10';
 import axios from 'axios';
@@ -168,43 +171,293 @@ interface MedRowProps {
   catalog: ServiceItemResponse[];
   onChange: (index: number, field: keyof MedicationItem, value: string | number) => void;
   onRemove: (index: number) => void;
+  isInternal: boolean; // true = farmacia interna, false = receta externa
 }
 
-const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove }) => {
+const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isInternal }) => {
   const inp = 'w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-medin-cyan focus:border-transparent';
-  return (
-    <div className="grid grid-cols-12 gap-2 items-start">
-      <div className="col-span-3">
-        <select value={med.name} onChange={e => onChange(index, 'name', e.target.value)} required className={inp}>
-          <option value="">— Medicamento —</option>
-          {catalog.map(m => <option key={m.id} value={m.name}>{m.name} — Q{Number(m.price).toFixed(2)}</option>)}
-        </select>
+  
+  // Actualizar cantidad total cuando cambian los valores
+  const handleDosageAmountChange = (value: number) => {
+    onChange(index, 'dosageAmount', value);
+    // Recalcular total con los nuevos valores
+    if (isInternal && med.frequencyHours && med.durationDays) {
+      const timesPerDay = Math.floor(24 / med.frequencyHours);
+      const total = value * timesPerDay * med.durationDays;
+      onChange(index, 'totalQuantity', total);
+    }
+  };
+
+  const handleFrequencyHoursChange = (value: number) => {
+    onChange(index, 'frequencyHours', value);
+    // Actualizar también el campo frequency con formato legible
+    const timesPerDay = Math.floor(24 / value);
+    onChange(index, 'frequency', `Cada ${value} horas (${timesPerDay}x/día)`);
+    // Recalcular total con los nuevos valores
+    if (isInternal && med.dosageAmount && med.durationDays) {
+      const total = med.dosageAmount * timesPerDay * med.durationDays;
+      onChange(index, 'totalQuantity', total);
+    }
+  };
+
+  const handleDurationChange = (value: number) => {
+    onChange(index, 'durationDays', value);
+    // Recalcular total con los nuevos valores
+    if (isInternal && med.dosageAmount && med.frequencyHours) {
+      const timesPerDay = Math.floor(24 / med.frequencyHours);
+      const total = med.dosageAmount * timesPerDay * value;
+      onChange(index, 'totalQuantity', total);
+    }
+  };
+
+  // Obtener precio del medicamento del catálogo
+  const getMedicationPrice = () => {
+    if (!isInternal) return 0;
+    const catalogItem = catalog.find(m => m.id === med.name); // med.name contiene el ID
+    return catalogItem ? Number(catalogItem.price) : 0;
+  };
+
+  const totalQuantity = med.totalQuantity || 0;  // Usar el valor del estado directamente
+  const unitPrice = getMedicationPrice();
+  const totalCost = totalQuantity * unitPrice;
+
+  if (isInternal) {
+    // Modo Farmacia Interna - Con cálculos automáticos
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+        <div className="grid grid-cols-12 gap-2 items-start mb-2">
+          {/* Medicamento del catálogo */}
+          <div className="col-span-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Medicamento *</label>
+            <select value={med.name} onChange={e => onChange(index, 'name', e.target.value)} required className={inp}>
+              <option value="">— Seleccionar —</option>
+              {catalog.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+
+          {/* Dosis por toma */}
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Dosis/toma *</label>
+            <input 
+              type="number" 
+              step="0.5"
+              min="0.5"
+              value={med.dosageAmount || ''} 
+              onChange={e => handleDosageAmountChange(parseFloat(e.target.value) || 0)}
+              required 
+              placeholder="1" 
+              className={inp} 
+            />
+          </div>
+
+          {/* Unidad */}
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Unidad *</label>
+            <select 
+              value={med.dosageUnit || ''} 
+              onChange={e => {
+                onChange(index, 'dosageUnit', e.target.value);
+                // Actualizar también dosage con formato legible
+                onChange(index, 'dosage', `${med.dosageAmount || ''} ${e.target.value}`);
+              }}
+              required 
+              className={inp}
+            >
+              <option value="">—</option>
+              <option value="pastilla(s)">pastilla(s)</option>
+              <option value="cápsula(s)">cápsula(s)</option>
+              <option value="tableta(s)">tableta(s)</option>
+              <option value="ml">ml</option>
+              <option value="cucharada(s)">cucharada(s)</option>
+              <option value="gota(s)">gota(s)</option>
+              <option value="aplicación(es)">aplicación(es)</option>
+            </select>
+          </div>
+
+          {/* Frecuencia en horas */}
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Cada (hrs) *</label>
+            <select 
+              value={med.frequencyHours || ''} 
+              onChange={e => handleFrequencyHoursChange(parseInt(e.target.value))}
+              required 
+              className={inp}
+            >
+              <option value="">—</option>
+              <option value="4">4 hrs (6x/día)</option>
+              <option value="6">6 hrs (4x/día)</option>
+              <option value="8">8 hrs (3x/día)</option>
+              <option value="12">12 hrs (2x/día)</option>
+              <option value="24">24 hrs (1x/día)</option>
+            </select>
+          </div>
+
+          {/* Duración */}
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Días *</label>
+            <input 
+              type="number" 
+              value={med.durationDays} 
+              min={1}
+              onChange={e => handleDurationChange(parseInt(e.target.value) || 1)}
+              required 
+              className={inp} 
+            />
+          </div>
+
+          {/* Botón eliminar */}
+          <div className="col-span-1 flex justify-center pt-6">
+            <button type="button" onClick={() => onRemove(index)}
+              className="p-1 text-red-400 hover:text-red-600 transition-colors">
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Segunda fila: Vía e Instrucciones */}
+        <div className="grid grid-cols-12 gap-2 mb-2">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Vía *</label>
+            <select value={med.route} onChange={e => onChange(index, 'route', e.target.value)} required className={inp}>
+              <option value="">—</option>
+              <option value="Oral">Oral</option>
+              <option value="Sublingual">Sublingual</option>
+              <option value="Tópica">Tópica</option>
+              <option value="Intravenosa">Intravenosa</option>
+              <option value="Intramuscular">Intramuscular</option>
+              <option value="Subcutánea">Subcutánea</option>
+              <option value="Inhalatoria">Inhalatoria</option>
+              <option value="Oftálmica">Oftálmica</option>
+              <option value="Ótica">Ótica</option>
+              <option value="Nasal">Nasal</option>
+              <option value="Rectal">Rectal</option>
+            </select>
+          </div>
+          <div className="col-span-10">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Instrucciones especiales</label>
+            <input 
+              value={med.specialInstructions || ''} 
+              onChange={e => onChange(index, 'specialInstructions', e.target.value)}
+              placeholder="Ej: Tomar con alimentos, evitar alcohol, etc." 
+              className={inp} 
+            />
+          </div>
+        </div>
+
+        {/* Resumen de cálculos */}
+        {totalQuantity > 0 && (
+          <div className="bg-medin-navy/5 rounded-md p-2 border border-medin-navy/20">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-4">
+                <span className="text-gray-600">
+                  📦 <strong>Cantidad total:</strong> {totalQuantity} {med.dosageUnit || 'unidad(es)'}
+                </span>
+                {unitPrice > 0 && (
+                  <span className="text-gray-600">
+                    💰 <strong>Costo total:</strong> Q {totalCost.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="col-span-2">
-        <input value={med.dosage} onChange={e => onChange(index, 'dosage', e.target.value)}
-          required placeholder="Dosis" className={inp} />
+    );
+  } else {
+    // Modo Receta Externa - Campos de texto libre
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 bg-amber-50/30">
+        <div className="grid grid-cols-12 gap-2 items-start mb-2">
+          {/* Medicamento - texto libre */}
+          <div className="col-span-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Medicamento *</label>
+            <input 
+              value={med.name} 
+              onChange={e => onChange(index, 'name', e.target.value)}
+              required 
+              placeholder="Ej: Amoxicilina 500mg" 
+              className={inp} 
+            />
+          </div>
+
+          {/* Dosis - texto libre */}
+          <div className="col-span-3">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Dosis *</label>
+            <input 
+              value={med.dosage} 
+              onChange={e => onChange(index, 'dosage', e.target.value)}
+              required 
+              placeholder="Ej: 1 cápsula" 
+              className={inp} 
+            />
+          </div>
+
+          {/* Frecuencia - texto libre */}
+          <div className="col-span-3">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Frecuencia *</label>
+            <input 
+              value={med.frequency} 
+              onChange={e => onChange(index, 'frequency', e.target.value)}
+              required 
+              placeholder="Ej: Cada 8 horas" 
+              className={inp} 
+            />
+          </div>
+
+          {/* Duración */}
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Días *</label>
+            <input 
+              type="number" 
+              value={med.durationDays} 
+              min={1}
+              onChange={e => onChange(index, 'durationDays', parseInt(e.target.value) || 1)}
+              required 
+              className={inp} 
+            />
+          </div>
+
+          {/* Botón eliminar */}
+          <div className="col-span-1 flex justify-center pt-6">
+            <button type="button" onClick={() => onRemove(index)}
+              className="p-1 text-red-400 hover:text-red-600 transition-colors">
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Segunda fila: Vía e Instrucciones */}
+        <div className="grid grid-cols-12 gap-2">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Vía *</label>
+            <select value={med.route} onChange={e => onChange(index, 'route', e.target.value)} required className={inp}>
+              <option value="">—</option>
+              <option value="Oral">Oral</option>
+              <option value="Sublingual">Sublingual</option>
+              <option value="Tópica">Tópica</option>
+              <option value="Intravenosa">Intravenosa</option>
+              <option value="Intramuscular">Intramuscular</option>
+              <option value="Subcutánea">Subcutánea</option>
+              <option value="Inhalatoria">Inhalatoria</option>
+              <option value="Oftálmica">Oftálmica</option>
+              <option value="Ótica">Ótica</option>
+              <option value="Nasal">Nasal</option>
+              <option value="Rectal">Rectal</option>
+            </select>
+          </div>
+          <div className="col-span-10">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Instrucciones especiales</label>
+            <input 
+              value={med.specialInstructions || ''} 
+              onChange={e => onChange(index, 'specialInstructions', e.target.value)}
+              placeholder="Ej: Tomar con alimentos, evitar alcohol, etc." 
+              className={inp} 
+            />
+          </div>
+        </div>
       </div>
-      <div className="col-span-3">
-        <input value={med.frequency} onChange={e => onChange(index, 'frequency', e.target.value)}
-          required placeholder="Frecuencia" className={inp} />
-      </div>
-      <div className="col-span-2">
-        <input type="number" value={med.durationDays} min={1}
-          onChange={e => onChange(index, 'durationDays', parseInt(e.target.value) || 1)}
-          required placeholder="Días" className={inp} />
-      </div>
-      <div className="col-span-1">
-        <input value={med.route} onChange={e => onChange(index, 'route', e.target.value)}
-          required placeholder="Vía" className={inp} />
-      </div>
-      <div className="col-span-1 flex justify-center pt-1">
-        <button type="button" onClick={() => onRemove(index)}
-          className="p-1 text-red-400 hover:text-red-600 transition-colors">
-          <TrashIcon className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
+    );
+  }
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -222,6 +475,11 @@ const PatientConsultationForm: FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Doctor data for follow-up scheduling
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [daysOffMap, setDaysOffMap] = useState<Record<string, string[]>>({});
+  const [loadingDoctorData, setLoadingDoctorData] = useState(false);
+
   // Bloque 2 — Evaluación clínica
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [symptomsText, setSymptomsText] = useState('');
@@ -236,7 +494,10 @@ const PatientConsultationForm: FC = () => {
   const [medications, setMedications] = useState<MedicationItem[]>([]);
   const [followUp, setFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState('');
+  const [followUpTime, setFollowUpTime] = useState('');
   const [followUpNotes, setFollowUpNotes] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
     if (!appointmentId) { setError('ID de cita no proporcionado'); setLoading(false); return; }
@@ -262,8 +523,121 @@ const PatientConsultationForm: FC = () => {
     load();
   }, [appointmentId]);
 
+  // Load doctor data for follow-up scheduling
+  useEffect(() => {
+    const loadDoctorData = async () => {
+      setLoadingDoctorData(true);
+      try {
+        const docs = await listActiveDoctors();
+        setDoctors(docs);
+        const offResults = await Promise.all(docs.map(d => getDoctorDaysOff(d.id)));
+        const map: Record<string, string[]> = {};
+        docs.forEach((d, i) => {
+          map[d.id] = offResults[i].map((o: DayOff) => o.date.substring(0, 10));
+        });
+        setDaysOffMap(map);
+      } catch {
+        // silently ignore — form will still render, just without blocking
+      } finally {
+        setLoadingDoctorData(false);
+      }
+    };
+    loadDoctorData();
+  }, []);
+
+  // Calendar blocking logic: block dates when ALL doctors are on day-off
+  const isBlocked = useMemo(() => (dateStr: string): boolean => {
+    if (!doctors.length) return false;
+    return doctors.every(d => (daysOffMap[d.id] ?? []).includes(dateStr));
+  }, [doctors, daysOffMap]);
+
+  // Generate time slots for a date (doctors not on day-off that day)
+  const shiftSlotsForDate = useMemo(() => (dateStr: string): string[] => {
+    const available = doctors.filter(d => !(daysOffMap[d.id] ?? []).includes(dateStr));
+    const set = new Set<string>();
+    available.forEach(d => shiftSlots(d.shiftStart, d.shiftEnd).forEach(s => set.add(s)));
+    return Array.from(set).sort();
+  }, [doctors, daysOffMap]);
+
+  // Filter past time slots when today is selected
+  const displaySlots = useMemo(() => {
+    if (!followUpDate) return [];
+    const slots = shiftSlotsForDate(followUpDate);
+    
+    // If selected date is today, filter out past time slots
+    const today = new Date();
+    const selectedDate = new Date(followUpDate + 'T00:00:00');
+    const isToday = 
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate();
+    
+    if (!isToday) return slots;
+    
+    // Filter out slots that have already passed
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    
+    return slots.filter(slot => {
+      const [slotHour, slotMinute] = slot.split(':').map(Number);
+      const slotTimeInMinutes = slotHour * 60 + slotMinute;
+      // Keep slots that are at least 30 minutes in the future
+      return slotTimeInMinutes >= currentTimeInMinutes + 30;
+    });
+  }, [followUpDate, shiftSlotsForDate]);
+
+  // Load available slots when follow-up date changes
+  useEffect(() => {
+    if (!followUpDate) {
+      setAvailableSlots([]);
+      setFollowUpTime('');
+      return;
+    }
+    
+    setFollowUpTime(''); // Clear time selection when date changes
+    setLoadingSlots(true);
+    
+    getAvailableSlotsForDate(followUpDate)
+      .then(slots => setAvailableSlots(slots))
+      .catch(() => setAvailableSlots([]))
+      .finally(() => setLoadingSlots(false));
+  }, [followUpDate]);
+
   const addMedication = () => {
-    setMedications(prev => [...prev, { name: '', dosage: '', frequency: '', durationDays: 7, route: 'Oral', specialInstructions: '' }]);
+    const isInternal = destination === 'PHARMACY';
+    if (isInternal) {
+      // Farmacia interna - con campos de cálculo
+      // Calcular totalQuantity inicial: dosageAmount × (24 / frequencyHours) × durationDays
+      const initialDosageAmount = 1;
+      const initialFrequencyHours = 8;
+      const initialDurationDays = 7;
+      const initialTotalQuantity = initialDosageAmount * Math.floor(24 / initialFrequencyHours) * initialDurationDays;
+      
+      setMedications(prev => [...prev, { 
+        name: '', 
+        dosage: '', 
+        frequency: '', 
+        durationDays: initialDurationDays, 
+        route: 'Oral', 
+        specialInstructions: '',
+        dosageAmount: initialDosageAmount,
+        dosageUnit: 'pastilla(s)',
+        frequencyHours: initialFrequencyHours,
+        totalQuantity: initialTotalQuantity  // 1 × 3 × 7 = 21
+      }]);
+    } else {
+      // Receta externa - campos de texto libre
+      setMedications(prev => [...prev, { 
+        name: '', 
+        dosage: '', 
+        frequency: '', 
+        durationDays: 7, 
+        route: 'Oral', 
+        specialInstructions: '' 
+      }]);
+    }
   };
 
   const updateMedication = (index: number, field: keyof MedicationItem, value: string | number) => {
@@ -344,6 +718,10 @@ const PatientConsultationForm: FC = () => {
       setError('Selecciona la fecha de la cita de seguimiento.');
       return;
     }
+    if (followUp && !followUpTime) {
+      setError('Selecciona la hora de la cita de seguimiento.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -364,11 +742,26 @@ const PatientConsultationForm: FC = () => {
             .map(t => ({ name: t.name, price: t.price }))
         : [];
 
-      const pharmacyCharges: ServiceCharge[] = hasPrescription
+      const pharmacyCharges: ServiceCharge[] = hasPrescription && destination === 'PHARMACY'
         ? medications
-            .map(med => medCatalog.find(m => m.name === med.name))
-            .filter((m): m is typeof medCatalog[number] => m !== undefined)
-            .map(m => ({ name: m.name, price: m.price }))
+            .map(med => {
+              const catalogItem = medCatalog.find(m => m.id === med.name); // med.name contiene el ID
+              if (!catalogItem) return null;
+              
+              // Calcular precio total = precio unitario × cantidad total
+              const totalQuantity = med.totalQuantity || 0;
+              const unitPrice = Number(catalogItem.price);
+              const totalPrice = unitPrice * totalQuantity;
+              
+              // Crear descripción detallada: "Amoxicilina 500mg (21 pastillas × Q1.50)"
+              const description = `${catalogItem.name} (${totalQuantity} ${med.dosageUnit || 'unidad(es)'} × Q${unitPrice.toFixed(2)})`;
+              
+              return {
+                name: description,
+                price: totalPrice
+              };
+            })
+            .filter((charge): charge is ServiceCharge => charge !== null)
         : [];
 
       // 1. Registrar consulta
@@ -387,6 +780,8 @@ const PatientConsultationForm: FC = () => {
         hasPrescription,
         labCharges,
         pharmacyCharges,
+        followUpDate: followUp ? followUpDate : undefined,
+        followUpTime: followUp ? followUpTime : undefined,
       });
 
       // 2. Generar orden de lab si aplica
@@ -768,7 +1163,15 @@ const PatientConsultationForm: FC = () => {
                       <span className="col-span-1" />
                     </div>
                     {medications.map((med, i) => (
-                      <MedRow key={i} med={med} index={i} catalog={medCatalog} onChange={updateMedication} onRemove={removeMedication} />
+                      <MedRow 
+                        key={i} 
+                        med={med} 
+                        index={i} 
+                        catalog={medCatalog} 
+                        onChange={updateMedication} 
+                        onRemove={removeMedication}
+                        isInternal={destination === 'PHARMACY'}
+                      />
                     ))}
                   </div>
                 )}
@@ -796,14 +1199,73 @@ const PatientConsultationForm: FC = () => {
                   Agendar cita de seguimiento
                 </label>
                 {followUp && (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="mt-4 space-y-4">
+                    {/* Calendar */}
                     <div>
                       <label className={labelClass}>Fecha de seguimiento <span className="text-red-500">*</span></label>
-                      <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className={inputClass} />
+                      {loadingDoctorData ? (
+                        <p className="text-sm text-gray-400">Cargando disponibilidad...</p>
+                      ) : (
+                        <>
+                          <Calendar 
+                            selected={followUpDate} 
+                            onSelect={setFollowUpDate} 
+                            isBlocked={isBlocked} 
+                          />
+                          {followUpDate && (
+                            <p className="text-medin-cyan text-xs mt-2">
+                              Fecha seleccionada: {followUpDate}
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
+
+                    {/* Time slot selection */}
+                    {followUpDate && (
+                      <div>
+                        <label className={labelClass}>Hora de la cita <span className="text-red-500">*</span></label>
+                        {loadingSlots ? (
+                          <p className="text-sm text-gray-400">Verificando disponibilidad...</p>
+                        ) : displaySlots.length === 0 ? (
+                          <p className="text-sm text-amber-600">No hay horarios disponibles para esta fecha.</p>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-2">
+                            {displaySlots.map(slot => {
+                              const isAvailable = availableSlots.includes(slot) || followUpTime === slot;
+                              const isSelected = followUpTime === slot;
+                              return (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  disabled={!isAvailable}
+                                  onClick={() => setFollowUpTime(slot)}
+                                  className={`py-2 text-sm font-medium border transition-colors ${
+                                    isSelected
+                                      ? 'bg-medin-cyan text-medin-navy border-medin-cyan'
+                                      : isAvailable
+                                        ? 'bg-medin-navy text-white border-gray-600 hover:border-medin-cyan'
+                                        : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
+                                  }`}
+                                >
+                                  {fmt(slot)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes */}
                     <div>
                       <label className={labelClass}>Notas para la próxima cita</label>
-                      <input value={followUpNotes} onChange={e => setFollowUpNotes(e.target.value)} className={inputClass} placeholder="Ej: Traer resultados de lab" />
+                      <input 
+                        value={followUpNotes} 
+                        onChange={e => setFollowUpNotes(e.target.value)} 
+                        className={inputClass} 
+                        placeholder="Ej: Traer resultados de lab" 
+                      />
                     </div>
                   </div>
                 )}
