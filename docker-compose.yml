@@ -301,19 +301,14 @@ services:
       context: ./frontend-medflow
       dockerfile: Dockerfile
       args:
-        VITE_API_GATEWAY_URL: http://localhost:8080
+        VITE_API_GATEWAY_URL: ${VITE_API_GATEWAY_URL:-http://localhost:8080}
     container_name: medflow-frontend
     ports:
       - "3000:3000"
-    environment:
-      - VITE_API_GATEWAY_URL=http://localhost:8080
     depends_on:
       - api-gateway
     networks:
       - medflow-network
-    volumes:
-      - ./frontend-medflow:/app
-      - /app/node_modules
 
 # ============================================
 # Networks
