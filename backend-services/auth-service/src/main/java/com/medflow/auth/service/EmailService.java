@@ -16,11 +16,14 @@ import java.util.Map;
 @Service
 public class EmailService {
 
-    private static final String RESEND_URL = "https://api.resend.com/emails";
-    private static final String FROM = "MedFlow HIS <onboarding@resend.dev>";
+    private static final String BREVO_URL = "https://api.brevo.com/v3/smtp/email";
+    private static final String SENDER_NAME = "MedFlow HIS";
 
-    @Value("${RESEND_API_KEY:}")
+    @Value("${BREVO_API_KEY:}")
     private String apiKey;
+
+    @Value("${BREVO_SENDER_EMAIL:avilajoze123@gmail.com}")
+    private String senderEmail;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -30,20 +33,20 @@ public class EmailService {
     @Async
     public void sendActivationEmail(String toEmail, String firstName, String token) {
         String link = frontendUrl + "/activate?token=" + token;
-        send(toEmail, "Activa tu cuenta en MedFlow HIS", buildActivationHtml(firstName, link));
+        send(toEmail, firstName, "Activa tu cuenta en MedFlow HIS", buildActivationHtml(firstName, link));
     }
 
     @Async
     public void sendTempPasswordEmail(String toEmail, String firstName,
                                       String username, String tempPassword) {
-        send(toEmail, "Bienvenido a MedFlow HIS - Credenciales de acceso",
+        send(toEmail, firstName, "Bienvenido a MedFlow HIS - Credenciales de acceso",
                 buildTempPasswordHtml(firstName, username, tempPassword, frontendUrl + "/login"));
     }
 
     @Async
     public void sendEmployeeCreatedEmail(String toEmail, String firstName,
                                          String username, String tempPassword) {
-        send(toEmail, "Cuenta de empleado creada - MedFlow HIS",
+        send(toEmail, firstName, "Cuenta de empleado creada - MedFlow HIS",
                 buildEmployeeHtml(firstName, username, tempPassword, frontendUrl + "/login"));
     }
 
@@ -53,28 +56,31 @@ public class EmailService {
                                                  String doctorName, String invoiceNumber,
                                                  String qrCodeBase64, String notes,
                                                  String validFromTime, String validUntilTime) {
-        send(toEmail, "Confirmacion de Cita - MedFlow HIS",
+        send(toEmail, firstName, "Confirmacion de Cita - MedFlow HIS",
                 buildAppointmentConfirmationHtml(firstName, appointmentDate, appointmentTime,
                         doctorName, invoiceNumber, qrCodeBase64, notes, validFromTime, validUntilTime));
     }
 
-    private void send(String to, String subject, String htmlBody) {
+    private void send(String toEmail, String toName, String subject, String htmlBody) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
+            headers.set("api-key", apiKey);
+
+            Map<String, Object> sender = Map.of("name", SENDER_NAME, "email", senderEmail);
+            Map<String, Object> recipient = Map.of("email", toEmail, "name", toName);
 
             Map<String, Object> body = Map.of(
-                    "from", FROM,
-                    "to", List.of(to),
+                    "sender", sender,
+                    "to", List.of(recipient),
                     "subject", subject,
-                    "html", htmlBody
+                    "htmlContent", htmlBody
             );
 
-            restTemplate.postForEntity(RESEND_URL, new HttpEntity<>(body, headers), String.class);
-            log.info("[Email] Enviado a {} - {}", to, subject);
+            restTemplate.postForEntity(BREVO_URL, new HttpEntity<>(body, headers), String.class);
+            log.info("[Email] Enviado a {} - {}", toEmail, subject);
         } catch (Exception e) {
-            log.error("[Email] Error al enviar a {}: {}", to, e.getMessage());
+            log.error("[Email] Error al enviar a {}: {}", toEmail, e.getMessage());
         }
     }
 
@@ -90,10 +96,10 @@ public class EmailService {
             + "<p style=\"color:#444;line-height:1.6;margin:0 0 24px;\">Gracias por registrarte en MedFlow HIS. Para activar tu cuenta haz clic en el boton:</p>"
             + "<div style=\"text-align:center;margin:0 0 28px;\">"
             + "<a href=\"" + link + "\" style=\"display:inline-block;background:#00d4e8;color:#0f4c75;font-weight:bold;font-size:15px;padding:14px 32px;border-radius:6px;text-decoration:none;\">Activar mi cuenta</a></div>"
-            + "<p style=\"color:#888;font-size:12px;margin:0 0 8px;\">El enlace es valido por <strong>24 horas</strong>. Si no creaste esta cuenta, ignora este correo.</p>"
+            + "<p style=\"color:#888;font-size:12px;margin:0 0 8px;\">El enlace es valido por <strong>24 horas</strong>.</p>"
             + "<p style=\"color:#bbb;font-size:11px;margin:0;\">Si el boton no funciona copia este enlace:<br><span style=\"color:#00d4e8;\">" + link + "</span></p>"
             + "</td></tr>"
-            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS &middot; Correo automatico.</p></td></tr>"
+            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS</p></td></tr>"
             + "</table></td></tr></table></body></html>";
     }
 
@@ -107,7 +113,7 @@ public class EmailService {
             + "<p style=\"margin:4px 0 0;color:#b0d4e8;font-size:12px;\">Sistema de Informacion Hospitalaria</p></td></tr>"
             + "<tr><td style=\"padding:36px 40px;\">"
             + "<h2 style=\"margin:0 0 16px;color:#1a1a2e;font-size:20px;\">Bienvenido/a, " + firstName + "</h2>"
-            + "<p style=\"color:#444;line-height:1.6;margin:0 0 20px;\">Tu cuenta de paciente ha sido creada. Tus credenciales de acceso temporales:</p>"
+            + "<p style=\"color:#444;line-height:1.6;margin:0 0 20px;\">Tu cuenta de paciente ha sido creada. Tus credenciales temporales:</p>"
             + "<table style=\"background:#f0faff;border:1px solid #b8e4f0;border-radius:6px;width:100%;margin:0 0 24px;\">"
             + "<tr><td style=\"padding:14px 20px;\"><p style=\"margin:0 0 6px;color:#555;font-size:13px;\"><strong>Usuario (DPI):</strong></p>"
             + "<p style=\"margin:0;font-family:monospace;font-size:16px;color:#0f4c75;font-weight:bold;\">" + username + "</p></td></tr>"
@@ -116,7 +122,7 @@ public class EmailService {
             + "<p style=\"color:#e74c3c;font-size:13px;margin:0 0 24px;\">Cambia tu contrasena en el primer inicio de sesion.</p>"
             + "<div style=\"text-align:center;\"><a href=\"" + loginUrl + "\" style=\"display:inline-block;background:#00d4e8;color:#0f4c75;font-weight:bold;font-size:15px;padding:14px 32px;border-radius:6px;text-decoration:none;\">Iniciar sesion</a></div>"
             + "</td></tr>"
-            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS &middot; Correo automatico.</p></td></tr>"
+            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS</p></td></tr>"
             + "</table></td></tr></table></body></html>";
     }
 
@@ -139,7 +145,7 @@ public class EmailService {
             + "<p style=\"color:#e74c3c;font-size:13px;margin:0 0 24px;\">Cambia tu contrasena en tu primer inicio de sesion.</p>"
             + "<div style=\"text-align:center;\"><a href=\"" + loginUrl + "\" style=\"display:inline-block;background:#00d4e8;color:#0f4c75;font-weight:bold;font-size:15px;padding:14px 32px;border-radius:6px;text-decoration:none;\">Acceder al sistema</a></div>"
             + "</td></tr>"
-            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS &middot; Correo automatico.</p></td></tr>"
+            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS</p></td></tr>"
             + "</table></td></tr></table></body></html>";
     }
 
@@ -158,11 +164,11 @@ public class EmailService {
             + "<tr><td align=\"center\">"
             + "<table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);\">"
             + "<tr><td style=\"background:#0f4c75;padding:28px 40px;\">"
-            + "<h1 style=\"margin:0;color:#00d4e8;font-size:22px;letter-spacing:1px;\">MedFlow HIS</h1>"
+            + "<h1 style=\"margin:0;color:#00d4e8;font-size:22px;\">MedFlow HIS</h1>"
             + "<p style=\"margin:4px 0 0;color:#b0d4e8;font-size:12px;\">Sistema de Informacion Hospitalaria</p></td></tr>"
             + "<tr><td style=\"padding:36px 40px;\">"
             + "<h2 style=\"margin:0 0 16px;color:#1a1a2e;font-size:20px;\">Cita confirmada, " + firstName + "!</h2>"
-            + "<p style=\"color:#444;line-height:1.6;margin:0 0 24px;\">Tu cita ha sido agendada exitosamente. A continuacion los detalles:</p>"
+            + "<p style=\"color:#444;line-height:1.6;margin:0 0 24px;\">Tu cita ha sido agendada exitosamente:</p>"
             + "<table style=\"background:#f0faff;border:1px solid #b8e4f0;border-radius:6px;width:100%;margin:0 0 24px;\">"
             + "<tr><td style=\"padding:14px 20px;\"><p style=\"margin:0 0 6px;color:#555;font-size:13px;\"><strong>Fecha:</strong></p>"
             + "<p style=\"margin:0;font-size:16px;color:#0f4c75;font-weight:bold;\">" + appointmentDate + "</p></td></tr>"
@@ -182,7 +188,7 @@ public class EmailService {
             + "</div>"
             + "</td></tr>"
             + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\">"
-            + "<p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS &middot; Correo automatico.</p>"
+            + "<p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS</p>"
             + "</td></tr>"
             + "</table></td></tr></table></body></html>";
     }
