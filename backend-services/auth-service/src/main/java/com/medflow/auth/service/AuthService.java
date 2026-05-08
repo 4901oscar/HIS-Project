@@ -1,4 +1,4 @@
-package com.medflow.auth.service;
+﻿package com.medflow.auth.service;
 
 import com.medflow.auth.client.PatientServiceClient;
 import com.medflow.auth.domain.Role;
@@ -80,7 +80,7 @@ public class AuthService {
 
     @Transactional
     public String register(RegisterRequest request) {
-        // Validar campos médicos
+        // Validar campos mÃ©dicos
         validateBirthDate(request.getBirthDate());
         validateGender(request.getGender());
         
@@ -105,12 +105,16 @@ public class AuthService {
                 .firstLastName(request.getFirstLastName())
                 .secondLastName(request.getSecondLastName())
                 .phone(request.getPhone())
-                .active(true)
+                .active(false)
                 .roles(Set.of(patientRole))
                 .build();
 
         User saved = userRepository.save(user);
         log.info("[CU-00.2] Usuario creado en auth_schema.users. DPI: {}, ID: {}", request.getDpi(), saved.getId());
+
+        String token = activationTokenService.generateToken(saved.getId().toString());
+        emailService.sendActivationEmail(saved.getEmail(), saved.getFirstName(), token);
+        log.info("[CU-00.2] Email de activacion enviado a: {}", saved.getEmail());
 
         // Paso 2: Crear paciente en patient_schema.patients
         try {
@@ -150,7 +154,7 @@ public class AuthService {
                     "Error inesperado al crear registro de paciente", e);
         }
 
-        log.info("[CU-00.2] Cuenta creada y activada automáticamente. Email: {}", request.getEmail());
+        log.info("[CU-00.2] Cuenta creada, pendiente de activacion por email. Email: {}", request.getEmail());
         return null;
     }
 
@@ -169,7 +173,7 @@ public class AuthService {
 
     @Transactional
     public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request) {
-        // Validar campos médicos
+        // Validar campos mÃ©dicos
         validateBirthDate(request.getBirthDate());
         validateGender(request.getGender());
         
@@ -255,7 +259,7 @@ public class AuthService {
                 patientId,
                 saved.getUsername(),
                 tempPassword,
-                "Cuenta creada. Se envió la contraseña temporal al correo del paciente."
+                "Cuenta creada. Se enviÃ³ la contraseÃ±a temporal al correo del paciente."
         );
     }
 
@@ -292,20 +296,20 @@ public class AuthService {
                 throw new InvalidMedicalDataException("La fecha de nacimiento debe ser en el pasado");
             }
         } catch (DateTimeParseException e) {
-            throw new InvalidMedicalDataException("Formato de fecha inválido. Use YYYY-MM-DD");
+            throw new InvalidMedicalDataException("Formato de fecha invÃ¡lido. Use YYYY-MM-DD");
         }
     }
 
     /**
-     * Valida que el género sea "M" o "F".
+     * Valida que el gÃ©nero sea "M" o "F".
      */
     private void validateGender(String gender) {
         if (gender == null || gender.isBlank()) {
-            throw new InvalidMedicalDataException("El género es requerido");
+            throw new InvalidMedicalDataException("El gÃ©nero es requerido");
         }
 
         if (!gender.equals("M") && !gender.equals("F")) {
-            throw new InvalidMedicalDataException("El género debe ser M o F");
+            throw new InvalidMedicalDataException("El gÃ©nero debe ser M o F");
         }
     }
 }
