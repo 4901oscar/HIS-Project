@@ -69,6 +69,8 @@ const LoginPage: FC = () => {
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         setError('Usuario o contraseña incorrectos.');
+      } else if (axios.isAxiosError(err) && err.response?.status === 403) {
+        setError('Tu cuenta aún no ha sido verificada. Revisa tu correo y activa tu cuenta.');
       } else if (axios.isAxiosError(err) && err.response?.status === 429) {
         setError('Demasiados intentos. Espera un momento e intenta de nuevo.');
       } else {
