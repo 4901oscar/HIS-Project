@@ -10,12 +10,14 @@ import { getPatientByDpi } from '../../services/patientService';
 import type { CreatePatientRequest } from '../../services/patientService';
 import { createPatientAccount } from '../../services/authService';
 import type { CreatePatientAccountRequest } from '../../services/authService';
-import { activateAppointment, listAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment } from '../../services/appointmentService';
+import { activateAppointment, listAppointments, scanAppointment, getAvailableSlotsForDate, createAppointment, holdSlot, releaseHold } from '../../services/appointmentService';
 import type { AppointmentListItem, ScanResult } from '../../services/appointmentService';
 import { listActiveDoctors, getDoctorDaysOff } from '../../services/doctorService';
 import type { Doctor, DayOff } from '../../services/doctorService';
 import { Html5Qrcode } from 'html5-qrcode';
 import axios from 'axios';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
 
 type Tab = 'schedule' | 'list' | 'scan';
 
@@ -214,6 +216,7 @@ const ActivateAppointments: FC = () => {
   const [patientExists, setPatientExists] = useState(false);
   const [dpiError, setDpiError] = useState<string | null>(null);
   const [checkingDpi, setCheckingDpi] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<Record<string, string>>>({});
 
   // Date and time selection
   const [selectedDate, setSelectedDate] = useState('');
@@ -226,6 +229,16 @@ const ActivateAppointments: FC = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [daysOffMap, setDaysOffMap] = useState<Record<string, string[]>>({});
   const [loadingData, setLoadingData] = useState(true);
+
+  const sessionId = useRef(
+    (() => {
+      const stored = sessionStorage.getItem('admission-session-id');
+      if (stored) return stored;
+      const id = `admission-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem('admission-session-id', id);
+      return id;
+    })()
+  );
 
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
@@ -303,7 +316,7 @@ const ActivateAppointments: FC = () => {
     try {
       const patient = await getPatientByDpi(dpi);
       setPatientExists(true);
-      // Fill form with existing patient data
+      setFieldErrors({});
       setForm({
         dpi: patient.dpi,
         nit: patient.nit || '',
@@ -334,6 +347,7 @@ const ActivateAppointments: FC = () => {
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setFieldErrors(prev => clearFieldError(prev, e.target.name));
   };
 
   // Load available slots when date changes
@@ -344,7 +358,7 @@ const ActivateAppointments: FC = () => {
       return;
     }
     setLoadingSlots(true);
-    getAvailableSlotsForDate(selectedDate)
+    getAvailableSlotsForDate(selectedDate, sessionId.current)
       .then(slots => setAvailableSlots(slots))
       .catch(() => setAvailableSlots([]))
       .finally(() => setLoadingSlots(false));
@@ -352,10 +366,41 @@ const ActivateAppointments: FC = () => {
 
   const handleScheduleAppointment = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime || !motivo.trim()) {
-      setScheduleError('Por favor completa todos los campos requeridos');
+
+    const valuesToValidate: Record<string, string> = {
+      dpi: form.dpi,
+      firstName: form.firstName,
+      firstLastName: form.firstLastName,
+      email: form.email,
+      phone: form.phone,
+      birthDate: form.birthDate,
+      gender: form.gender,
+      selectedDate,
+      selectedTime,
+      motivo,
+    };
+
+    const schema: Schema<Record<string, string>> = {
+      ...(!patientExists ? {
+        dpi:           [{ type: 'dpi' }],
+        firstName:     [{ type: 'required', message: 'El primer nombre es requerido.' }],
+        firstLastName: [{ type: 'required', message: 'El primer apellido es requerido.' }],
+        email:         [{ type: 'email' }],
+        phone:         [{ type: 'phone' }],
+        birthDate:     [{ type: 'required', message: 'La fecha de nacimiento es requerida.' }, { type: 'date' }],
+        gender:        [{ type: 'oneOf', values: ['MALE', 'FEMALE', 'OTHER'], message: 'El genero es requerido.' }],
+      } : {}),
+      selectedDate: [{ type: 'required', message: 'Selecciona una fecha para la cita.' }],
+      selectedTime: [{ type: 'required', message: 'Selecciona un horario para la cita.' }],
+      motivo:       [{ type: 'required', message: 'El motivo de consulta es requerido.' }],
+    };
+
+    const errors = validateForm(schema, valuesToValidate);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
 
     setScheduleLoading(true);
     setScheduleError(null);
@@ -399,14 +444,14 @@ const ActivateAppointments: FC = () => {
       });
 
       setScheduleSuccess('Cita agendada exitosamente. Se ha enviado un correo con los detalles. El paciente debe pasar a caja para realizar el pago.');
-      
-      // Reset form
+      releaseHold(sessionId.current).catch(() => {});
       setForm(emptyForm);
       setSelectedDate('');
       setSelectedTime('');
       setMotivo('');
       setPatientExists(false);
       setDpiError(null);
+      setFieldErrors({});
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setScheduleError(err.response?.data?.message || err.response?.data?.error || 'Error al agendar la cita');
@@ -492,6 +537,8 @@ const ActivateAppointments: FC = () => {
 
   useEffect(() => () => { stopScanner(); }, [stopScanner]);
 
+  useEffect(() => () => { releaseHold(sessionId.current).catch(() => {}); }, []);
+
   const scanStatusStyle: Record<string, string> = {
     ACTIVE: 'bg-green-50 border-green-300',
     EARLY:  'bg-yellow-50 border-yellow-300',
@@ -557,7 +604,7 @@ const ActivateAppointments: FC = () => {
                 <p className="text-sm text-gray-500 mt-2">Cargando disponibilidad...</p>
               </div>
             ) : (
-              <form onSubmit={handleScheduleAppointment} className="space-y-6">
+              <form onSubmit={handleScheduleAppointment} noValidate className="space-y-6">
                 {/* Patient Information */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-gray-900">Información del Paciente</h4>
@@ -570,21 +617,20 @@ const ActivateAppointments: FC = () => {
                         value={form.dpi} 
                         onChange={(e) => {
                           handleFormChange(e);
-                          // Reset patient state when DPI changes
                           if (patientExists) {
                             setPatientExists(false);
                             setDpiError(null);
+                            setForm({ ...emptyForm, dpi: e.target.value });
                           }
                         }}
                         onBlur={handleDpiBlur}
-                        required 
-                        maxLength={13} 
-                        minLength={13} 
+                        maxLength={13}
                         placeholder="13 dígitos" 
                         className={inputClass}
                       />
                       {checkingDpi && <p className="text-xs text-gray-500 mt-1">Verificando DPI...</p>}
                       {dpiError && <p className="text-xs text-red-600 mt-1">{dpiError}</p>}
+                      {!dpiError && fieldErrors.dpi && <p className="mt-1 text-xs text-red-600">{fieldErrors.dpi}</p>}
                       {patientExists && <p className="text-xs text-green-600 mt-1">✓ Paciente encontrado</p>}
                     </div>
                     
@@ -601,16 +647,16 @@ const ActivateAppointments: FC = () => {
                     
                     <div>
                       <label className={labelClass}>Primer Nombre <span className="text-red-500">*</span></label>
-                      <input 
-                        name="firstName" 
-                        value={form.firstName} 
+                      <input
+                        name="firstName"
+                        value={form.firstName}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        required 
                         className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
+                      {fieldErrors.firstName && <p className="mt-1 text-xs text-red-600">{fieldErrors.firstName}</p>}
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Segundo Nombre</label>
                       <input 
@@ -624,16 +670,16 @@ const ActivateAppointments: FC = () => {
                     
                     <div>
                       <label className={labelClass}>Primer Apellido <span className="text-red-500">*</span></label>
-                      <input 
-                        name="firstLastName" 
-                        value={form.firstLastName} 
+                      <input
+                        name="firstLastName"
+                        value={form.firstLastName}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        required 
                         className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
+                      {fieldErrors.firstLastName && <p className="mt-1 text-xs text-red-600">{fieldErrors.firstLastName}</p>}
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Segundo Apellido</label>
                       <input 
@@ -647,59 +693,58 @@ const ActivateAppointments: FC = () => {
                     
                     <div>
                       <label className={labelClass}>Fecha de Nacimiento <span className="text-red-500">*</span></label>
-                      <input 
-                        type="date" 
-                        name="birthDate" 
-                        value={form.birthDate} 
+                      <input
+                        type="date"
+                        name="birthDate"
+                        value={form.birthDate}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        required 
                         className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
+                      {fieldErrors.birthDate && <p className="mt-1 text-xs text-red-600">{fieldErrors.birthDate}</p>}
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Género <span className="text-red-500">*</span></label>
-                      <select 
-                        name="gender" 
-                        value={form.gender} 
+                      <select
+                        name="gender"
+                        value={form.gender}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        required 
                         className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
                       >
                         <option value="MALE">Masculino</option>
                         <option value="FEMALE">Femenino</option>
                         <option value="OTHER">Otro</option>
                       </select>
+                      {fieldErrors.gender && <p className="mt-1 text-xs text-red-600">{fieldErrors.gender}</p>}
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Correo Electrónico <span className="text-red-500">*</span></label>
-                      <input 
-                        type="email" 
-                        name="email" 
-                        value={form.email} 
+                      <input
+                        type="email"
+                        name="email"
+                        value={form.email}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        required 
                         className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Teléfono <span className="text-red-500">*</span></label>
-                      <input 
-                        name="phone" 
-                        value={form.phone} 
+                      <input
+                        name="phone"
+                        value={form.phone}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        required 
-                        maxLength={8} 
-                        minLength={8} 
-                        placeholder="8 dígitos" 
+                        maxLength={8}
+                        placeholder="8 dígitos"
                         className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
                     </div>
                     
                     <div>
@@ -754,12 +799,18 @@ const ActivateAppointments: FC = () => {
                   
                   <div>
                     <label className={labelClass}>Fecha de la cita <span className="text-red-500">*</span></label>
-                    <Calendar 
-                      selected={selectedDate} 
-                      onSelect={setSelectedDate} 
-                      isBlocked={isBlocked} 
+                    <Calendar
+                      selected={selectedDate}
+                      onSelect={(date) => {
+                        if (selectedTime) releaseHold(sessionId.current).catch(() => {});
+                        setSelectedDate(date);
+                        setSelectedTime('');
+                        setFieldErrors(prev => clearFieldError(prev, 'selectedDate'));
+                      }}
+                      isBlocked={isBlocked}
                     />
                     {selectedDate && <p className="text-medin-cyan text-xs mt-2">Fecha seleccionada: {selectedDate}</p>}
+                    {fieldErrors.selectedDate && <p className="mt-1 text-xs text-red-600">{fieldErrors.selectedDate}</p>}
                   </div>
 
                   {selectedDate && (
@@ -779,7 +830,16 @@ const ActivateAppointments: FC = () => {
                                 key={slot}
                                 type="button"
                                 disabled={!isAvailable}
-                                onClick={() => setSelectedTime(slot)}
+                                onClick={async () => {
+                                  await releaseHold(sessionId.current).catch(() => {});
+                                  const held = await holdSlot(sessionId.current, selectedDate, slot).catch(() => false);
+                                  if (!held) {
+                                    setAvailableSlots(prev => prev.filter(s => s !== slot));
+                                    return;
+                                  }
+                                  setSelectedTime(slot);
+                                  setFieldErrors(prev => clearFieldError(prev, 'selectedTime'));
+                                }}
                                 className={`py-2 text-sm font-medium border transition-colors ${
                                   isSelected
                                     ? 'bg-medin-cyan text-medin-navy border-medin-cyan'
@@ -794,6 +854,7 @@ const ActivateAppointments: FC = () => {
                           })}
                         </div>
                       )}
+                      {fieldErrors.selectedTime && <p className="mt-1 text-xs text-red-600">{fieldErrors.selectedTime}</p>}
                     </div>
                   )}
 
@@ -801,19 +862,22 @@ const ActivateAppointments: FC = () => {
                     <label className={labelClass}>Motivo de consulta <span className="text-red-500">*</span></label>
                     <textarea
                       value={motivo}
-                      onChange={(e) => setMotivo(e.target.value)}
+                      onChange={(e) => {
+                        setMotivo(e.target.value);
+                        setFieldErrors(prev => clearFieldError(prev, 'motivo'));
+                      }}
                       placeholder="Describe brevemente el motivo de la consulta..."
                       rows={3}
-                      required
                       className={`${inputClass} resize-none`}
                     />
+                    {fieldErrors.motivo && <p className="mt-1 text-xs text-red-600">{fieldErrors.motivo}</p>}
                   </div>
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <button 
-                    type="submit" 
-                    disabled={scheduleLoading || !selectedDate || !selectedTime}
+                  <button
+                    type="submit"
+                    disabled={scheduleLoading}
                     className="px-6 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {scheduleLoading ? 'Agendando...' : 'Agendar Cita'}

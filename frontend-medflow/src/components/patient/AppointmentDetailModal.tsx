@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { FC } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { getVitalSignsByAppointment, getPrescriptionByAppointment } from '../../services/clinicalService';
-import type { VitalSignsResponse, PrescriptionDetailResponse } from '../../services/clinicalService';
+import { getVitalSignsByAppointment, getPrescriptionByAppointment, getAppointmentTriage } from '../../services/clinicalService';
+import type { VitalSignsResponse, PrescriptionDetailResponse, TriageResponse } from '../../services/clinicalService';
 import { getLabOrderByAppointmentId, getLabResultsByAppointmentId, viewLabResult } from '../../api/labApi';
 import type { LabOrderWithTestsResponse, LabResultResponse } from '../../api/labApi';
 
@@ -41,6 +41,7 @@ const AppointmentDetailModal: FC<Props> = ({
   onClose,
 }) => {
   const [vitals, setVitals] = useState<VitalSignsResponse | null>(null);
+  const [triage, setTriage] = useState<TriageResponse | null>(null);
   const [prescription, setPrescription] = useState<PrescriptionDetailResponse | null>(null);
   const [labOrder, setLabOrder] = useState<LabOrderWithTestsResponse | null>(null);
   const [labResults, setLabResults] = useState<LabResultResponse[]>([]);
@@ -49,13 +50,15 @@ const AppointmentDetailModal: FC<Props> = ({
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [v, rx, lab, results] = await Promise.allSettled([
+      const [v, tri, rx, lab, results] = await Promise.allSettled([
         getVitalSignsByAppointment(appointmentId),
+        getAppointmentTriage(appointmentId),
         getPrescriptionByAppointment(appointmentId),
         getLabOrderByAppointmentId(appointmentId),
         getLabResultsByAppointmentId(appointmentId),
       ]);
       if (v.status === 'fulfilled') setVitals(v.value);
+      if (tri.status === 'fulfilled') setTriage(tri.value);
       if (rx.status === 'fulfilled') setPrescription(rx.value);
       if (lab.status === 'fulfilled') setLabOrder(lab.value);
       if (results.status === 'fulfilled') setLabResults(results.value);
@@ -127,6 +130,52 @@ const AppointmentDetailModal: FC<Props> = ({
                   </div>
                 ) : (
                   <p className="text-sm text-gray-400 italic">No se registraron signos vitales para esta cita.</p>
+                )}
+              </section>
+
+              <hr className="border-gray-100" />
+
+              {/* Triaje Manchester */}
+              <section>
+                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
+                  Triaje Manchester
+                </h4>
+                {triage ? (() => {
+                  const colorMap: Record<string, string> = {
+                    RED: 'bg-red-100 text-red-800 border-red-300',
+                    ORANGE: 'bg-orange-100 text-orange-800 border-orange-300',
+                    YELLOW: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                    GREEN: 'bg-green-100 text-green-800 border-green-300',
+                    BLUE: 'bg-blue-100 text-blue-800 border-blue-300',
+                  };
+                  const labelMap: Record<string, string> = {
+                    RED: 'Inmediato',
+                    ORANGE: 'Muy urgente',
+                    YELLOW: 'Urgente',
+                    GREEN: 'Poco urgente',
+                    BLUE: 'No urgente',
+                  };
+                  const cls = colorMap[triage.priorityLevel] ?? 'bg-gray-100 text-gray-700 border-gray-300';
+                  return (
+                    <div className={`border rounded-lg p-4 ${cls}`}>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <p className="font-bold text-base">{labelMap[triage.priorityLevel] ?? triage.priorityLevel}</p>
+                          <p className="text-sm mt-0.5">{triage.priorityDescription}</p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="font-medium">Espera max.</p>
+                          <p className="font-bold text-lg">{triage.maxWaitTimeMinutes} min</p>
+                        </div>
+                      </div>
+                      <p className="text-xs mt-2 opacity-70">
+                        Realizado: {new Date(triage.performedAt).toLocaleString('es-GT')}
+                      </p>
+                    </div>
+                  );
+                })() : (
+                  <p className="text-sm text-gray-400 italic">No se realizo triaje para esta cita.</p>
                 )}
               </section>
 

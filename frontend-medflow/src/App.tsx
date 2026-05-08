@@ -19,7 +19,6 @@ import ActivateAccountPage from './pages/ActivateAccountPage';
 
 import AdministratorDashboard from './pages/administrator/AdministratorDashboard';
 import EmployeeManagementPage from './pages/administrator/EmployeeManagementPage';
-import EmployeeFormPage from './pages/administrator/EmployeeFormPage';
 import DoctorManagementPage from './pages/administrator/DoctorManagementPage';
 import ClinicManagementPage from './pages/administrator/ClinicManagementPage';
 import MedicamentosPage from './pages/administrator/MedicamentosPage';
@@ -68,22 +67,6 @@ function App() {
             element={
               <ProtectedRoute requiredRole="ADMIN">
                 <EmployeeManagementPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/administrator/empleados/nuevo"
-            element={
-              <ProtectedRoute requiredRole="ADMIN">
-                <EmployeeFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/administrator/empleados/:id/editar"
-            element={
-              <ProtectedRoute requiredRole="ADMIN">
-                <EmployeeFormPage />
               </ProtectedRoute>
             }
           />

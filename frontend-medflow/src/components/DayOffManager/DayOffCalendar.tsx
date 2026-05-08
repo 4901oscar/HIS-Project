@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import Swal from 'sweetalert2';
+import { swalConfirm, swalAlert } from '../../utils/swal';
 import { getDoctorDaysOff, removeDayOff, type Doctor, type DayOff } from '../../services/doctorService';
 
 interface DayOffCalendarProps {
@@ -130,13 +130,11 @@ const DayOffCalendar: FC<DayOffCalendarProps> = ({ doctor, onDayOffRemoved }) =>
   const handleRemoveDayOff = async () => {
     if (!selectedDay) return;
 
-    const result = await Swal.fire({
+    const result = await swalConfirm.fire({
       title: '¿Eliminar día libre?',
       text: selectedDay.date.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#6b7280',
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
     });
@@ -148,11 +146,11 @@ const DayOffCalendar: FC<DayOffCalendarProps> = ({ doctor, onDayOffRemoved }) =>
       setSelectedDay(null);
       await loadDaysOff();
       onDayOffRemoved?.();
-      Swal.fire({ title: 'Eliminado', text: 'Día libre eliminado exitosamente', icon: 'success', timer: 2000, showConfirmButton: false });
+      swalAlert.fire({ title: 'Eliminado', text: 'Día libre eliminado exitosamente', icon: 'success', timer: 2000, showConfirmButton: false });
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Error al eliminar día libre';
-      Swal.fire({ title: 'Error', text: errorMessage, icon: 'error' });
+      swalAlert.fire({ title: 'Error', text: errorMessage, icon: 'error' });
     }
   };
 

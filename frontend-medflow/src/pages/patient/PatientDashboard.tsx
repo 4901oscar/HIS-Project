@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import axios from 'axios';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
