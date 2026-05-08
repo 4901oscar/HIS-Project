@@ -9,21 +9,8 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:medflow_user}
     password: ${SPRING_DATASOURCE_PASSWORD:medflow_pass}
 
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
 
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
