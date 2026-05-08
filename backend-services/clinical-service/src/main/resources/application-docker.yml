@@ -10,12 +10,12 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
 
 services:
   patient-service:
-    url: http://patient-service:8082
+    url: ${PATIENT_SERVICE_URL:http://patient-service:8082}
   pharmacy-service:
-    url: http://pharmacy-service:8085
+    url: ${PHARMACY_SERVICE_URL:http://pharmacy-service:8085}
   lab-service:
-    url: http://lab-service:8084
+    url: ${LAB_SERVICE_URL:http://lab-service:8084}
