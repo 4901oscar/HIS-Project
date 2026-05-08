@@ -23,6 +23,7 @@ import CIE10 from '../../data/cie10';
 import type { Cie10Item } from '../../data/cie10';
 import axios from 'axios';
 import LabResultsSection from '../../components/doctor/LabResultsSection';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -465,6 +466,7 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
 const PatientConsultationForm: FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
+  const { setPatient } = usePatientHistory();
 
   const [appointment, setAppointment] = useState<AppointmentListItem | null>(null);
   const [vitalSigns, setVitalSigns] = useState<VitalSignsResponse | null>(null);
@@ -510,8 +512,10 @@ const PatientConsultationForm: FC = () => {
           getServiceItems('LABORATORY'),
           getServiceItems('MEDICATION'),
         ]);
-        if (appt.status === 'fulfilled') setAppointment(appt.value);
-        else setError('Error al cargar la cita');
+        if (appt.status === 'fulfilled') {
+          setAppointment(appt.value);
+          setPatient(appt.value.patient.id, appt.value.patient.fullName);
+        } else setError('Error al cargar la cita');
         if (vitals.status === 'fulfilled') setVitalSigns(vitals.value);
         if (tri.status === 'fulfilled') setTriage(tri.value);
         if (labItems.status === 'fulfilled') setLabCatalog(labItems.value.filter(t => t.status === 'ACTIVE'));

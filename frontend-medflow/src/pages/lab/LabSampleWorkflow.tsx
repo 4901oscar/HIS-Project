@@ -12,6 +12,7 @@ import { getAppointmentById } from '../../services/appointmentService';
 import type { AppointmentListItem } from '../../services/appointmentService';
 import { getLabOrderByAppointmentId } from '../../api/labApi';
 import type { LabOrderWithTestsResponse } from '../../api/labApi';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 // ─── Step Mapping Function ────────────────────────────────────────────────────
 
@@ -44,7 +45,8 @@ interface StepProps {
 const LabSampleWorkflow: FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
-  
+  const { setPatient } = usePatientHistory();
+
   const [appointment, setAppointment] = useState<AppointmentListItem | null>(null);
   const [labOrder, setLabOrder] = useState<LabOrderWithTestsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,7 @@ const LabSampleWorkflow: FC = () => {
       // Fetch appointment data
       const apptData = await getAppointmentById(appointmentId);
       setAppointment(apptData);
+      setPatient(apptData.patient.id, apptData.patient.fullName);
 
       // Fetch lab order data
       const orderData = await getLabOrderByAppointmentId(appointmentId);

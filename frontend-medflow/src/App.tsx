@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PatientHistoryProvider } from './context/PatientHistoryContext';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import './App.css';
 
@@ -39,6 +40,7 @@ import PatientDashboard from './pages/patient/PatientDashboard';
 function App() {
   return (
     <AuthProvider>
+      <PatientHistoryProvider>
       <Router>
         <Routes>
           {/* Rutas Públicas */}
@@ -206,6 +208,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      </PatientHistoryProvider>
     </AuthProvider>
   );
 }

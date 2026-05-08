@@ -10,6 +10,7 @@ import type { VitalSignsResponse } from '../../services/clinicalService';
 import { getManchesterCatalog } from '../../services/manchesterService';
 import type { ManchesterMotif, ManchesterDiscriminator } from '../../types/triage';
 import { extractErrorMessage } from '../../utils/errorHandler';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 interface VitalForm {
   systolicPressure: string;
@@ -70,9 +71,10 @@ const PRIORITY_MAP: Record<string, { level: string; description: string; color: 
 const TriageVitalSignsCapture: FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+  const { setPatient: setHistorialPatient } = usePatientHistory();
+
   const { appointmentId, patientId } = location.state || {};
-  
+
   const [patient, setPatient] = useState<PatientResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +147,9 @@ const TriageVitalSignsCapture: FC = () => {
         
         if (patientData.status === 'fulfilled') {
           setPatient(patientData.value);
+          const p = patientData.value;
+          const fullName = [p.firstName, p.firstLastName].filter(Boolean).join(' ');
+          setHistorialPatient(p.id, fullName);
         } else {
           setError(extractErrorMessage(patientData.reason));
           setLoading(false);

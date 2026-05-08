@@ -18,6 +18,7 @@ import {
   XMarkIcon,
   ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline';
+import HistorialFloatingButton from '../shared/HistorialFloatingButton';
 
 interface MenuItem {
   name: string;
@@ -217,6 +218,8 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         {/* Page Content */}
         <main className="p-4 lg:p-8">{children}</main>
       </div>
+
+      <HistorialFloatingButton />
     </div>
   );
 };
