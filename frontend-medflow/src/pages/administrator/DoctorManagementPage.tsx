@@ -56,41 +56,37 @@ const DoctorManagementPage: FC = () => {
               <p className="text-gray-500 text-sm">Administre doctores, turnos y días libres</p>
             </div>
           </div>
-          {viewMode !== 'list' && (
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 bg-gray-300 text-gray-700 font-semibold hover:bg-gray-400 transition-colors"
-            >
-              ← VOLVER A LA LISTA
-            </button>
-          )}
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-lg shadow p-6">
-          {viewMode === 'list' && (
+        {viewMode === 'list' && (
+          <div className="bg-white rounded-lg shadow p-6">
             <DoctorList
               onCreateClick={handleCreateDoctor}
               onEditClick={handleEditDoctor}
               onManageDaysOff={handleManageDaysOff}
             />
-          )}
+          </div>
+        )}
 
-          {(viewMode === 'create' || viewMode === 'edit') && (
+        {(viewMode === 'create' || viewMode === 'edit') && (
+          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
             <DoctorForm
               doctor={selectedDoctor}
               onSuccess={handleSuccess}
               onCancel={handleCancel}
             />
-          )}
+          </div>
+        )}
 
-          {viewMode === 'dayoff' && selectedDoctor && (
+        {viewMode === 'dayoff' && selectedDoctor && (
+          <div className="bg-white rounded-lg shadow p-6">
             <DayOffManagementView
               doctor={selectedDoctor}
               onClose={handleCancel}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );

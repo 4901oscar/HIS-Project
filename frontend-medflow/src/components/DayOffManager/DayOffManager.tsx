@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
-import Swal from 'sweetalert2';
+import { swalAlert } from '../../utils/swal';
 import { markDaysOff, type Doctor } from '../../services/doctorService';
 
 interface DayOffManagerProps {
@@ -53,7 +53,7 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
         reason: reason.trim(),
       });
 
-      Swal.fire({ title: '¡Listo!', text: 'Días libres marcados exitosamente', icon: 'success', timer: 2000, showConfirmButton: false });
+      swalAlert.fire({ title: '¡Listo!', text: 'Días libres marcados exitosamente', icon: 'success', timer: 2000, showConfirmButton: false });
       setStartDate('');
       setEndDate('');
       setReason('');

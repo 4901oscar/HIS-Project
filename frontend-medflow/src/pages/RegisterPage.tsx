@@ -3,7 +3,8 @@ import type { FC, FormEvent, ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { register } from '../services/authService';
 import type { RegisterData } from '../services/authService';
-import { validateDPI } from '../utils/validateDPI';
+import { validateForm, clearFieldError } from '../utils/formValidation';
+import type { Schema } from '../utils/formValidation';
 import { Navbar } from '../components';
 import axios from 'axios';
 
@@ -43,44 +44,29 @@ const RegisterPage: FC = () => {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const registerSchema: Schema<FormState> = {
+    dpi:             [{ type: 'dpi' }],
+    nit:             [{ type: 'required', message: 'El NIT es requerido.' }],
+    firstName:       [{ type: 'required', message: 'El primer nombre es requerido.' }],
+    firstLastName:   [{ type: 'required', message: 'El primer apellido es requerido.' }],
+    email:           [{ type: 'email' }],
+    phone:           [{ type: 'phone', message: 'El telefono debe tener exactamente 8 digitos.' }],
+    birthDate:       [{ type: 'required', message: 'La fecha de nacimiento es requerida.' }, { type: 'date' }],
+    gender:          [{ type: 'oneOf', values: ['M', 'F'], message: 'El genero es requerido.' }],
+    password:        [{ type: 'minLength', min: 8, message: 'La contrasena debe tener al menos 8 caracteres.' }],
+    confirmPassword: [{ type: 'match', field: 'password', message: 'Las contrasenas no coinciden.' }],
+  };
+
   const validate = (): boolean => {
-    const next: FieldErrors = {};
-
-    const dpiResult = validateDPI(form.dpi);
-    if (!dpiResult.valid)
-      next.dpi = dpiResult.error!;
-    if (!form.nit.trim())
-      next.nit = 'El NIT es requerido.';
-    if (!form.firstName.trim())
-      next.firstName = 'El primer nombre es requerido.';
-    if (!form.firstLastName.trim())
-      next.firstLastName = 'El primer apellido es requerido.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      next.email = 'Ingresa un correo electrónico válido.';
-    if (!/^\d{8}$/.test(form.phone))
-      next.phone = 'El teléfono debe tener exactamente 8 dígitos.';
-    if (!form.birthDate.trim())
-      next.birthDate = 'La fecha de nacimiento es requerida.';
-    else if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate))
-      next.birthDate = 'Formato de fecha inválido (YYYY-MM-DD).';
-    if (!form.gender.trim())
-      next.gender = 'El género es requerido.';
-    else if (form.gender !== 'M' && form.gender !== 'F')
-      next.gender = 'El género debe ser M o F.';
-    if (form.password.length < 8)
-      next.password = 'La contraseña debe tener al menos 8 caracteres.';
-    if (form.password !== form.confirmPassword)
-      next.confirmPassword = 'Las contraseñas no coinciden.';
-
-    setErrors(next);
+    const next = validateForm(registerSchema, form as unknown as Record<string, string>);
+    setErrors(next as FieldErrors);
     return Object.keys(next).length === 0;
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof FormState])
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setErrors((prev) => clearFieldError(prev as Record<string, string>, name) as FieldErrors);
     if (serverError) setServerError(null);
   };
 

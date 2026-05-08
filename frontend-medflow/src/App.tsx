@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PatientHistoryProvider } from './context/PatientHistoryContext';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import './App.css';
 
@@ -18,7 +19,6 @@ import ActivateAccountPage from './pages/ActivateAccountPage';
 
 import AdministratorDashboard from './pages/administrator/AdministratorDashboard';
 import EmployeeManagementPage from './pages/administrator/EmployeeManagementPage';
-import EmployeeFormPage from './pages/administrator/EmployeeFormPage';
 import DoctorManagementPage from './pages/administrator/DoctorManagementPage';
 import ClinicManagementPage from './pages/administrator/ClinicManagementPage';
 import MedicamentosPage from './pages/administrator/MedicamentosPage';
@@ -39,6 +39,7 @@ import PatientDashboard from './pages/patient/PatientDashboard';
 function App() {
   return (
     <AuthProvider>
+      <PatientHistoryProvider>
       <Router>
         <Routes>
           {/* Rutas Públicas */}
@@ -66,22 +67,6 @@ function App() {
             element={
               <ProtectedRoute requiredRole="ADMIN">
                 <EmployeeManagementPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/administrator/empleados/nuevo"
-            element={
-              <ProtectedRoute requiredRole="ADMIN">
-                <EmployeeFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/administrator/empleados/:id/editar"
-            element={
-              <ProtectedRoute requiredRole="ADMIN">
-                <EmployeeFormPage />
               </ProtectedRoute>
             }
           />
@@ -206,6 +191,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      </PatientHistoryProvider>
     </AuthProvider>
   );
 }

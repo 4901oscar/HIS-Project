@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import axios from 'axios';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getPatientByDpi, updatePatient } from '../../services/patientService';
 import type { PatientResponse } from '../../services/patientService';
-import { getMedicalHistory } from '../../services/clinicalService';
-import type { MedicalHistoryResponse } from '../../services/clinicalService';
 import { listMyAppointments } from '../../services/appointmentService';
 import type { AppointmentResponse } from '../../services/appointmentService';
 import PatientHeader from '../../components/PatientHeader/PatientHeader';
+import AppointmentDetailModal from '../../components/patient/AppointmentDetailModal';
+import HistorialFloatingButton from '../../components/shared/HistorialFloatingButton';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: 'Agendada',
@@ -28,20 +28,16 @@ const STATUS_COLOR: Record<string, string> = {
 const PatientDashboard: FC = () => {
   const { user } = useAuth();
   const location = useLocation();
-  const [history, setHistory] = useState<MedicalHistoryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sinHistorial, setSinHistorial] = useState(false);
-  const [activeTab, setActiveTab] = useState<'appointments' | 'consultations' | 'vitals' | 'prescriptions' | 'labs'>('appointments');
+  const { setPatient } = usePatientHistory();
 
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [apptLoading, setApptLoading] = useState(true);
+  const [selectedAppt, setSelectedAppt] = useState<AppointmentResponse | null>(null);
 
-  // Profile modal state
   const [showProfile, setShowProfile] = useState(
     (location.state as { openProfile?: boolean })?.openProfile === true
   );
-  const [patient, setPatient] = useState<PatientResponse | null>(null);
+  const [patient, setPatientData] = useState<PatientResponse | null>(null);
   const [profileForm, setProfileForm] = useState({
     firstName: '', secondName: '', firstLastName: '', secondLastName: '',
     phone: '', address: '', department: '', municipality: '',
@@ -58,40 +54,25 @@ const PatientDashboard: FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user?.username) {
-      loadHistory(user.username);
-    }
-  }, [user]);
-
-  const loadHistory = async (username: string) => {
-    setLoading(true);
-    setError(null);
-    setSinHistorial(false);
-    try {
-      const pat = await getPatientByDpi(username);
-      setPatient(pat);
-      setProfileForm({
-        firstName: pat.firstName ?? '',
-        secondName: pat.secondName ?? '',
-        firstLastName: pat.firstLastName ?? '',
-        secondLastName: pat.secondLastName ?? '',
-        phone: pat.phone ?? '',
-        address: pat.address ?? '',
-        department: pat.department ?? '',
-        municipality: pat.municipality ?? '',
-      });
-      const hist = await getMedicalHistory(pat.id);
-      setHistory(hist);
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setSinHistorial(true);
-      } else {
-        setError('No se pudo conectar con el servidor. Intenta de nuevo más tarde.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!user?.username) return;
+    getPatientByDpi(user.username)
+      .then((pat) => {
+        setPatientData(pat);
+        setProfileForm({
+          firstName: pat.firstName ?? '',
+          secondName: pat.secondName ?? '',
+          firstLastName: pat.firstLastName ?? '',
+          secondLastName: pat.secondLastName ?? '',
+          phone: pat.phone ?? '',
+          address: pat.address ?? '',
+          department: pat.department ?? '',
+          municipality: pat.municipality ?? '',
+        });
+        const fullName = [pat.firstName, pat.firstLastName].filter(Boolean).join(' ');
+        setPatient(pat.id, fullName);
+      })
+      .catch(() => {});
+  }, [user, setPatient]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +82,7 @@ const PatientDashboard: FC = () => {
     setProfileSuccess(false);
     try {
       const updated = await updatePatient(patient.id, profileForm);
-      setPatient(updated);
+      setPatientData(updated);
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch {
@@ -111,193 +92,61 @@ const PatientDashboard: FC = () => {
     }
   };
 
-  const tabs = [
-    { key: 'appointments', label: 'Mis Citas' },
-    { key: 'consultations', label: 'Consultas' },
-    { key: 'vitals', label: 'Signos Vitales' },
-    { key: 'prescriptions', label: 'Recetas' },
-    { key: 'labs', label: 'Laboratorio' },
-  ] as const;
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <PatientHeader onProfileClick={() => setShowProfile(true)} />
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Mi Panel de Salud</h2>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Mis Citas</h2>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-6 overflow-x-auto">
-            {tabs.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === key ? 'border-medin-cyan text-medin-cyan' : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Mis Citas */}
-        {activeTab === 'appointments' && (
-          <div className="space-y-3">
-            {apptLoading ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
-              </div>
-            ) : appointments.length === 0 ? (
-              <p className="text-gray-500 text-sm">No tienes citas registradas.</p>
-            ) : (
-              appointments
-                .slice()
-                .sort((a, b) => a.appointmentDate.localeCompare(b.appointmentDate) || a.appointmentTime.localeCompare(b.appointmentTime))
-                .map((appt) => (
-                  <div key={appt.id} className="bg-white rounded-lg shadow p-4 flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">
-                        {appt.appointmentDate} — {appt.appointmentTime.substring(0, 5)}
-                      </p>
-                      {appt.notes && <p className="text-sm text-gray-600 mt-1">{appt.notes}</p>}
-                    </div>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
+        <div className="space-y-3">
+          {apptLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-7 w-7 border-4 border-medin-cyan border-t-transparent"></div>
+            </div>
+          ) : appointments.length === 0 ? (
+            <p className="text-gray-500 text-sm">No tienes citas registradas.</p>
+          ) : (
+            appointments
+              .slice()
+              .sort((a, b) => b.appointmentDate.localeCompare(a.appointmentDate) || b.appointmentTime.localeCompare(a.appointmentTime))
+              .map((appt) => (
+                <div key={appt.id} className="bg-white rounded-lg shadow p-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">
+                      {appt.appointmentDate} — {appt.appointmentTime.substring(0, 5)}
+                    </p>
+                    {appt.notes && <p className="text-sm text-gray-600 mt-1">{appt.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[appt.status] ?? 'bg-gray-100 text-gray-700'}`}>
                       {STATUS_LABEL[appt.status] ?? appt.status}
                     </span>
+                    <button
+                      onClick={() => setSelectedAppt(appt)}
+                      className="text-sm font-medium text-medin-cyan hover:text-medin-blue transition-colors"
+                    >
+                      Ver
+                    </button>
                   </div>
-                ))
-            )}
-          </div>
-        )}
-
-        {/* Historial clínico */}
-        {activeTab !== 'appointments' && (
-          <>
-            {loading && (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-medin-cyan border-t-transparent"></div>
-                <p className="mt-3 text-gray-500 text-sm">Cargando historial...</p>
-              </div>
-            )}
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm mb-4">{error}</div>
-            )}
-            {sinHistorial && !loading && (
-              <div className="text-center py-16">
-                <p className="text-gray-500 text-sm">Aún no tienes consultas, signos vitales ni resultados registrados.</p>
-              </div>
-            )}
-            {history && (
-              <>
-                {activeTab === 'consultations' && (
-                  <div className="space-y-3">
-                    {history.consultations.length === 0 ? (
-                      <p className="text-gray-500 text-sm">Sin consultas registradas</p>
-                    ) : history.consultations.map((c) => (
-                      <div key={c.id} className="bg-white rounded-lg shadow p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="font-semibold text-gray-900">{c.primaryDiagnosis}</p>
-                          <span className="text-xs text-gray-400">{new Date(c.consultationDate).toLocaleDateString('es-GT')}</span>
-                        </div>
-                        <p className="text-sm text-gray-700"><span className="font-medium">Motivo:</span> {c.chiefComplaint}</p>
-                        {c.secondaryDiagnoses?.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">Dx secundarios: {c.secondaryDiagnoses.join(', ')}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeTab === 'vitals' && (
-                  <div className="space-y-3">
-                    {history.vitalSigns.length === 0 ? (
-                      <p className="text-gray-500 text-sm">Sin registros de signos vitales</p>
-                    ) : history.vitalSigns.map((v) => (
-                      <div key={v.id} className="bg-white rounded-lg shadow p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="font-semibold text-gray-900 text-sm">Registro de signos vitales</p>
-                          <span className="text-xs text-gray-400">{new Date(v.recordedAt).toLocaleString('es-GT')}</span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                          <div className="bg-gray-50 rounded p-2 text-center">
-                            <p className="text-xs text-gray-500">TA</p>
-                            <p className="font-semibold">{v.systolicPressure}/{v.diastolicPressure}</p>
-                            <p className="text-xs text-gray-400">mmHg</p>
-                          </div>
-                          <div className="bg-gray-50 rounded p-2 text-center">
-                            <p className="text-xs text-gray-500">FC</p>
-                            <p className="font-semibold">{v.heartRate}</p>
-                            <p className="text-xs text-gray-400">lpm</p>
-                          </div>
-                          <div className="bg-gray-50 rounded p-2 text-center">
-                            <p className="text-xs text-gray-500">Temp</p>
-                            <p className="font-semibold">{v.temperature}</p>
-                            <p className="text-xs text-gray-400">°C</p>
-                          </div>
-                          <div className="bg-gray-50 rounded p-2 text-center">
-                            <p className="text-xs text-gray-500">SpO2</p>
-                            <p className="font-semibold">{v.oxygenSaturation}%</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeTab === 'prescriptions' && (
-                  <div className="space-y-3">
-                    {history.prescriptions.length === 0 ? (
-                      <p className="text-gray-500 text-sm">Sin recetas registradas</p>
-                    ) : history.prescriptions.map((rx) => (
-                      <div key={rx.id} className="bg-white rounded-lg shadow p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-mono text-sm font-semibold text-gray-900">{rx.prescriptionCode}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${rx.status === 'DISPENSED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            {rx.status === 'DISPENSED' ? 'Dispensada' : 'Pendiente'}
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          {rx.medications.map((m, i) => (
-                            <p key={i} className="text-sm text-gray-700">
-                              <span className="font-medium">{m.name}</span> — {m.dosage}, {m.frequency}, {m.durationDays} días
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeTab === 'labs' && (
-                  <div className="space-y-3">
-                    {history.labOrders.length === 0 ? (
-                      <p className="text-gray-500 text-sm">Sin órdenes de laboratorio</p>
-                    ) : history.labOrders.map((lab) => (
-                      <div key={lab.id} className="bg-white rounded-lg shadow p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-mono text-sm font-semibold text-gray-900">{lab.orderCode}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${lab.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : lab.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            {lab.status === 'COMPLETED' ? 'Completado' : lab.status === 'IN_PROGRESS' ? 'En proceso' : 'Pendiente'}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {lab.testNames.map((t, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{t}</span>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">{new Date(lab.orderedAt).toLocaleDateString('es-GT')}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
+                </div>
+              ))
+          )}
+        </div>
       </main>
+
+      <HistorialFloatingButton />
+
+      {selectedAppt && (
+        <AppointmentDetailModal
+          appointmentId={selectedAppt.id}
+          appointmentDate={selectedAppt.appointmentDate}
+          appointmentTime={selectedAppt.appointmentTime}
+          status={selectedAppt.status}
+          notes={selectedAppt.notes}
+          onClose={() => setSelectedAppt(null)}
+        />
+      )}
 
       {/* Profile Modal */}
       {showProfile && (
@@ -322,7 +171,7 @@ const PatientDashboard: FC = () => {
                   <input type="text" value={patient?.dpi ?? ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 text-gray-500 cursor-not-allowed" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Correo electronico</label>
                   <input type="text" value={patient?.email ?? ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 text-gray-500 cursor-not-allowed" />
                 </div>
               </div>
@@ -355,13 +204,13 @@ const PatientDashboard: FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefono <span className="text-red-500">*</span></label>
                 <input type="tel" required value={profileForm.phone}
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-medin-cyan focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Direccion</label>
                 <input type="text" value={profileForm.address}
                   onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-medin-cyan focus:border-transparent" />
