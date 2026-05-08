@@ -19,7 +19,10 @@
       "PowerShell(\\(Get-Item \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\\\\pharmacy\\\\dto\\\\request\\\\MedicationRequest.java\"\\).FullName)",
       "PowerShell($p1 = \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\"; $p2 = \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\\\\medframe\"; \"p1=$p1\"; \"p2=$p2\"; \"p1-exists=$\\(Test-Path $p1\\)\"; \"p2-exists=$\\(Test-Path $p2\\)\")",
       "PowerShell(dir \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\" | ForEach-Object { \"Name=[$\\($_.Name\\)] Length=$\\($_.Name.Length\\)\" })",
-      "PowerShell($actual = \\(Get-ChildItem \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\" | Select-Object -First 2 | ForEach-Object { $_.FullName }\\) ; $actual)"
+      "PowerShell($actual = \\(Get-ChildItem \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\\\\pharmacy-service\\\\src\\\\main\\\\java\\\\com\" | Select-Object -First 2 | ForEach-Object { $_.FullName }\\) ; $actual)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
