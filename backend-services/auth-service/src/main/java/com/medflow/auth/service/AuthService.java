@@ -1,4 +1,4 @@
-﻿package com.medflow.auth.service;
+package com.medflow.auth.service;
 
 import com.medflow.auth.client.PatientServiceClient;
 import com.medflow.auth.domain.Role;
