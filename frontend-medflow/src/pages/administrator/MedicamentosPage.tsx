@@ -221,7 +221,7 @@ const MedicamentosPage: FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Nombre', 'Descripción', 'Unidad', 'Stock actual', 'Stock mínimo', 'Estado', ''].map(h => (
+                  {['Nombre', 'Descripción', 'Unidad', 'Stock actual', 'Stock mínimo', 'Estado', 'Acciones'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
