@@ -3,7 +3,7 @@ import type { FC, FormEvent, ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { register } from '../services/authService';
 import type { RegisterData } from '../services/authService';
-import { validateForm, clearFieldError } from '../utils/formValidation';
+import { validateForm, clearFieldError, validateFieldOnBlur, getBlockingError } from '../utils/formValidation';
 import type { Schema } from '../utils/formValidation';
 import { Navbar } from '../components';
 import axios from 'axios';
@@ -47,27 +47,66 @@ const RegisterPage: FC = () => {
   const registerSchema: Schema<FormState> = {
     dpi:             [{ type: 'dpi' }],
     nit:             [{ type: 'required', message: 'El NIT es requerido.' }],
-    firstName:       [{ type: 'required', message: 'El primer nombre es requerido.' }],
-    firstLastName:   [{ type: 'required', message: 'El primer apellido es requerido.' }],
+    firstName:       [{ type: 'required', message: 'El primer nombre es requerido.' }, { type: 'alphaName' }],
+    secondName:      [{ type: 'alphaName' }],
+    firstLastName:   [{ type: 'required', message: 'El primer apellido es requerido.' }, { type: 'alphaName' }],
+    secondLastName:  [{ type: 'alphaName' }],
     email:           [{ type: 'email' }],
-    phone:           [{ type: 'phone', message: 'El telefono debe tener exactamente 8 digitos.' }],
+    phone:           [{ type: 'phone', message: 'El teléfono debe tener exactamente 8 dígitos.' }],
     birthDate:       [{ type: 'required', message: 'La fecha de nacimiento es requerida.' }, { type: 'date' }],
-    gender:          [{ type: 'oneOf', values: ['M', 'F'], message: 'El genero es requerido.' }],
-    password:        [{ type: 'minLength', min: 8, message: 'La contrasena debe tener al menos 8 caracteres.' }],
-    confirmPassword: [{ type: 'match', field: 'password', message: 'Las contrasenas no coinciden.' }],
+    gender:          [{ type: 'oneOf', values: ['M', 'F'], message: 'El género es requerido.' }],
+    password:        [{ type: 'minLength', min: 8, message: 'La contraseña debe tener al menos 8 caracteres.' }],
+    confirmPassword: [{ type: 'match', field: 'password', message: 'Las contraseñas no coinciden.' }],
   };
 
   const validate = (): boolean => {
-    const next = validateForm(registerSchema, form as unknown as Record<string, string>);
+    const next = validateForm(registerSchema, form);
     setErrors(next as FieldErrors);
     return Object.keys(next).length === 0;
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const rules = registerSchema[name as keyof FormState] ?? [];
+    const blockErr = getBlockingError(rules, value);
+    if (blockErr) {
+      setErrors(prev => ({ ...prev, [name]: blockErr }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => clearFieldError(prev as Record<string, string>, name) as FieldErrors);
+    setErrors((prev) => clearFieldError(prev, name as keyof FormState));
     if (serverError) setServerError(null);
+  };
+
+  const handleDpiChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/[^\d]/.test(value)) {
+      setErrors(prev => ({ ...prev, dpi: 'Dato inválido.' }));
+      return;
+    }
+    setForm(prev => ({ ...prev, dpi: value }));
+    setErrors(prev => clearFieldError(prev, 'dpi'));
+    if (serverError) setServerError(null);
+  };
+
+  const handlePhoneChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/[^\d]/.test(value)) {
+      setErrors(prev => ({ ...prev, phone: 'Dato inválido.' }));
+      return;
+    }
+    setForm(prev => ({ ...prev, phone: value }));
+    setErrors(prev => clearFieldError(prev, 'phone'));
+    if (serverError) setServerError(null);
+  };
+
+  const handleBlur = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    const blurFields: Array<keyof FormState> = ['email', 'phone', 'password', 'confirmPassword'];
+    if (blurFields.includes(name as keyof FormState)) {
+      const err = validateFieldOnBlur(registerSchema, form, name as keyof FormState);
+      if (err) setErrors(prev => ({ ...prev, [name]: err }));
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -147,7 +186,7 @@ const RegisterPage: FC = () => {
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-4">¡Cuenta creada!</h2>
           <p className="text-gray-600 mb-10 text-lg">
-            Tu cuenta ha sido creada exitosamente. Ya puedes iniciar sesión con tu DPI y contraseña.
+            Hemos enviado un correo de verificación a <span className="font-semibold text-medin-navy">{form.email}</span>. Revisa tu bandeja y activa tu cuenta antes de iniciar sesión.
           </p>
           <Link
             to="/login"
@@ -222,7 +261,7 @@ const RegisterPage: FC = () => {
                 </label>
                 <input
                   type="text" name="dpi" value={form.dpi}
-                  onChange={handleChange} maxLength={13} inputMode="numeric"
+                  onChange={handleDpiChange} maxLength={13} inputMode="numeric"
                   placeholder="1234567890123"
                   className={inputClass('dpi')}
                 />
@@ -305,7 +344,7 @@ const RegisterPage: FC = () => {
                 <input
                   maxLength={60}
                   type="email" name="email" value={form.email}
-                  onChange={handleChange} placeholder="juan@ejemplo.com"
+                  onChange={handleChange} onBlur={handleBlur} placeholder="juan@ejemplo.com"
                   autoComplete="email"
                   className={inputClass('email')}
                 />
@@ -317,7 +356,7 @@ const RegisterPage: FC = () => {
                 </label>
                 <input
                   type="text" name="phone" value={form.phone}
-                  onChange={handleChange} maxLength={8} inputMode="numeric"
+                  onChange={handlePhoneChange} onBlur={handleBlur} maxLength={8} inputMode="numeric"
                   placeholder="55551234"
                   className={inputClass('phone')}
                 />
@@ -415,7 +454,7 @@ const RegisterPage: FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     name="password" value={form.password}
-                    onChange={handleChange} placeholder="Mín. 8 caracteres"
+                    onChange={handleChange} onBlur={handleBlur} placeholder="Mín. 8 caracteres"
                     autoComplete="new-password"
                     className={inputClass('password')}
                   />
@@ -445,7 +484,7 @@ const RegisterPage: FC = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="confirmPassword" value={form.confirmPassword}
-                  onChange={handleChange} placeholder="Repite tu contraseña"
+                  onChange={handleChange} onBlur={handleBlur} placeholder="Repite tu contraseña"
                   autoComplete="new-password"
                   className={inputClass('confirmPassword')}
                 />

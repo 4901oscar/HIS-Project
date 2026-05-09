@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { FC, FormEvent } from 'react';
+import type { FC, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
@@ -9,6 +9,10 @@ import {
 } from '../../services/billingCatalogService';
 import { getExamTypes, type ExamTypeResponse } from '../../services/labCatalogService';
 import { getMedications, type MedicationResponse } from '../../services/pharmacyService';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface ServiceFields { code: string; name: string; price: string; }
 
 type Modal = { type: 'create' } | { type: 'edit'; item: ServiceItemResponse } | null;
 const EMPTY: ServiceItemRequest = { code: '', name: '', description: '', category: 'CONSULTATION', price: 0, status: 'ACTIVE' };
@@ -34,8 +38,16 @@ const ServiciosPage: FC = () => {
   const [filterCat, setFilterCat] = useState('');
   const [modal, setModal] = useState<Modal>(null);
   const [form, setForm] = useState<ServiceItemRequest>(EMPTY);
+  const [priceStr, setPriceStr] = useState('0');
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<ServiceFields>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const serviceSchema: Schema<ServiceFields> = {
+    code:  [{ type: 'required', message: 'El código es obligatorio.' }],
+    name:  [{ type: 'required', message: 'El nombre es obligatorio.' }],
+    price: [{ type: 'required', message: 'El precio es obligatorio.' }],
+  };
 
   // Catálogos para selects
   const [examCatalog, setExamCatalog] = useState<ExamTypeResponse[]>([]);
@@ -60,38 +72,69 @@ const ServiciosPage: FC = () => {
     return matchSearch && matchCat;
   });
 
-  const openCreate = () => { setForm(EMPTY); setFormError(null); setModal({ type: 'create' }); };
+  const resetModal = () => { setFieldErrors({}); setSaveError(null); };
+  const openCreate = () => { setForm(EMPTY); setPriceStr('0'); resetModal(); setModal({ type: 'create' }); };
   const openEdit = (item: ServiceItemResponse) => {
     setForm({ code: item.code, name: item.name, description: item.description, category: item.category, price: item.price, status: item.status });
-    setFormError(null); setModal({ type: 'edit', item });
+    setPriceStr(String(item.price));
+    resetModal();
+    setModal({ type: 'edit', item });
   };
   const closeModal = () => setModal(null);
 
-  // Cuando se selecciona un item del catálogo, autocompleta nombre y código
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const next = name === 'code' ? value.toUpperCase() : value;
+    setForm(f => ({ ...f, [name]: next }));
+    setFieldErrors(prev => clearFieldError(prev, name as keyof ServiceFields));
+    if (saveError) setSaveError(null);
+  };
+
+  const handlePriceChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
+    setPriceStr(val);
+    const num = parseFloat(val);
+    setForm(f => ({ ...f, price: isNaN(num) ? 0 : num }));
+    setFieldErrors(prev => clearFieldError(prev, 'price'));
+    if (saveError) setSaveError(null);
+  };
+
   const handleCatalogSelect = (value: string) => {
     if (!value) return;
     if (form.category === 'LABORATORY') {
       const exam = examCatalog.find(e => e.id === value);
-      if (exam) setForm(f => ({ ...f, name: exam.name, code: `LAB-${exam.code}`, description: exam.description ?? '' }));
+      if (exam) {
+        setForm(f => ({ ...f, name: exam.name, code: `LAB-${exam.code}`, description: exam.description ?? '' }));
+        setFieldErrors(prev => clearFieldError(clearFieldError(prev, 'code'), 'name'));
+      }
     } else if (form.category === 'MEDICATION') {
       const med = medCatalog.find(m => m.id === value);
-      if (med) setForm(f => ({ ...f, name: med.name, code: `MED-${med.name.replace(/\s+/g, '').slice(0, 6).toUpperCase()}`, description: med.description ?? '' }));
+      if (med) {
+        setForm(f => ({ ...f, name: med.name, code: `MED-${med.name.replace(/\s+/g, '').slice(0, 6).toUpperCase()}`, description: med.description ?? '' }));
+        setFieldErrors(prev => clearFieldError(clearFieldError(prev, 'code'), 'name'));
+      }
     }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.code.trim() || !form.name.trim() || form.price <= 0) { setFormError('Código, nombre y precio (>0) son obligatorios.'); return; }
-    setSaving(true); setFormError(null);
+    const errs = validateForm(serviceSchema, { code: form.code, name: form.name, price: priceStr });
+    if (!errs.price && (form.price <= 0 || isNaN(form.price)))
+      errs.price = 'El precio debe ser mayor a 0.';
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setSaving(true); setSaveError(null);
     try {
       if (modal?.type === 'edit') await updateServiceItem(modal.item.id, form);
       else await createServiceItem(form);
       await load(); closeModal();
-    } catch { setFormError('Error al guardar.'); }
+    } catch { setSaveError('Error al guardar.'); }
     finally { setSaving(false); }
   };
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm';
+  const inputCls = (hasError = false) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm`;
   const showCatalogSelect = form.category === 'LABORATORY' || form.category === 'MEDICATION';
 
   return (
@@ -166,13 +209,13 @@ const ServiciosPage: FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">{modal.type === 'create' ? 'Agregar servicio' : 'Editar servicio'}</h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3" noValidate>
 
               {/* Categoría primero para mostrar select de catálogo si aplica */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoría <span className="text-red-500">*</span></label>
-                <select className={inputCls} value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value, code: '', name: '' }))}>
+                <select className={inputCls()} value={form.category}
+                  onChange={e => { setForm(f => ({ ...f, category: e.target.value, code: '', name: '' })); setFieldErrors(prev => clearFieldError(clearFieldError(prev, 'code'), 'name')); }}>
                   {Object.entries(SERVICE_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
@@ -183,7 +226,7 @@ const ServiciosPage: FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {form.category === 'LABORATORY' ? 'Seleccionar examen del catálogo' : 'Seleccionar medicamento del catálogo'}
                   </label>
-                  <select className={inputCls} defaultValue="" onChange={e => handleCatalogSelect(e.target.value)}>
+                  <select className={inputCls()} defaultValue="" onChange={e => handleCatalogSelect(e.target.value)}>
                     <option value="">— Elige para autocompletar —</option>
                     {form.category === 'LABORATORY'
                       ? examCatalog.map(e => <option key={e.id} value={e.id}>{e.code} — {e.name}</option>)
@@ -197,33 +240,39 @@ const ServiciosPage: FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Código <span className="text-red-500">*</span></label>
-                  <input className={inputCls} value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="Ej. CONS-GEN" />
+                  <input name="code" className={inputCls(!!fieldErrors.code)} value={form.code}
+                    onChange={handleChange} placeholder="Ej. CONS-GEN" maxLength={30} />
+                  {fieldErrors.code && <p className="mt-1 text-xs text-red-600">{fieldErrors.code}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Precio (Q) <span className="text-red-500">*</span></label>
-                  <input type="number" min={0} step={0.01} className={inputCls} value={form.price}
-                    onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
+                  <input type="text" inputMode="decimal" className={inputCls(!!fieldErrors.price)}
+                    value={priceStr} onChange={handlePriceChange} placeholder="0.00" maxLength={10} />
+                  {fieldErrors.price && <p className="mt-1 text-xs text-red-600">{fieldErrors.price}</p>}
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre del servicio" />
+                <input name="name" className={inputCls(!!fieldErrors.name)} value={form.name}
+                  onChange={handleChange} placeholder="Nombre del servicio" maxLength={200} />
+                {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <input className={inputCls} value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
+                <input className={inputCls()} value={form.description ?? ''}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" maxLength={500} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select className={inputCls} value={form.status ?? 'ACTIVE'} onChange={e => setForm(f => ({ ...f, status: e.target.value as ServiceItemStatus }))}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado <span className="text-red-500">*</span></label>
+                <select className={inputCls()} value={form.status ?? 'ACTIVE'} onChange={e => setForm(f => ({ ...f, status: e.target.value as ServiceItemStatus }))}>
                   <option value="ACTIVE">Activo</option>
                   <option value="INACTIVE">Inactivo</option>
                   <option value="DELETED">Eliminado</option>
                 </select>
               </div>
 
-              {formError && <p className="text-red-600 text-sm">{formError}</p>}
+              {saveError && <p className="text-red-600 text-sm">{saveError}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={closeModal} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={saving} className="flex-1 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg text-sm hover:bg-medin-blue hover:text-white disabled:opacity-50 transition-colors">

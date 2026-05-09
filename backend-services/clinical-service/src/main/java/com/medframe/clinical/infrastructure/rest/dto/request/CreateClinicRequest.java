@@ -18,14 +18,14 @@ import lombok.NoArgsConstructor;
 public class CreateClinicRequest {
     
     @NotBlank(message = "El código de la clínica es obligatorio")
-    @Pattern(regexp = "^[0-9]+$", message = "El código debe contener solo caracteres numéricos")
+    @Pattern(regexp = "^[0-9]{1,6}$", message = "El código debe contener solo números, máximo 6 dígitos")
     private String codigo;
-    
+
     @NotBlank(message = "El nombre de la clínica es obligatorio")
-    @Pattern(regexp = "^[a-zA-Z0-9\\s]+$", message = "El nombre debe contener solo caracteres alfanuméricos")
+    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\\s\\-]{1,32}$", message = "El nombre debe contener solo letras, números y guiones, máximo 32 caracteres")
     private String nombre;
-    
+
     @NotBlank(message = "La descripción de la clínica es obligatoria")
-    @Pattern(regexp = "^[a-zA-Z0-9\\s]+$", message = "La descripción debe contener solo caracteres alfanuméricos")
+    @jakarta.validation.constraints.Size(max = 256, message = "La descripción no puede superar 256 caracteres")
     private String descripcion;
 }

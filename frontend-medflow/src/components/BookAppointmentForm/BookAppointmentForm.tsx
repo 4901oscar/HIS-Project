@@ -21,12 +21,12 @@ const getSessionId = (): string => {
 };
 
 /** Save the current selection before redirecting to login. */
-const savePendingBooking = (date: string, time: string) => {
-  sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify({ date, time }));
+const savePendingBooking = (date: string, time: string, motivo: string) => {
+  sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify({ date, time, motivo }));
 };
 
 /** Read and clear the saved selection. */
-const consumePendingBooking = (): { date: string; time: string } | null => {
+const consumePendingBooking = (): { date: string; time: string; motivo: string } | null => {
   const raw = sessionStorage.getItem(PENDING_BOOKING_KEY);
   if (!raw) return null;
   sessionStorage.removeItem(PENDING_BOOKING_KEY);
@@ -43,8 +43,9 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
   const navigate = useNavigate();
   const sessionId = useMemo(() => getSessionId(), []);
 
-  // Restore selection saved before login redirect
-  const pending = useMemo(() => consumePendingBooking(), []);
+  // Restore selection saved before login redirect.
+  // useState initializer runs exactly once even in React StrictMode (useMemo runs twice).
+  const [pending] = useState(() => consumePendingBooking());
 
   // ── data from backend (loaded once) ──
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -54,16 +55,15 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
   // ── form state ──
   const [date, setDate] = useState(pending?.date ?? '');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(!!pending?.date);
   const [selectedTime, setSelectedTime] = useState(pending?.time ?? '');
-  const [motivo, setMotivo] = useState('');
+  const [motivo, setMotivo] = useState(pending?.motivo ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ── hold state ──
   const [holdSecondsLeft, setHoldSecondsLeft] = useState(0);
   const holdExpiresAt = useRef<number | null>(null); // epoch ms
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isFirstDateLoad = useRef(true); // skip hold-release on initial pre-fill
   const didRestorePendingHold = useRef(false); // fire re-hold exactly once after restore
 
   // ── load doctors + days-off once on mount ──
@@ -132,16 +132,11 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
   // Cleanup timer on unmount
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  // ── when date changes: release hold + fetch available slots ──
+  // ── when date changes: fetch available slots only ──
+  // selectedTime clearing is handled in Calendar onSelect (user interaction only,
+  // never fires from StrictMode double-mount).
   useEffect(() => {
-    if (!date) { setAvailableSlots([]); setSelectedTime(''); stopTimer(); return; }
-    // On the first run (pre-filled from login redirect), keep the selectedTime as-is
-    if (!isFirstDateLoad.current && selectedTime) {
-      releaseHold(sessionId).catch(() => {});
-      setSelectedTime('');
-      stopTimer();
-    }
-    isFirstDateLoad.current = false;
+    if (!date) { setAvailableSlots([]); return; }
     setLoadingSlots(true);
     getAvailableSlotsForDate(date, sessionId)
       .then(slots => setAvailableSlots(slots))
@@ -150,21 +145,31 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
-  // Re-acquire hold + start timer after restoring pending booking from sessionStorage
+  // Re-acquire hold + start timer after restoring pending booking from sessionStorage.
+  // Waits until slots are loaded so availableSlots reflects current backend state.
   useEffect(() => {
     if (!pending || didRestorePendingHold.current || loadingSlots || !selectedTime || !date) return;
     didRestorePendingHold.current = true;
-    holdSlot(sessionId, date, selectedTime).then(held => {
-      if (held) {
-        startTimer();
-      } else {
-        setSelectedTime('');
-        setErrors(p => ({ ...p, time: 'El horario ya no está disponible. Selecciona otro.' }));
-        getAvailableSlotsForDate(date, sessionId).then(setAvailableSlots).catch(() => {});
-      }
-    }).catch(() => {});
+    if (!availableSlots.includes(selectedTime)) {
+      setSelectedTime('');
+      setErrors(p => ({ ...p, time: 'El horario ya no está disponible. Selecciona otro.' }));
+      return;
+    }
+    releaseHold(sessionId)
+      .catch(() => {})
+      .finally(() => {
+        holdSlot(sessionId, date, selectedTime).then(held => {
+          if (held) {
+            startTimer();
+          } else {
+            setSelectedTime('');
+            setErrors(p => ({ ...p, time: 'El horario ya no está disponible. Selecciona otro.' }));
+            getAvailableSlotsForDate(date, sessionId).then(setAvailableSlots).catch(() => {});
+          }
+        }).catch(() => {});
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending, loadingSlots, selectedTime, date]);
+  }, [pending, loadingSlots, selectedTime, date, availableSlots]);
 
   // All slots to display = shift slots for selected date, filtered by current time if today
   const displaySlots = useMemo(() => {
@@ -225,7 +230,7 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      savePendingBooking(date, selectedTime);
+      savePendingBooking(date, selectedTime, motivo);
       navigate('/login', { state: { from: '/appointment' } });
       return;
     }
@@ -254,7 +259,11 @@ const BookAppointmentForm: FC<BookAppointmentFormProps> = () => {
       {/* Fecha (calendario custom) */}
       <div>
         <label className="block text-lg font-medium text-gray-700 mb-2">Fecha de la cita</label>
-        <Calendar selected={date} onSelect={d => { setDate(d); if (errors.date) setErrors(p => ({ ...p, date: '' })); }} isBlocked={isBlocked} />
+        <Calendar selected={date} onSelect={d => {
+          if (selectedTime) { releaseHold(sessionId).catch(() => {}); setSelectedTime(''); stopTimer(); }
+          setDate(d);
+          if (errors.date) setErrors(p => ({ ...p, date: '' }));
+        }} isBlocked={isBlocked} />
         {date && <p className="text-medin-cyan text-lg mt-2">Fecha seleccionada: {date}</p>}
         {errors.date && <p className="text-red-500 text-lg mt-1">{errors.date}</p>}
       </div>

@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { FC, FormEvent } from 'react';
+import type { FC, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
   getMedications, createMedication, updateMedication, updateStock,
   type MedicationResponse, type MedicationRequest, type MedicationStatus,
 } from '../../services/pharmacyService';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface MedFields { name: string; unit: string; }
+type MedErrors = Partial<Record<'name' | 'unit' | 'currentStock' | 'minStock', string>>;
 
 type Modal =
   | { type: 'create' }
@@ -41,6 +46,15 @@ const MedicamentosPage: FC = () => {
   const [newStock, setNewStock] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<MedErrors>({});
+  const [currentStockStr, setCurrentStockStr] = useState('');
+  const [minStockStr, setMinStockStr] = useState('');
+  const [newStockError, setNewStockError] = useState<string | null>(null);
+
+  const medSchema: Schema<MedFields> = {
+    name: [{ type: 'required', message: 'El nombre es obligatorio.' }],
+    unit: [{ type: 'required', message: 'La unidad es obligatoria.' }],
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,21 +76,51 @@ const MedicamentosPage: FC = () => {
     return matchSearch && matchLow;
   });
 
-  const openCreate = () => { setForm(EMPTY_FORM); setFormError(null); setModal({ type: 'create' }); };
+  const resetModal = () => { setFormError(null); setFieldErrors({}); };
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setCurrentStockStr('');
+    setMinStockStr('');
+    resetModal();
+    setModal({ type: 'create' });
+  };
   const openEdit = (med: MedicationResponse) => {
     setForm({ name: med.name, description: med.description ?? '', unit: med.unit, currentStock: med.currentStock, minStock: med.minStock, status: med.status });
-    setFormError(null);
+    setCurrentStockStr(String(med.currentStock));
+    setMinStockStr(String(med.minStock));
+    resetModal();
     setModal({ type: 'edit', med });
   };
-  const openStock = (med: MedicationResponse) => { setNewStock(String(med.currentStock)); setFormError(null); setModal({ type: 'stock', med }); };
+  const openStock = (med: MedicationResponse) => { setNewStock(String(med.currentStock)); setNewStockError(null); resetModal(); setModal({ type: 'stock', med }); };
   const closeModal = () => setModal(null);
+
+  const handleMedChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+    setFieldErrors(prev => clearFieldError(prev as FormErrors<MedFields>, name as keyof MedFields) as MedErrors);
+    if (formError) setFormError(null);
+  };
+
+  const handleStockChange = (
+    field: 'currentStock' | 'minStock',
+    setStr: React.Dispatch<React.SetStateAction<string>>,
+    value: string,
+  ) => {
+    if (/[^\d]/.test(value)) {
+      setFieldErrors(prev => ({ ...prev, [field]: 'Solo números.' }));
+      return;
+    }
+    setStr(value);
+    setForm(f => ({ ...f, [field]: value === '' ? 0 : parseInt(value) }));
+    setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next; });
+    if (formError) setFormError(null);
+  };
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.unit.trim()) {
-      setFormError('Nombre y unidad son obligatorios.');
-      return;
-    }
+    const errs = validateForm(medSchema, { name: form.name, unit: form.unit });
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setSaving(true);
     setFormError(null);
     try {
@@ -94,10 +138,19 @@ const MedicamentosPage: FC = () => {
     }
   };
 
+  const handleNewStockChange = (value: string) => {
+    if (/[^\d]/.test(value)) {
+      setNewStockError('Solo números.');
+      return;
+    }
+    setNewStock(value);
+    setNewStockError(null);
+  };
+
   const handleStock = async (e: FormEvent) => {
     e.preventDefault();
     const val = parseInt(newStock, 10);
-    if (isNaN(val) || val < 0) { setFormError('Ingresa un número válido.'); return; }
+    if (newStock === '' || isNaN(val) || val < 0) { setNewStockError('Ingresa un número válido.'); return; }
     if (modal?.type !== 'stock') return;
     setSaving(true);
     setFormError(null);
@@ -112,7 +165,8 @@ const MedicamentosPage: FC = () => {
     }
   };
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm';
+  const inputCls = (hasError = false) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm`;
 
   return (
     <MainLayout>
@@ -210,36 +264,54 @@ const MedicamentosPage: FC = () => {
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {modal.type === 'create' ? 'Agregar medicamento' : 'Editar medicamento'}
             </h3>
-            <form onSubmit={handleSave} className="space-y-3">
+            <form onSubmit={handleSave} className="space-y-3" noValidate>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej. Amoxicilina 500mg" />
+                <input name="name" className={inputCls(!!fieldErrors.name)} value={form.name}
+                  onChange={handleMedChange} placeholder="Ej. Amoxicilina 500mg" />
+                {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <input className={inputCls} value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
+                <input name="description" className={inputCls()} value={form.description ?? ''}
+                  onChange={handleMedChange} placeholder="Opcional" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Unidad <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Ej. tabletas, mg, ml" />
+                <input name="unit" className={inputCls(!!fieldErrors.unit)} value={form.unit}
+                  onChange={handleMedChange} placeholder="Ej. tabletas, mg, ml" />
+                {fieldErrors.unit && <p className="mt-1 text-xs text-red-600">{fieldErrors.unit}</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {modal.type === 'create' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock inicial</label>
-                    <input type="number" min={0} className={inputCls} value={form.currentStock}
-                      onChange={e => setForm(f => ({ ...f, currentStock: parseInt(e.target.value) || 0 }))} />
+                    <input
+                      type="text" inputMode="numeric" maxLength={4}
+                      className={inputCls(!!fieldErrors.currentStock)}
+                      value={currentStockStr}
+                      onChange={e => handleStockChange('currentStock', setCurrentStockStr, e.target.value)}
+                      placeholder="0"
+                    />
+                    {fieldErrors.currentStock && <p className="mt-1 text-xs text-red-600">{fieldErrors.currentStock}</p>}
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock mínimo</label>
-                  <input type="number" min={0} className={inputCls} value={form.minStock}
-                    onChange={e => setForm(f => ({ ...f, minStock: parseInt(e.target.value) || 0 }))} />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock mínimo <span className="text-red-500">*</span></label>
+                  <input
+                    type="text" inputMode="numeric" maxLength={4}
+                    className={inputCls(!!fieldErrors.minStock)}
+                    value={minStockStr}
+                    onChange={e => handleStockChange('minStock', setMinStockStr, e.target.value)}
+                    placeholder="0"
+                  />
+                  {fieldErrors.minStock && <p className="mt-1 text-xs text-red-600">{fieldErrors.minStock}</p>}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select className={inputCls} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as MedicationStatus }))}>
+                <select name="status" className={inputCls()} value={form.status}
+                  onChange={e => setForm(f => ({ ...f, status: e.target.value as MedicationStatus }))}>
                   <option value="ACTIVE">Activo</option>
                   <option value="INACTIVE">Inactivo</option>
                   <option value="DELETED">Eliminado</option>
@@ -267,11 +339,13 @@ const MedicamentosPage: FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nuevo stock</label>
                 <input
-                  type="number" min={0}
-                  className={inputCls}
+                  type="text" inputMode="numeric" maxLength={4}
+                  className={inputCls(!!newStockError)}
                   value={newStock}
-                  onChange={e => setNewStock(e.target.value)}
+                  onChange={e => handleNewStockChange(e.target.value)}
+                  placeholder="0"
                 />
+                {newStockError && <p className="mt-1 text-xs text-red-600">{newStockError}</p>}
               </div>
               {formError && <p className="text-red-600 text-sm">{formError}</p>}
               <div className="flex gap-3 pt-2">

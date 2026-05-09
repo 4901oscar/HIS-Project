@@ -15,6 +15,12 @@ interface PaymentLocationState {
   sessionId: string;
 }
 
+const fmtDate = (d: string) => {
+  const [year, month, day] = d.split('-');
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return `${parseInt(day)} de ${months[parseInt(month) - 1]} de ${year}`;
+};
+
 const fmt12 = (t: string) => {
   const [h, m] = t.split(':').map(Number);
   const period = h < 12 ? 'AM' : 'PM';
@@ -129,6 +135,14 @@ const PaymentGatewayPage: FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validate() || feePrice === null || !state) return;
+
+    // Simulated rejection: month > 12 or year > 35 triggers payment failure (demo only)
+    const [expiryMonth, expiryYear] = card.expiry.split('/').map(Number);
+    if (expiryMonth > 12 || expiryYear > 35) {
+      setPaymentError('No se pudo procesar el pago. Verifica los datos de tu tarjeta e intenta de nuevo.');
+      return;
+    }
+
     setIsLoading(true);
     setPaymentError(null);
     try {
@@ -202,7 +216,7 @@ const PaymentGatewayPage: FC = () => {
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Fecha</span>
-                    <span className="font-medium">{state.date}</span>
+                    <span className="font-medium">{fmtDate(state.date)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Hora</span>
@@ -295,7 +309,7 @@ const PaymentGatewayPage: FC = () => {
             {state && (
               <div className="flex justify-between text-sm mb-3">
                 <span className="text-gray-400">Cita agendada</span>
-                <span className="font-medium">{state.date} — {fmt12(state.time)}</span>
+                <span className="font-medium">{fmtDate(state.date)} — {fmt12(state.time)}</span>
               </div>
             )}
             <p className="text-gray-300 text-sm mb-1">Monto a pagar</p>

@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { FC } from 'react';
+import type { FC, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
   getExamTypes, createExamType, updateExamType,
   type ExamTypeResponse, type ExamTypeRequest, type ExamTypeStatus,
 } from '../../services/labCatalogService';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface ExamFields { code: string; name: string; testType: string; sampleType: string; }
 
 type Modal = { type: 'create' } | { type: 'edit'; item: ExamTypeResponse } | null;
 
@@ -33,6 +37,14 @@ const ExamenesPage: FC = () => {
   const [form, setForm] = useState<ExamTypeRequest>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<ExamFields>>({});
+
+  const examSchema: Schema<ExamFields> = {
+    code:       [{ type: 'required', message: 'El código es obligatorio.' }],
+    name:       [{ type: 'required', message: 'El nombre es obligatorio.' }],
+    testType:   [{ type: 'required', message: 'El tipo de examen es obligatorio.' }],
+    sampleType: [{ type: 'required', message: 'El tipo de muestra es obligatorio.' }],
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -48,24 +60,28 @@ const ExamenesPage: FC = () => {
     i.code.toLowerCase().includes(search.toLowerCase())
   );
 
-  const openCreate = () => { setForm(EMPTY); setFormError(null); setModal({ type: 'create' }); };
+  const resetModal = () => { setFormError(null); setFieldErrors({}); };
+  const openCreate = () => { setForm(EMPTY); resetModal(); setModal({ type: 'create' }); };
   const openEdit = (item: ExamTypeResponse) => {
-    setForm({ 
-      code: item.code, 
-      name: item.name, 
-      description: item.description,
-      testType: item.testType,
-      sampleType: item.sampleType,
-      status: item.status 
-    });
-    setFormError(null);
+    setForm({ code: item.code, name: item.name, description: item.description, testType: item.testType, sampleType: item.sampleType, status: item.status });
+    resetModal();
     setModal({ type: 'edit', item });
   };
   const closeModal = () => setModal(null);
 
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const next = name === 'code' ? value.toUpperCase() : value;
+    setForm(f => ({ ...f, [name]: next }));
+    setFieldErrors(prev => clearFieldError(prev, name as keyof ExamFields));
+    if (formError) setFormError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.code.trim() || !form.name.trim()) { setFormError('Código y nombre son obligatorios.'); return; }
+    const errs = validateForm(examSchema, { code: form.code, name: form.name, testType: form.testType ?? '', sampleType: form.sampleType ?? '' });
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setSaving(true); setFormError(null);
     try {
       if (modal?.type === 'edit') await updateExamType(modal.item.id, form);
@@ -75,7 +91,8 @@ const ExamenesPage: FC = () => {
     finally { setSaving(false); }
   };
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm';
+  const inputCls = (hasError = false) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm`;
 
   return (
     <MainLayout>
@@ -142,26 +159,27 @@ const ExamenesPage: FC = () => {
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {modal.type === 'create' ? 'Agregar examen' : 'Editar examen'}
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3" noValidate>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Código <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.code}
-                  onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="Ej. HEM" />
+                <input name="code" className={inputCls(!!fieldErrors.code)} value={form.code}
+                  onChange={handleChange} placeholder="Ej. HEM" maxLength={20} />
+                {fieldErrors.code && <p className="mt-1 text-xs text-red-600">{fieldErrors.code}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej. Hemograma Completo" />
+                <input name="name" className={inputCls(!!fieldErrors.name)} value={form.name}
+                  onChange={handleChange} placeholder="Ej. Hemograma Completo" maxLength={200} />
+                {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <input className={inputCls} value={form.description ?? ''}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Opcional" />
+                <input name="description" className={inputCls()} value={form.description ?? ''}
+                  onChange={handleChange} placeholder="Opcional" maxLength={500} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de examen</label>
-                <select className={inputCls} value={form.testType ?? ''}
-                  onChange={e => setForm(f => ({ ...f, testType: e.target.value }))}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de examen <span className="text-red-500">*</span></label>
+                <select name="testType" className={inputCls(!!fieldErrors.testType)} value={form.testType ?? ''} onChange={handleChange}>
                   <option value="">Seleccionar tipo de examen</option>
                   <option value="Hematología">Hematología</option>
                   <option value="Química Clínica">Química Clínica</option>
@@ -176,12 +194,12 @@ const ExamenesPage: FC = () => {
                   <option value="Toxicología">Toxicología</option>
                   <option value="Otro">Otro</option>
                 </select>
+                {fieldErrors.testType && <p className="mt-1 text-xs text-red-600">{fieldErrors.testType}</p>}
                 <p className="text-xs text-gray-500 mt-1">Categoría general del examen de laboratorio</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de muestra</label>
-                <select className={inputCls} value={form.sampleType ?? ''}
-                  onChange={e => setForm(f => ({ ...f, sampleType: e.target.value }))}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de muestra <span className="text-red-500">*</span></label>
+                <select name="sampleType" className={inputCls(!!fieldErrors.sampleType)} value={form.sampleType ?? ''} onChange={handleChange}>
                   <option value="">Seleccionar tipo de muestra</option>
                   <option value="Sangre">Sangre</option>
                   <option value="Orina">Orina</option>
@@ -192,10 +210,11 @@ const ExamenesPage: FC = () => {
                   <option value="Esputo">Esputo</option>
                   <option value="Otro">Otro</option>
                 </select>
+                {fieldErrors.sampleType && <p className="mt-1 text-xs text-red-600">{fieldErrors.sampleType}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select className={inputCls} value={form.status}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado <span className="text-red-500">*</span></label>
+                <select name="status" className={inputCls()} value={form.status}
                   onChange={e => setForm(f => ({ ...f, status: e.target.value as ExamTypeStatus }))}>
                   <option value="ACTIVE">Activo</option>
                   <option value="INACTIVE">Inactivo</option>

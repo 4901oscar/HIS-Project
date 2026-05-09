@@ -11,6 +11,8 @@ import {
   EMPLOYEE_ROLES,
 } from '../../services/employeeService';
 import type { Employee, CreateEmployeeData } from '../../services/employeeService';
+import { validateForm, clearFieldError, validateFieldOnBlur, getBlockingError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -71,11 +73,23 @@ const EmployeeManagementPage: FC = () => {
   const [form, setForm] = useState<CreateEmployeeData>(INITIAL_FORM);
   const [formLoading, setFormLoading] = useState(false);
   const [formLoadingData, setFormLoadingData] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<CreateEmployeeData>>({});
   const [formError, setFormError] = useState('');
   const [tempPassword, setTempPassword] = useState('');
 
+  const employeeSchema: Schema<CreateEmployeeData> = {
+    firstName:      [{ type: 'required', message: 'El primer nombre es requerido.' }, { type: 'alphaName' }],
+    secondName:     [{ type: 'alphaName' }],
+    firstLastName:  [{ type: 'required', message: 'El primer apellido es requerido.' }, { type: 'alphaName' }],
+    secondLastName: [{ type: 'alphaName' }],
+    email:          [{ type: 'required', message: 'El correo electrónico es requerido.' }, { type: 'email' }],
+    phone:          [{ type: 'regex', pattern: /^(\d{8})?$/, message: 'El teléfono debe tener exactamente 8 dígitos.' }],
+    roleName:       [{ type: 'required', message: 'Debe seleccionar un rol.' }],
+  };
+
   const openCreate = () => {
     setForm(INITIAL_FORM);
+    setFieldErrors({});
     setFormError('');
     setTempPassword('');
     setSelectedId(null);
@@ -92,6 +106,7 @@ const EmployeeManagementPage: FC = () => {
       phone: emp.phone ?? '',
       roleName: emp.role,
     });
+    setFieldErrors({});
     setFormError('');
     setTempPassword('');
     setSelectedId(emp.id);
@@ -120,23 +135,49 @@ const EmployeeManagementPage: FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const rules = employeeSchema[name as keyof CreateEmployeeData] ?? [];
+    const blockErr = getBlockingError(rules, value);
+    if (blockErr) {
+      setFieldErrors(prev => ({ ...prev, [name]: blockErr }));
+      return;
+    }
     setForm(prev => ({ ...prev, [name]: value }));
+    setFieldErrors(prev => clearFieldError(prev, name as keyof CreateEmployeeData));
+    if (formError) setFormError('');
   };
 
-  const validate = (): string => {
-    if (!form.firstName.trim()) return 'El primer nombre es requerido.';
-    if (!form.firstLastName.trim()) return 'El primer apellido es requerido.';
-    if (!form.email.trim()) return 'El correo electrónico es requerido.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Formato de correo inválido.';
-    if (form.phone && !/^\d{8}$/.test(form.phone)) return 'El teléfono debe tener 8 dígitos.';
-    if (!form.roleName) return 'Debe seleccionar un rol.';
-    return '';
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/[^\d]/.test(value)) {
+      setFieldErrors(prev => ({ ...prev, phone: 'Dato inválido.' }));
+      return;
+    }
+    setForm(prev => ({ ...prev, phone: value }));
+    setFieldErrors(prev => clearFieldError(prev, 'phone'));
+    if (formError) setFormError('');
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    if (name === 'email') {
+      const err = validateFieldOnBlur(employeeSchema, form, 'email');
+      if (err) setFieldErrors(prev => ({ ...prev, email: err }));
+    } else if (name === 'phone') {
+      const val = form.phone?.trim() ?? '';
+      if (val && !/^\d{8}$/.test(val))
+        setFieldErrors(prev => ({ ...prev, phone: 'El teléfono debe tener exactamente 8 dígitos.' }));
+    }
+  };
+
+  const validate = (): boolean => {
+    const errors = validateForm(employeeSchema, form);
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const validationError = validate();
-    if (validationError) { setFormError(validationError); return; }
+    if (!validate()) return;
 
     setFormError('');
     setFormLoading(true);
@@ -170,6 +211,7 @@ const EmployeeManagementPage: FC = () => {
     setViewMode('list');
     setSelectedId(null);
     setTempPassword('');
+    setFieldErrors({});
     setFormError('');
   };
 
@@ -353,7 +395,7 @@ const EmployeeManagementPage: FC = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent" />
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                 {formError && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                     {formError}
@@ -367,7 +409,8 @@ const EmployeeManagementPage: FC = () => {
                     </label>
                     <input type="text" name="firstName" value={form.firstName} onChange={handleChange}
                       placeholder="Ej: Juan"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.firstName ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
+                    {fieldErrors.firstName && <p className="mt-1 text-xs text-red-600">{fieldErrors.firstName}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Segundo Nombre</label>
@@ -384,7 +427,8 @@ const EmployeeManagementPage: FC = () => {
                     </label>
                     <input type="text" name="firstLastName" value={form.firstLastName} onChange={handleChange}
                       placeholder="Ej: Pérez"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.firstLastName ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
+                    {fieldErrors.firstLastName && <p className="mt-1 text-xs text-red-600">{fieldErrors.firstLastName}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Segundo Apellido</label>
@@ -399,15 +443,19 @@ const EmployeeManagementPage: FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Correo Electrónico <span className="text-red-500">*</span>
                     </label>
-                    <input type="email" name="email" value={form.email} onChange={handleChange}
+                    <input type="text" name="email" value={form.email}
+                      onChange={handleChange} onBlur={handleBlur}
                       placeholder="correo@hospital.com"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
+                    {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                    <input type="text" name="phone" value={form.phone} onChange={handleChange}
-                      placeholder="12345678" maxLength={8}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="text" name="phone" value={form.phone}
+                      onChange={handlePhoneChange} onBlur={handleBlur}
+                      placeholder="12345678" maxLength={8} inputMode="numeric"
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.phone ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
+                    {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
                   </div>
                 </div>
 
@@ -416,12 +464,13 @@ const EmployeeManagementPage: FC = () => {
                     Rol <span className="text-red-500">*</span>
                   </label>
                   <select name="roleName" value={form.roleName} onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.roleName ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}>
                     <option value="">Seleccionar rol...</option>
                     {Object.entries(EMPLOYEE_ROLES).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </select>
+                  {fieldErrors.roleName && <p className="mt-1 text-xs text-red-600">{fieldErrors.roleName}</p>}
                 </div>
 
                 <div className="flex gap-3 pt-2">

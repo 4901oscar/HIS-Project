@@ -10,28 +10,30 @@ export type ValidationRule =
   | { type: 'email'; message?: string }
   | { type: 'phone'; message?: string }
   | { type: 'digits'; message?: string }
+  | { type: 'alphaName'; message?: string }
   | { type: 'date'; message?: string }
   | { type: 'oneOf'; values: string[]; message?: string }
   | { type: 'match'; field: string; label?: string; message?: string }
   | { type: 'regex'; pattern: RegExp; message: string };
 
-export type Schema<T extends Record<string, string>> = Partial<Record<keyof T, ValidationRule[]>>;
+export type Schema<T> = { [K in keyof T]?: ValidationRule[] };
 
-export type FormErrors<T extends Record<string, string>> = Partial<Record<keyof T, string>>;
+export type FormErrors<T> = { [K in keyof T]?: string };
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
-export function validateForm<T extends Record<string, string>>(
+export function validateForm<T>(
   schema: Schema<T>,
   values: T
 ): FormErrors<T> {
   const errors: FormErrors<T> = {};
+  const map = values as Record<string, unknown>;
 
   for (const field in schema) {
     const rules = schema[field as keyof T];
     if (!rules) continue;
 
-    const raw = values[field as keyof T] ?? '';
+    const raw = map[field] ?? '';
     const val = typeof raw === 'string' ? raw.trim() : String(raw);
 
     for (const rule of rules) {
@@ -70,7 +72,12 @@ export function validateForm<T extends Record<string, string>>(
 
         case 'digits':
           if (!/^\d+$/.test(val))
-            error = rule.message ?? 'Solo se permiten numeros.';
+            error = rule.message ?? 'Dato inválido.';
+          break;
+
+        case 'alphaName':
+          if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-]+$/.test(val))
+            error = rule.message ?? 'Dato inválido.';
           break;
 
         case 'date':
@@ -84,7 +91,7 @@ export function validateForm<T extends Record<string, string>>(
           break;
 
         case 'match': {
-          const other = (values[rule.field as keyof T] ?? '').toString().trim();
+          const other = (map[rule.field] ?? '').toString().trim();
           if (val !== other)
             error = rule.message ?? `Los campos no coinciden.`;
           break;
@@ -107,7 +114,7 @@ export function validateForm<T extends Record<string, string>>(
 
 // ─── Helper — limpia errores al cambiar un campo ──────────────────────────────
 
-export function clearFieldError<T extends Record<string, string>>(
+export function clearFieldError<T>(
   errors: FormErrors<T>,
   field: keyof T
 ): FormErrors<T> {
@@ -115,4 +122,59 @@ export function clearFieldError<T extends Record<string, string>>(
   const next = { ...errors };
   delete next[field];
   return next;
+}
+
+// ─── Helper — bloqueo en tiempo real (onChange) ───────────────────────────────
+// Retorna el mensaje de error si el valor debe ser bloqueado, null si es válido.
+
+export function getBlockingError(rules: ValidationRule[], value: string): string | null {
+  for (const rule of rules) {
+    if (rule.type === 'digits' && /[^\d]/.test(value))
+      return rule.message ?? 'Dato inválido.';
+    if (rule.type === 'alphaName' && /[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-]/.test(value))
+      return rule.message ?? 'Dato inválido.';
+  }
+  return null;
+}
+
+// ─── Helper — validación al salir del campo (onBlur) ─────────────────────────
+// Valida solo reglas de formato (email, phone, minLength). Ignora required.
+
+export function validateFieldOnBlur<T>(
+  schema: Schema<T>,
+  values: T,
+  field: keyof T
+): string | undefined {
+  const rules = schema[field];
+  if (!rules) return undefined;
+  const map = values as Record<string, unknown>;
+  const val = (map[field as string] ?? '').toString().trim();
+  if (!val) return undefined;
+
+  for (const rule of rules) {
+    if (rule.type === 'required') continue;
+    let error: string | null = null;
+
+    switch (rule.type) {
+      case 'email':
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))
+          error = rule.message ?? 'Ingresa un correo electrónico válido.';
+        break;
+      case 'phone':
+        if (!/^\d{8}$/.test(val))
+          error = rule.message ?? 'El teléfono debe tener exactamente 8 dígitos.';
+        break;
+      case 'minLength':
+        if (val.length < rule.min)
+          error = rule.message ?? `Debe tener al menos ${rule.min} caracteres.`;
+        break;
+      case 'match': {
+        const other = (map[rule.field] ?? '').toString().trim();
+        if (val !== other) error = rule.message ?? 'Los campos no coinciden.';
+        break;
+      }
+    }
+    if (error) return error;
+  }
+  return undefined;
 }
