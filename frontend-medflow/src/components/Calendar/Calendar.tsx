@@ -48,8 +48,14 @@ interface CalendarProps {
 
 export const Calendar: FC<CalendarProps> = ({ selected, onSelect, isBlocked }) => {
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(() => {
+    if (selected) return parseInt(selected.split('-')[0]);
+    return today.getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (selected) return parseInt(selected.split('-')[1]) - 1;
+    return today.getMonth();
+  });
 
   const todayY = today.getFullYear();
   const todayM = today.getMonth();

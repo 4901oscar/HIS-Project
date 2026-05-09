@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
 import { createClinic, updateClinic } from '../../services/clinicService';
 import type { Clinic, ClinicStatus } from '../../types/clinic';
+import { validateForm, clearFieldError, getBlockingError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
 
 interface ClinicFormProps {
   clinic?: Clinic | null;
@@ -12,49 +14,55 @@ interface ClinicFormProps {
 const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
   const isEditMode = !!clinic;
 
-  const [codigo, setCodigo] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [descripcion, setDescripcion] = useState('');
+  interface ClinicFormState { codigo: string; nombre: string; descripcion: string; }
+
+  const [form, setForm] = useState<ClinicFormState>({ codigo: '', nombre: '', descripcion: '' });
   const [estado, setEstado] = useState<ClinicStatus>('ACTIVE');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<FormErrors<ClinicFormState>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const clinicSchema: Schema<ClinicFormState> = {
+    codigo:     [{ type: 'required', message: 'El código es obligatorio.' }, { type: 'digits' }, { type: 'maxLength', max: 6, message: 'Máximo 6 dígitos.' }],
+    nombre:     [{ type: 'required', message: 'El nombre es obligatorio.' }, { type: 'alphaName' }, { type: 'maxLength', max: 32, message: 'Máximo 32 caracteres.' }],
+    descripcion:[{ type: 'required', message: 'La descripción es obligatoria.' }, { type: 'maxLength', max: 256, message: 'Máximo 256 caracteres.' }],
+  };
+
   useEffect(() => {
     if (isEditMode && clinic) {
-      setCodigo(clinic.codigo);
-      setNombre(clinic.nombre);
-      setDescripcion(clinic.descripcion);
+      setForm({ codigo: clinic.codigo, nombre: clinic.nombre, descripcion: clinic.descripcion });
       setEstado(clinic.estado);
     }
   }, [clinic, isEditMode]);
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const errs = validateForm(clinicSchema, form);
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
-    // Codigo validation
-    if (!codigo.trim()) {
-      newErrors.codigo = 'El código es obligatorio';
-    } else if (!/^[0-9]+$/.test(codigo)) {
-      newErrors.codigo = 'El código debe contener solo caracteres numéricos';
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    const rules = clinicSchema[name as keyof ClinicFormState] ?? [];
+    const blockErr = getBlockingError(rules, value);
+    if (blockErr) {
+      setErrors(prev => ({ ...prev, [name]: blockErr }));
+      return;
     }
+    setForm(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => clearFieldError(prev, name as keyof ClinicFormState));
+    if (submitError) setSubmitError(null);
+  };
 
-    // Nombre validation
-    if (!nombre.trim()) {
-      newErrors.nombre = 'El nombre es obligatorio';
-    } else if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombre)) {
-      newErrors.nombre = 'El nombre debe contener solo caracteres alfanuméricos';
+  const handleCodigoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/[^\d]/.test(value)) {
+      setErrors(prev => ({ ...prev, codigo: 'Dato inválido.' }));
+      return;
     }
-
-    // Descripcion validation
-    if (!descripcion.trim()) {
-      newErrors.descripcion = 'La descripción es obligatoria';
-    } else if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(descripcion)) {
-      newErrors.descripcion = 'La descripción debe contener solo caracteres alfanuméricos';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setForm(prev => ({ ...prev, codigo: value }));
+    setErrors(prev => clearFieldError(prev, 'codigo'));
+    if (submitError) setSubmitError(null);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -66,16 +74,16 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
     try {
       if (isEditMode && clinic) {
         await updateClinic(clinic.id, {
-          codigo: codigo.trim(),
-          nombre: nombre.trim(),
-          descripcion: descripcion.trim(),
+          codigo: form.codigo.trim(),
+          nombre: form.nombre.trim(),
+          descripcion: form.descripcion.trim(),
           estado,
         });
       } else {
         await createClinic({
-          codigo: codigo.trim(),
-          nombre: nombre.trim(),
-          descripcion: descripcion.trim(),
+          codigo: form.codigo.trim(),
+          nombre: form.nombre.trim(),
+          descripcion: form.descripcion.trim(),
         });
       }
       onSuccess?.();
@@ -90,67 +98,10 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
     }
   };
 
-  const handleCodigoChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setCodigo(value);
-    if (errors.codigo) {
-      // Real-time validation
-      if (!value.trim()) {
-        setErrors((prev) => ({ ...prev, codigo: 'El código es obligatorio' }));
-      } else if (!/^[0-9]+$/.test(value)) {
-        setErrors((prev) => ({ ...prev, codigo: 'El código debe contener solo caracteres numéricos' }));
-      } else {
-        setErrors((prev) => ({ ...prev, codigo: '' }));
-      }
-    }
-  };
-
-  const handleNombreChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNombre(value);
-    if (errors.nombre) {
-      // Real-time validation
-      if (!value.trim()) {
-        setErrors((prev) => ({ ...prev, nombre: 'El nombre es obligatorio' }));
-      } else if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(value)) {
-        setErrors((prev) => ({ ...prev, nombre: 'El nombre debe contener solo caracteres alfanuméricos' }));
-      } else {
-        setErrors((prev) => ({ ...prev, nombre: '' }));
-      }
-    }
-  };
-
-  const handleDescripcionChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setDescripcion(value);
-    if (errors.descripcion) {
-      // Real-time validation
-      if (!value.trim()) {
-        setErrors((prev) => ({ ...prev, descripcion: 'La descripción es obligatoria' }));
-      } else if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(value)) {
-        setErrors((prev) => ({ ...prev, descripcion: 'La descripción debe contener solo caracteres alfanuméricos' }));
-      } else {
-        setErrors((prev) => ({ ...prev, descripcion: '' }));
-      }
-    }
-  };
-
-  const fieldClass = (field: string) =>
+  const fieldClass = (field: keyof ClinicFormState) =>
     `w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-      errors[field] ? 'border-red-500' : 'border-gray-300'
+      errors[field] ? 'border-red-500 bg-red-50' : 'border-gray-300'
     }`;
-
-  const isFormValid = () => {
-    return (
-      codigo.trim() &&
-      /^[0-9]+$/.test(codigo) &&
-      nombre.trim() &&
-      /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombre) &&
-      descripcion.trim() &&
-      /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(descripcion) &&
-      !Object.values(errors).some(Boolean)
-    );
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
@@ -165,13 +116,15 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
         </label>
         <input
           type="text"
-          value={codigo}
+          name="codigo"
+          value={form.codigo}
           onChange={handleCodigoChange}
           placeholder="101"
+          maxLength={6}
           className={fieldClass('codigo')}
         />
         {errors.codigo && <p className="text-red-500 text-xs mt-1">{errors.codigo}</p>}
-        <p className="text-xs text-gray-500 mt-1">Solo caracteres numéricos (ej: 101 para nivel 1 oficina 01)</p>
+        <p className="text-xs text-gray-500 mt-1">Solo números, máx. 6 dígitos (ej: 101 para nivel 1, oficina 01)</p>
       </div>
 
       {/* Nombre */}
@@ -181,13 +134,15 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
         </label>
         <input
           type="text"
-          value={nombre}
-          onChange={handleNombreChange}
+          name="nombre"
+          value={form.nombre}
+          onChange={handleChange}
           placeholder="Clínica Principal"
+          maxLength={32}
           className={fieldClass('nombre')}
         />
         {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>}
-        <p className="text-xs text-gray-500 mt-1">Solo caracteres alfanuméricos</p>
+        <p className="text-xs text-gray-500 mt-1">Letras, números y guiones, máx. 32 caracteres</p>
       </div>
 
       {/* Descripcion */}
@@ -196,14 +151,16 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
           Descripción <span className="text-red-500">*</span>
         </label>
         <textarea
-          value={descripcion}
-          onChange={handleDescripcionChange}
+          name="descripcion"
+          value={form.descripcion}
+          onChange={handleChange}
           placeholder="Descripción de la clínica"
           rows={3}
+          maxLength={256}
           className={fieldClass('descripcion')}
         />
         {errors.descripcion && <p className="text-red-500 text-xs mt-1">{errors.descripcion}</p>}
-        <p className="text-xs text-gray-500 mt-1">Solo caracteres alfanuméricos</p>
+        <p className="text-xs text-gray-500 mt-1">Máx. 256 caracteres</p>
       </div>
 
       {/* Estado (edit mode only) */}
@@ -233,7 +190,7 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
       <div className="flex space-x-3">
         <button
           type="submit"
-          disabled={isLoading || !isFormValid()}
+          disabled={isLoading}
           className="flex-1 py-2 bg-medin-blue text-medin-navy font-semibold hover:bg-medin-blue-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'GUARDANDO...' : isEditMode ? 'ACTUALIZAR' : 'CREAR'}

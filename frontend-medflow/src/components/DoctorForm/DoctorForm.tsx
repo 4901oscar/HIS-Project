@@ -10,6 +10,10 @@ import {
 } from '../../services/doctorService';
 import { getClinics } from '../../services/clinicService';
 import type { Clinic } from '../../types/clinic';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface DoctorFormState { employee: string; clinicId: string; shiftStart: string; shiftEnd: string; }
 
 interface DoctorFormProps {
   doctor?: Doctor | null;
@@ -32,8 +36,16 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
   const [clinicId, setClinicId] = useState('');
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loadingClinics, setLoadingClinics] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<DoctorFormState>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const doctorSchema: Schema<DoctorFormState> = {
+    employee:   [{ type: 'required', message: 'Debe seleccionar un doctor.' }],
+    clinicId:   [{ type: 'required', message: 'Debe seleccionar una clínica.' }],
+    shiftStart: [{ type: 'required', message: 'La hora de inicio es obligatoria.' }],
+    shiftEnd:   [{ type: 'required', message: 'La hora de fin es obligatoria.' }],
+  };
 
   useEffect(() => {
     loadClinics();
@@ -71,39 +83,43 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
     }
   };
 
+  const check8Hours = (start: string, end: string): string | null => {
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    let startTotal = sh * 60 + sm;
+    let endTotal = eh * 60 + em;
+    if (endTotal === 0) endTotal = 24 * 60;
+    if (endTotal <= startTotal) endTotal += 24 * 60;
+    return endTotal - startTotal !== 480 ? 'El turno debe ser de exactamente 8 horas.' : null;
+  };
+
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const values: DoctorFormState = {
+      employee:   isEditMode ? 'ok' : (selectedEmployee?.id ?? ''),
+      clinicId,
+      shiftStart,
+      shiftEnd,
+    };
+    const schema: Schema<DoctorFormState> = isEditMode
+      ? { clinicId: doctorSchema.clinicId, shiftStart: doctorSchema.shiftStart, shiftEnd: doctorSchema.shiftEnd }
+      : doctorSchema;
 
-    if (!isEditMode && !selectedEmployee) {
-      newErrors.employee = 'Debe seleccionar un doctor';
+    const errs = validateForm(schema, values) as FormErrors<DoctorFormState>;
+
+    if (!errs.shiftEnd && shiftStart && shiftEnd) {
+      const msg = check8Hours(shiftStart, shiftEnd);
+      if (msg) errs.shiftEnd = msg;
     }
 
-    if (!clinicId) {
-      newErrors.clinicId = 'Debe seleccionar una clínica';
-    }
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
-    if (!shiftStart) {
-      newErrors.shiftStart = 'La hora de inicio es obligatoria';
-    }
-
-    if (!shiftEnd) {
-      newErrors.shiftEnd = 'La hora de fin es obligatoria';
-    }
-
+  const handleShiftBlur = () => {
     if (shiftStart && shiftEnd) {
-      const [startHour, startMin] = shiftStart.split(':').map(Number);
-      const [endHour, endMin] = shiftEnd.split(':').map(Number);
-      const startTotal = startHour * 60 + startMin;
-      let endTotal = endHour * 60 + endMin;
-      if (endTotal === 0) endTotal = 24 * 60;         // 00:00 = fin de día
-      if (endTotal <= startTotal) endTotal += 24 * 60; // turno nocturno
-      if (endTotal - startTotal !== 480) {
-        newErrors.shiftEnd = 'El turno debe ser de exactamente 8 horas';
-      }
+      const msg = check8Hours(shiftStart, shiftEnd);
+      setFieldErrors(prev => msg ? { ...prev, shiftEnd: msg } : clearFieldError(prev, 'shiftEnd'));
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -130,19 +146,19 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
       const msg = isAxiosError(err)
         ? (err.response?.data as { message?: string })?.message ?? 'Error al guardar el doctor'
         : 'Error al guardar el doctor';
-      setErrors({ submit: msg });
+      setSubmitError(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fieldClass = (field: string) =>
+  const fieldClass = (field: keyof DoctorFormState) =>
     `w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-      errors[field] ? 'border-red-500' : 'border-gray-300'
+      fieldErrors[field] ? 'border-red-500 bg-red-50' : 'border-gray-300'
     }`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-lg" noValidate>
       <h2 className="text-2xl font-bold text-gray-800 mb-4">
         {isEditMode ? 'Editar Doctor' : 'Vincular Doctor'}
       </h2>
@@ -167,7 +183,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
               onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                 const emp = employees.find((em) => em.id === e.target.value) ?? null;
                 setSelectedEmployee(emp);
-                if (errors.employee) setErrors((prev) => ({ ...prev, employee: '' }));
+                setFieldErrors(prev => clearFieldError(prev, 'employee'));
               }}
               className={fieldClass('employee')}
             >
@@ -179,7 +195,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
               ))}
             </select>
           )}
-          {errors.employee && <p className="text-red-500 text-xs mt-1">{errors.employee}</p>}
+          {fieldErrors.employee && <p className="text-red-500 text-xs mt-1">{fieldErrors.employee}</p>}
         </div>
       )}
 
@@ -208,7 +224,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
             value={clinicId}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => {
               setClinicId(e.target.value);
-              if (errors.clinicId) setErrors((prev) => ({ ...prev, clinicId: '' }));
+              setFieldErrors(prev => clearFieldError(prev, 'clinicId'));
             }}
             className={fieldClass('clinicId')}
           >
@@ -220,7 +236,7 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
             ))}
           </select>
         )}
-        {errors.clinicId && <p className="text-red-500 text-xs mt-1">{errors.clinicId}</p>}
+        {fieldErrors.clinicId && <p className="text-red-500 text-xs mt-1">{fieldErrors.clinicId}</p>}
       </div>
 
       {/* Shift Start */}
@@ -233,11 +249,12 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
           value={shiftStart}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
             setShiftStart(e.target.value);
-            if (errors.shiftStart) setErrors((prev) => ({ ...prev, shiftStart: '' }));
+            setFieldErrors(prev => clearFieldError(prev, 'shiftStart'));
           }}
+          onBlur={handleShiftBlur}
           className={fieldClass('shiftStart')}
         />
-        {errors.shiftStart && <p className="text-red-500 text-xs mt-1">{errors.shiftStart}</p>}
+        {fieldErrors.shiftStart && <p className="text-red-500 text-xs mt-1">{fieldErrors.shiftStart}</p>}
       </div>
 
       {/* Shift End */}
@@ -250,17 +267,18 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
           value={shiftEnd}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
             setShiftEnd(e.target.value);
-            if (errors.shiftEnd) setErrors((prev) => ({ ...prev, shiftEnd: '' }));
+            setFieldErrors(prev => clearFieldError(prev, 'shiftEnd'));
           }}
+          onBlur={handleShiftBlur}
           className={fieldClass('shiftEnd')}
         />
-        {errors.shiftEnd && <p className="text-red-500 text-xs mt-1">{errors.shiftEnd}</p>}
+        {fieldErrors.shiftEnd && <p className="text-red-500 text-xs mt-1">{fieldErrors.shiftEnd}</p>}
         <p className="text-xs text-gray-500 mt-1">El turno debe ser de exactamente 8 horas (ej: 08:00 - 16:00)</p>
       </div>
 
-      {errors.submit && (
+      {submitError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {errors.submit}
+          {submitError}
         </div>
       )}
 

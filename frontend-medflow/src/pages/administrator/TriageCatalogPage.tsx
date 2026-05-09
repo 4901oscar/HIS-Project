@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { FC, FormEvent } from 'react';
+import type { FC, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import {
@@ -9,6 +9,11 @@ import {
   type MotifResponse, type MotifRequest,
   type DiscriminatorResponse, type DiscriminatorRequest,
 } from '../../services/clinicalCatalogService';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface MotifFields { code: string; description: string; }
+interface DiscFields { code: string; description: string; motifId: string; }
 
 const PRIORITY_COLORS: Record<string, string> = {
   RED: 'bg-red-100 text-red-800',
@@ -38,7 +43,21 @@ const TriageCatalogPage: FC = () => {
   const [motifForm, setMotifForm] = useState<MotifRequest>(EMPTY_MOTIF);
   const [discForm, setDiscForm] = useState<DiscriminatorRequest>(EMPTY_DISC);
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [motifFieldErrors, setMotifFieldErrors] = useState<FormErrors<MotifFields>>({});
+  const [motifSaveError, setMotifSaveError] = useState<string | null>(null);
+  const [discFieldErrors, setDiscFieldErrors] = useState<FormErrors<DiscFields>>({});
+  const [discSaveError, setDiscSaveError] = useState<string | null>(null);
+
+  const motifSchema: Schema<MotifFields> = {
+    code:        [{ type: 'required', message: 'El código es obligatorio.' }],
+    description: [{ type: 'required', message: 'La descripción es obligatoria.' }],
+  };
+
+  const discSchema: Schema<DiscFields> = {
+    code:        [{ type: 'required', message: 'El código es obligatorio.' }],
+    description: [{ type: 'required', message: 'La descripción es obligatoria.' }],
+    motifId:     [{ type: 'required', message: 'Debe seleccionar un motivo asociado.' }],
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -54,31 +73,52 @@ const TriageCatalogPage: FC = () => {
   const filteredMotifs = motifs.filter(m => m.description.toLowerCase().includes(search.toLowerCase()) || m.code.toLowerCase().includes(search.toLowerCase()));
   const filteredDiscs = discs.filter(d => d.description.toLowerCase().includes(search.toLowerCase()) || d.code.toLowerCase().includes(search.toLowerCase()));
 
+  const handleMotifChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const next = name === 'code' ? value.toUpperCase() : value;
+    setMotifForm(f => ({ ...f, [name]: next }));
+    setMotifFieldErrors(prev => clearFieldError(prev, name as keyof MotifFields));
+    if (motifSaveError) setMotifSaveError(null);
+  };
+
+  const handleDiscChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const next = name === 'code' ? value.toUpperCase() : value;
+    setDiscForm(f => ({ ...f, [name]: next }));
+    setDiscFieldErrors(prev => clearFieldError(prev, name as keyof DiscFields));
+    if (discSaveError) setDiscSaveError(null);
+  };
+
   const handleMotifSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!motifForm.code.trim() || !motifForm.description.trim()) { setFormError('Código y descripción son obligatorios.'); return; }
-    setSaving(true); setFormError(null);
+    const errs = validateForm(motifSchema, { code: motifForm.code, description: motifForm.description });
+    setMotifFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setSaving(true); setMotifSaveError(null);
     try {
       if (motifModal?.type === 'edit') await updateMotif(motifModal.item.id, motifForm);
       else await createMotif(motifForm);
       await load(); setMotifModal(null);
-    } catch { setFormError('Error al guardar.'); }
+    } catch { setMotifSaveError('Error al guardar.'); }
     finally { setSaving(false); }
   };
 
   const handleDiscSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!discForm.code.trim() || !discForm.description.trim()) { setFormError('Código y descripción son obligatorios.'); return; }
-    setSaving(true); setFormError(null);
+    const errs = validateForm(discSchema, { code: discForm.code, description: discForm.description, motifId: discForm.motifId ?? '' });
+    setDiscFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setSaving(true); setDiscSaveError(null);
     try {
       if (discModal?.type === 'edit') await updateDiscriminator(discModal.item.id, discForm);
       else await createDiscriminator(discForm);
       await load(); setDiscModal(null);
-    } catch { setFormError('Error al guardar.'); }
+    } catch { setDiscSaveError('Error al guardar.'); }
     finally { setSaving(false); }
   };
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm';
+  const inputCls = (hasError = false) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm`;
 
   return (
     <MainLayout>
@@ -110,8 +150,8 @@ const TriageCatalogPage: FC = () => {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-medin-cyan w-64" />
           <button
             onClick={() => tab === 'motifs'
-              ? (setMotifForm(EMPTY_MOTIF), setFormError(null), setMotifModal({ type: 'create' }))
-              : (setDiscForm(EMPTY_DISC), setFormError(null), setDiscModal({ type: 'create' }))}
+              ? (setMotifForm(EMPTY_MOTIF), setMotifFieldErrors({}), setMotifSaveError(null), setMotifModal({ type: 'create' }))
+              : (setDiscForm(EMPTY_DISC), setDiscFieldErrors({}), setDiscSaveError(null), setDiscModal({ type: 'create' }))}
             className="flex items-center gap-2 px-4 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg hover:bg-medin-blue hover:text-white transition-colors text-sm">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Agregar {tab === 'motifs' ? 'motivo' : 'discriminador'}
@@ -146,7 +186,7 @@ const TriageCatalogPage: FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => { setMotifForm({ code: m.code, description: m.description, category: m.category, active: m.active }); setFormError(null); setMotifModal({ type: 'edit', item: m }); }}
+                          onClick={() => { setMotifForm({ code: m.code, description: m.description, category: m.category, active: m.active }); setMotifFieldErrors({}); setMotifSaveError(null); setMotifModal({ type: 'edit', item: m }); }}
                           className="text-sm text-medin-cyan hover:text-medin-blue font-medium">Editar</button>
                       </td>
                     </tr>
@@ -179,7 +219,7 @@ const TriageCatalogPage: FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => { setDiscForm({ code: d.code, description: d.description, priorityLevel: d.priorityLevel, motifId: d.motifId, active: d.active }); setFormError(null); setDiscModal({ type: 'edit', item: d }); }}
+                          onClick={() => { setDiscForm({ code: d.code, description: d.description, priorityLevel: d.priorityLevel, motifId: d.motifId, active: d.active }); setDiscFieldErrors({}); setDiscSaveError(null); setDiscModal({ type: 'edit', item: d }); }}
                           className="text-sm text-medin-cyan hover:text-medin-blue font-medium">Editar</button>
                       </td>
                     </tr>
@@ -196,29 +236,34 @@ const TriageCatalogPage: FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">{motifModal.type === 'create' ? 'Agregar motivo' : 'Editar motivo'}</h3>
-            <form onSubmit={handleMotifSubmit} className="space-y-3">
+            <form onSubmit={handleMotifSubmit} className="space-y-3" noValidate>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Código <span className="text-red-500">*</span></label>
-                  <input className={inputCls} value={motifForm.code} onChange={e => setMotifForm(f => ({ ...f, code: e.target.value }))} placeholder="Ej. MTF01" />
+                  <input name="code" className={inputCls(!!motifFieldErrors.code)} value={motifForm.code}
+                    onChange={handleMotifChange} placeholder="Ej. MTF01" maxLength={20} />
+                  {motifFieldErrors.code && <p className="mt-1 text-xs text-red-600">{motifFieldErrors.code}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                  <input className={inputCls} value={motifForm.category ?? ''} onChange={e => setMotifForm(f => ({ ...f, category: e.target.value }))} placeholder="Ej. Trauma" />
+                  <input className={inputCls()} value={motifForm.category ?? ''}
+                    onChange={e => setMotifForm(f => ({ ...f, category: e.target.value }))} placeholder="Ej. Trauma" maxLength={100} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={motifForm.description} onChange={e => setMotifForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción del motivo" />
+                <input name="description" className={inputCls(!!motifFieldErrors.description)} value={motifForm.description}
+                  onChange={handleMotifChange} placeholder="Descripción del motivo" maxLength={200} />
+                {motifFieldErrors.description && <p className="mt-1 text-xs text-red-600">{motifFieldErrors.description}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select className={inputCls} value={motifForm.active ? 'true' : 'false'} onChange={e => setMotifForm(f => ({ ...f, active: e.target.value === 'true' }))}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado <span className="text-red-500">*</span></label>
+                <select className={inputCls()} value={motifForm.active ? 'true' : 'false'} onChange={e => setMotifForm(f => ({ ...f, active: e.target.value === 'true' }))}>
                   <option value="true">Activo</option>
                   <option value="false">Inactivo</option>
                 </select>
               </div>
-              {formError && <p className="text-red-600 text-sm">{formError}</p>}
+              {motifSaveError && <p className="text-red-600 text-sm">{motifSaveError}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setMotifModal(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={saving} className="flex-1 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg text-sm hover:bg-medin-blue hover:text-white disabled:opacity-50 transition-colors">
@@ -235,38 +280,44 @@ const TriageCatalogPage: FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">{discModal.type === 'create' ? 'Agregar discriminador' : 'Editar discriminador'}</h3>
-            <form onSubmit={handleDiscSubmit} className="space-y-3">
+            <form onSubmit={handleDiscSubmit} className="space-y-3" noValidate>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Código <span className="text-red-500">*</span></label>
-                  <input className={inputCls} value={discForm.code} onChange={e => setDiscForm(f => ({ ...f, code: e.target.value }))} placeholder="Ej. D01" />
+                  <input name="code" className={inputCls(!!discFieldErrors.code)} value={discForm.code}
+                    onChange={handleDiscChange} placeholder="Ej. D01" maxLength={20} />
+                  {discFieldErrors.code && <p className="mt-1 text-xs text-red-600">{discFieldErrors.code}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad <span className="text-red-500">*</span></label>
-                  <select className={inputCls} value={discForm.priorityLevel} onChange={e => setDiscForm(f => ({ ...f, priorityLevel: e.target.value }))}>
+                  <select className={inputCls()} value={discForm.priorityLevel} onChange={e => setDiscForm(f => ({ ...f, priorityLevel: e.target.value }))}>
                     {Object.entries(PRIORITY_LEVELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={discForm.description} onChange={e => setDiscForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción del discriminador" />
+                <input name="description" className={inputCls(!!discFieldErrors.description)} value={discForm.description}
+                  onChange={handleDiscChange} placeholder="Descripción del discriminador" maxLength={200} />
+                {discFieldErrors.description && <p className="mt-1 text-xs text-red-600">{discFieldErrors.description}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo asociado</label>
-                <select className={inputCls} value={discForm.motifId ?? ''} onChange={e => setDiscForm(f => ({ ...f, motifId: e.target.value || undefined }))}>
-                  <option value="">Sin motivo</option>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo asociado <span className="text-red-500">*</span></label>
+                <select className={inputCls(!!discFieldErrors.motifId)} value={discForm.motifId ?? ''}
+                  onChange={e => { setDiscForm(f => ({ ...f, motifId: e.target.value || undefined })); setDiscFieldErrors(prev => clearFieldError(prev, 'motifId')); if (discSaveError) setDiscSaveError(null); }}>
+                  <option value="">Seleccionar motivo</option>
                   {motifs.filter(m => m.active).map(m => <option key={m.id} value={m.id}>{m.code} — {m.description}</option>)}
                 </select>
+                {discFieldErrors.motifId && <p className="mt-1 text-xs text-red-600">{discFieldErrors.motifId}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select className={inputCls} value={discForm.active ? 'true' : 'false'} onChange={e => setDiscForm(f => ({ ...f, active: e.target.value === 'true' }))}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado <span className="text-red-500">*</span></label>
+                <select className={inputCls()} value={discForm.active ? 'true' : 'false'} onChange={e => setDiscForm(f => ({ ...f, active: e.target.value === 'true' }))}>
                   <option value="true">Activo</option>
                   <option value="false">Inactivo</option>
                 </select>
               </div>
-              {formError && <p className="text-red-600 text-sm">{formError}</p>}
+              {discSaveError && <p className="text-red-600 text-sm">{discSaveError}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setDiscModal(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={saving} className="flex-1 py-2 bg-medin-cyan text-medin-navy font-semibold rounded-lg text-sm hover:bg-medin-blue hover:text-white disabled:opacity-50 transition-colors">

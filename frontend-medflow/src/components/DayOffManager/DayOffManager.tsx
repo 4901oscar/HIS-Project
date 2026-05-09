@@ -2,6 +2,10 @@ import { useState } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
 import { swalAlert } from '../../utils/swal';
 import { markDaysOff, type Doctor } from '../../services/doctorService';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface DayOffFormState { startDate: string; endDate: string; reason: string; }
 
 interface DayOffManagerProps {
   doctor: Doctor;
@@ -13,32 +17,26 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<DayOffFormState>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const dayOffSchema: Schema<DayOffFormState> = {
+    startDate: [{ type: 'required', message: 'La fecha de inicio es obligatoria.' }],
+    endDate:   [{ type: 'required', message: 'La fecha de fin es obligatoria.' }],
+    reason:    [{ type: 'required', message: 'El motivo es obligatorio.' }],
+  };
 
   const today = new Date().toISOString().split('T')[0];
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const errs = validateForm(dayOffSchema, { startDate, endDate, reason }) as FormErrors<DayOffFormState>;
 
-    if (!startDate) {
-      newErrors.startDate = 'La fecha de inicio es obligatoria';
-    }
+    if (!errs.endDate && startDate && endDate && startDate > endDate)
+      errs.endDate = 'La fecha de fin debe ser posterior a la fecha de inicio.';
 
-    if (!endDate) {
-      newErrors.endDate = 'La fecha de fin es obligatoria';
-    }
-
-    if (startDate && endDate && startDate > endDate) {
-      newErrors.endDate = 'La fecha de fin debe ser posterior a la fecha de inicio';
-    }
-
-    if (!reason.trim()) {
-      newErrors.reason = 'El motivo es obligatorio';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -57,21 +55,21 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
       setStartDate('');
       setEndDate('');
       setReason('');
-      setErrors({});
+      setFieldErrors({});
       onSuccess?.();    } catch (err: unknown) {
       const { isAxiosError } = await import('axios');
       const errorMessage = isAxiosError(err)
         ? (err.response?.data as { message?: string })?.message ?? 'Error al marcar días libres'
         : 'Error al marcar días libres';
-      setErrors({ submit: errorMessage });
+      setSubmitError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fieldClass = (field: string) =>
+  const fieldClass = (field: keyof DayOffFormState) =>
     `w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-medin-cyan ${
-      errors[field] ? 'border-red-500' : 'border-gray-300'
+      fieldErrors[field] ? 'border-red-500 bg-red-50' : 'border-gray-300'
     }`;
 
   return (
@@ -97,11 +95,11 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
             min={today}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setStartDate(e.target.value);
-              if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: '' }));
+              setFieldErrors(prev => clearFieldError(prev, 'startDate'));
             }}
             className={fieldClass('startDate')}
           />
-          {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
+          {fieldErrors.startDate && <p className="text-red-500 text-xs mt-1">{fieldErrors.startDate}</p>}
         </div>
 
         {/* End Date */}
@@ -115,11 +113,11 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
             min={startDate || today}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setEndDate(e.target.value);
-              if (errors.endDate) setErrors((prev) => ({ ...prev, endDate: '' }));
+              setFieldErrors(prev => clearFieldError(prev, 'endDate'));
             }}
             className={fieldClass('endDate')}
           />
-          {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
+          {fieldErrors.endDate && <p className="text-red-500 text-xs mt-1">{fieldErrors.endDate}</p>}
         </div>
 
         {/* Reason */}
@@ -131,19 +129,18 @@ const DayOffManager: FC<DayOffManagerProps> = ({ doctor, onSuccess, onCancel }) 
             value={reason}
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
               setReason(e.target.value);
-              if (errors.reason) setErrors((prev) => ({ ...prev, reason: '' }));
+              setFieldErrors(prev => clearFieldError(prev, 'reason'));
             }}
             placeholder="Vacaciones, Capacitación, etc."
             rows={3}
             className={`${fieldClass('reason')} resize-none`}
           />
-          {errors.reason && <p className="text-red-500 text-xs mt-1">{errors.reason}</p>}
+          {fieldErrors.reason && <p className="text-red-500 text-xs mt-1">{fieldErrors.reason}</p>}
         </div>
 
-        {/* Submit Error */}
-        {errors.submit && (
+        {submitError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {errors.submit}
+            {submitError}
           </div>
         )}
 

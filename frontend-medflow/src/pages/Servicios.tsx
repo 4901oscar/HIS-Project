@@ -16,12 +16,6 @@ const Servicios: FC = () => {
       icon: '👨‍⚕️',
     },
     {
-      id: 2,
-      name: 'Especialidades Médicas',
-      description: 'Acceso a especialistas en diversas áreas como cardiología, pediatría, dermatología y más.',
-      icon: '🏥',
-    },
-    {
       id: 3,
       name: 'Laboratorio Clínico',
       description: 'Análisis de sangre, estudios bioquímicos y pruebas diagnósticas especializadas.',
