@@ -172,7 +172,7 @@ const ClinicForm: FC<ClinicFormProps> = ({ clinic, onSuccess, onCancel }) => {
           <select
             value={estado}
             onChange={(e) => setEstado(e.target.value as ClinicStatus)}
-            className={fieldClass('estado')}
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-medin-cyan"
           >
             <option value="ACTIVE">Activa</option>
             <option value="INACTIVE">Inactiva</option>
