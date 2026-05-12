@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { FC, FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
@@ -6,10 +6,11 @@ import { SpeakerWaveIcon } from '@heroicons/react/24/outline';
 import { getPatientById } from '../../services/patientService';
 import type { PatientResponse } from '../../services/patientService';
 import { recordVitalSigns, getVitalSignsByAppointment, performTriage } from '../../services/clinicalService';
-import type { VitalSignsResponse } from '../../services/clinicalService';
 import { getManchesterCatalog } from '../../services/manchesterService';
 import type { ManchesterMotif, ManchesterDiscriminator } from '../../types/triage';
 import { extractErrorMessage } from '../../utils/errorHandler';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
 import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 interface VitalForm {
@@ -23,6 +24,17 @@ interface VitalForm {
   height: string;
 }
 
+const vitalSignsSchema: Schema<VitalForm> = {
+  systolicPressure:  [{ type: 'required', message: 'Requerida.' }, { type: 'range', min: 50,  max: 250, message: 'Debe estar entre 50 y 250 mmHg.' }],
+  diastolicPressure: [{ type: 'required', message: 'Requerida.' }, { type: 'range', min: 30,  max: 150, message: 'Debe estar entre 30 y 150 mmHg.' }],
+  heartRate:         [{ type: 'required', message: 'Requerida.' }, { type: 'range', min: 20,  max: 300, message: 'Debe estar entre 20 y 300 lpm.' }],
+  respiratoryRate:   [{ type: 'required', message: 'Requerida.' }, { type: 'range', min: 5,   max: 60,  message: 'Debe estar entre 5 y 60 rpm.' }],
+  temperature:       [{ type: 'required', message: 'Requerida.' }, { type: 'range', min: 30,  max: 45,  message: 'Debe estar entre 30 y 45 °C.' }],
+  oxygenSaturation:  [{ type: 'required', message: 'Requerida.' }, { type: 'range', min: 50,  max: 100, message: 'Debe estar entre 50 y 100%.' }],
+  weight:            [{ type: 'range', min: 1,   max: 300, message: 'Debe estar entre 1 y 300 kg.' }],
+  height:            [{ type: 'range', min: 30,  max: 250, message: 'Debe estar entre 30 y 250 cm.' }],
+};
+
 const emptyForm: VitalForm = {
   systolicPressure: '',
   diastolicPressure: '',
@@ -35,33 +47,38 @@ const emptyForm: VitalForm = {
 };
 
 // Priority level mapping for Manchester classification
-const PRIORITY_MAP: Record<string, { level: string; description: string; color: string; bgColor: string }> = {
+const PRIORITY_MAP: Record<string, { level: string; label: string; description: string; color: string; bgColor: string }> = {
   RED: {
     level: 'RED',
+    label: 'ROJO',
     description: 'Inmediato',
     color: 'text-red-800',
     bgColor: 'bg-red-100 border-red-300'
   },
   ORANGE: {
     level: 'ORANGE',
+    label: 'NARANJA',
     description: 'Muy urgente',
     color: 'text-orange-800',
     bgColor: 'bg-orange-100 border-orange-300'
   },
   YELLOW: {
     level: 'YELLOW',
+    label: 'AMARILLO',
     description: 'Urgente',
     color: 'text-yellow-800',
     bgColor: 'bg-yellow-100 border-yellow-300'
   },
   GREEN: {
     level: 'GREEN',
+    label: 'VERDE',
     description: 'Poco urgente',
     color: 'text-green-800',
     bgColor: 'bg-green-100 border-green-300'
   },
   BLUE: {
     level: 'BLUE',
+    label: 'AZUL',
     description: 'No urgente',
     color: 'text-blue-800',
     bgColor: 'bg-blue-100 border-blue-300'
@@ -86,7 +103,11 @@ const TriageVitalSignsCapture: FC = () => {
   const [vitalSignsLocked, setVitalSignsLocked] = useState(false);
   const [savingVitalSigns, setSavingVitalSigns] = useState(false);
   const [vitalSignsError, setVitalSignsError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<VitalForm>>({});
   const [vitalSignsSuccess, setVitalSignsSuccess] = useState(false);
+  const [vitalSignsLoadWarning, setVitalSignsLoadWarning] = useState<string | null>(null);
+  const [isEditingVitalSigns, setIsEditingVitalSigns] = useState(false);
+  const savedFormValuesRef = useRef<VitalForm>(emptyForm);
   
   // Manchester catalog state
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -107,10 +128,6 @@ const TriageVitalSignsCapture: FC = () => {
   const [triageError, setTriageError] = useState<string | null>(null);
   const [triageSuccess, setTriageSuccess] = useState(false);
   
-  // Legacy state (will be replaced by two-step workflow)
-  const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<VitalSignsResponse | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Derived data: Filtered discriminators based on selected motif
   const filteredDiscriminators = useMemo(() => {
@@ -167,7 +184,7 @@ const TriageVitalSignsCapture: FC = () => {
         
         if (existingVitalSigns.status === 'fulfilled') {
           const vitalSigns = existingVitalSigns.value;
-          setForm({
+          const loadedForm: VitalForm = {
             systolicPressure: String(vitalSigns.systolicPressure),
             diastolicPressure: String(vitalSigns.diastolicPressure),
             heartRate: String(vitalSigns.heartRate),
@@ -176,14 +193,16 @@ const TriageVitalSignsCapture: FC = () => {
             oxygenSaturation: String(vitalSigns.oxygenSaturation),
             weight: vitalSigns.weight ? String(vitalSigns.weight) : '',
             height: vitalSigns.height ? String(vitalSigns.height) : '',
-          });
+          };
+          setForm(loadedForm);
+          savedFormValuesRef.current = loadedForm;
           setVitalSignsSaved(true);
           setVitalSignsLocked(true);
         } else {
-          // 404 is expected when no vital signs exist yet — ignore silently
+          // 404 = no vital signs yet (expected on first entry)
           const reason = existingVitalSigns.reason as { response?: { status?: number } };
           if (reason?.response?.status !== 404) {
-            // Non-404 error: non-blocking, UI continues normally
+            setVitalSignsLoadWarning('No se pudieron cargar los signos vitales guardados. Verifique la conexión o ingrese los valores nuevamente.');
           }
         }
         
@@ -197,47 +216,29 @@ const TriageVitalSignsCapture: FC = () => {
     initializeComponent();
   }, [patientId, appointmentId]);
 
+  const DECIMAL_FIELDS = new Set(['temperature', 'weight']);
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (DECIMAL_FIELDS.has(name)) {
+      if (!/^[\d.]*$/.test(value) || (value.match(/\./g) ?? []).length > 1) return;
+    } else {
+      if (!/^\d*$/.test(value)) return;
+    }
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => clearFieldError(prev, name as keyof VitalForm));
   }, []);
 
-  // Step 1: Validate vital signs only
-  const validateVitalSigns = useCallback((): { valid: boolean; errors: string[] } => {
-    const errors: string[] = [];
-    
-    if (!form.systolicPressure || Number(form.systolicPressure) < 50 || Number(form.systolicPressure) > 250) {
-      errors.push('Presión sistólica debe estar entre 50 y 250 mmHg');
-    }
-    if (!form.diastolicPressure || Number(form.diastolicPressure) < 30 || Number(form.diastolicPressure) > 150) {
-      errors.push('Presión diastólica debe estar entre 30 y 150 mmHg');
-    }
-    if (!form.heartRate || Number(form.heartRate) < 20 || Number(form.heartRate) > 300) {
-      errors.push('Frecuencia cardíaca debe estar entre 20 y 300 lpm');
-    }
-    if (!form.respiratoryRate || Number(form.respiratoryRate) < 5 || Number(form.respiratoryRate) > 60) {
-      errors.push('Frecuencia respiratoria debe estar entre 5 y 60 rpm');
-    }
-    if (!form.temperature || Number(form.temperature) < 30 || Number(form.temperature) > 45) {
-      errors.push('Temperatura debe estar entre 30 y 45 °C');
-    }
-    if (!form.oxygenSaturation || Number(form.oxygenSaturation) < 50 || Number(form.oxygenSaturation) > 100) {
-      errors.push('Saturación de oxígeno debe estar entre 50 y 100%');
-    }
-    
-    return { valid: errors.length === 0, errors };
-  }, [form]);
-
   // Step 1: Submit vital signs
-  const handleSaveVitalSigns = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSaveVitalSigns = useCallback(async () => {
     if (!patient || !appointmentId) return;
-    
-    // Validate vital signs only
-    const validation = validateVitalSigns();
-    if (!validation.valid) {
-      setVitalSignsError(validation.errors.join('. '));
+
+    const errs = validateForm(vitalSignsSchema, form);
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
+    setFieldErrors({});
     
     setSavingVitalSigns(true);
     setVitalSignsError(null);
@@ -258,9 +259,11 @@ const TriageVitalSignsCapture: FC = () => {
       });
       
       // Success: Lock fields, show Manchester section
+      savedFormValuesRef.current = { ...form };
       setVitalSignsSaved(true);
       setVitalSignsLocked(true);
       setVitalSignsSuccess(true);
+      setIsEditingVitalSigns(false);
       
     } catch (err) {
 
@@ -268,42 +271,7 @@ const TriageVitalSignsCapture: FC = () => {
     } finally {
       setSavingVitalSigns(false);
     }
-  }, [patient, appointmentId, form, validateVitalSigns]);
-
-  const handleSubmit = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
-    if (!patient || !appointmentId) return;
-
-    setSaving(true);
-    setSaveError(null);
-    setResult(null);
-
-    try {
-      const res = await recordVitalSigns({
-        appointmentId,
-        patientId: patient.id,
-        systolicPressure: Number(form.systolicPressure),
-        diastolicPressure: Number(form.diastolicPressure),
-        heartRate: Number(form.heartRate),
-        respiratoryRate: Number(form.respiratoryRate),
-        temperature: Number(form.temperature),
-        oxygenSaturation: Number(form.oxygenSaturation),
-        weight: form.weight ? Number(form.weight) : undefined,
-        height: form.height ? Number(form.height) : undefined,
-      });
-      setResult(res);
-      
-      // Redirect back to triage pending page after 2 seconds
-      setTimeout(() => {
-        navigate('/vitals/triage');
-      }, 2000);
-    } catch (err) {
-
-      setSaveError(extractErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }, [patient, appointmentId, form, navigate]);
+  }, [patient, appointmentId, form]);
 
   const handleCancel = useCallback(() => {
     // Simply navigate back - appointment stays in VITAL_SIGNS for next staff member
@@ -414,7 +382,7 @@ const TriageVitalSignsCapture: FC = () => {
       
       setTimeout(() => {
         navigate('/vitals/triage');
-      }, 2000);
+      }, 500);
       
     } catch (err) {
 
@@ -424,7 +392,8 @@ const TriageVitalSignsCapture: FC = () => {
     }
   }, [patient, appointmentId, selectedMotifId, selectedDiscriminatorIds, validateManchesterSelection, navigate]);
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm';
+  const inputCls = (hasError: boolean) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm`;
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
 
   if (loading) {
@@ -500,37 +469,6 @@ const TriageVitalSignsCapture: FC = () => {
           </div>
         </div>
 
-        {/* Success Message */}
-        {result && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="font-semibold text-green-800 mb-2">✓ Signos vitales registrados exitosamente</p>
-            <p className="text-sm text-green-700">Redirigiendo a Triaje Pendiente...</p>
-          </div>
-        )}
-        
-        {/* Step 1 Success Message */}
-        {vitalSignsSuccess && !triageSuccess && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="font-semibold text-green-800 mb-2">✓ Signos vitales guardados exitosamente</p>
-            <p className="text-sm text-green-700">Ahora puede completar la clasificación Manchester</p>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {saveError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">{saveError}</p>
-          </div>
-        )}
-        
-        {/* Step 1 Error Message */}
-        {vitalSignsError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800 font-semibold">Error al guardar signos vitales</p>
-            <p className="text-red-700 text-sm mt-1">{vitalSignsError}</p>
-          </div>
-        )}
-        
         {/* Step 2 Error Message */}
         {triageError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -570,161 +508,201 @@ const TriageVitalSignsCapture: FC = () => {
         )}
 
         {/* Form */}
-        {!result && (
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Signos Vitales</h3>
 
-            <form onSubmit={!vitalSignsSaved ? handleSaveVitalSigns : handleSubmit} className="space-y-4">
+            {vitalSignsLoadWarning && (
+              <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                {vitalSignsLoadWarning}
+              </div>
+            )}
+
+            <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className={labelClass}>Sist. (mmHg) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="systolicPressure"
                     value={form.systolicPressure}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    required
-                    min={50}
-                    max={250}
-                    className={inputClass}
+                    maxLength={3}
+                    className={inputCls(!!fieldErrors.systolicPressure)}
                     placeholder="120"
                   />
+                  {fieldErrors.systolicPressure && <p className="mt-1 text-xs text-red-600">{fieldErrors.systolicPressure}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>Diast. (mmHg) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="diastolicPressure"
                     value={form.diastolicPressure}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    required
-                    min={30}
-                    max={150}
-                    className={inputClass}
+                    maxLength={3}
+                    className={inputCls(!!fieldErrors.diastolicPressure)}
                     placeholder="80"
                   />
+                  {fieldErrors.diastolicPressure && <p className="mt-1 text-xs text-red-600">{fieldErrors.diastolicPressure}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>FC (lpm) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="heartRate"
                     value={form.heartRate}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    required
-                    min={20}
-                    max={300}
-                    className={inputClass}
+                    maxLength={3}
+                    className={inputCls(!!fieldErrors.heartRate)}
                     placeholder="72"
                   />
+                  {fieldErrors.heartRate && <p className="mt-1 text-xs text-red-600">{fieldErrors.heartRate}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>FR (rpm) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="respiratoryRate"
                     value={form.respiratoryRate}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    required
-                    min={5}
-                    max={60}
-                    className={inputClass}
+                    maxLength={2}
+                    className={inputCls(!!fieldErrors.respiratoryRate)}
                     placeholder="16"
                   />
+                  {fieldErrors.respiratoryRate && <p className="mt-1 text-xs text-red-600">{fieldErrors.respiratoryRate}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>Temperatura (°C) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     name="temperature"
                     value={form.temperature}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    required
-                    min={30}
-                    max={45}
-                    className={inputClass}
+                    maxLength={4}
+                    className={inputCls(!!fieldErrors.temperature)}
                     placeholder="36.5"
                   />
+                  {fieldErrors.temperature && <p className="mt-1 text-xs text-red-600">{fieldErrors.temperature}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>SpO2 (%) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="oxygenSaturation"
                     value={form.oxygenSaturation}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    required
-                    min={50}
-                    max={100}
-                    className={inputClass}
+                    maxLength={3}
+                    className={inputCls(!!fieldErrors.oxygenSaturation)}
                     placeholder="98"
                   />
+                  {fieldErrors.oxygenSaturation && <p className="mt-1 text-xs text-red-600">{fieldErrors.oxygenSaturation}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>Peso (kg)</label>
                   <input
-                    type="number"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     name="weight"
                     value={form.weight}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    min={1}
-                    max={300}
-                    className={inputClass}
-                    placeholder="70"
+                    maxLength={5}
+                    className={inputCls(!!fieldErrors.weight)}
+                    placeholder="70.0"
                   />
+                  {fieldErrors.weight && <p className="mt-1 text-xs text-red-600">{fieldErrors.weight}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>Talla (cm)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="height"
                     value={form.height}
                     onChange={handleChange}
                     disabled={vitalSignsLocked || savingVitalSigns}
-                    min={30}
-                    max={250}
-                    className={inputClass}
+                    maxLength={3}
+                    className={inputCls(!!fieldErrors.height)}
                     placeholder="170"
                   />
+                  {fieldErrors.height && <p className="mt-1 text-xs text-red-600">{fieldErrors.height}</p>}
                 </div>
               </div>
 
+              {vitalSignsError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-700 text-sm">{vitalSignsError}</p>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={saving || savingVitalSigns || savingTriage}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-                
-                {/* Step 1 Button: Show only if vital signs not saved */}
-                {!vitalSignsSaved && !triageSuccess && (
+                {vitalSignsSaved ? (
                   <button
-                    type="submit"
-                    disabled={savingVitalSigns}
-                    className="px-6 py-2 bg-medin-cyan text-white font-semibold rounded-lg hover:bg-medin-blue transition-colors disabled:opacity-50"
+                    type="button"
+                    onClick={() => { setVitalSignsLocked(false); setVitalSignsSaved(false); setVitalSignsSuccess(false); setIsEditingVitalSigns(true); setFieldErrors({}); setVitalSignsError(null); }}
+                    disabled={savingTriage}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm"
                   >
-                    {savingVitalSigns ? 'Guardando...' : 'Guardar Signos Vitales'}
+                    Editar signos vitales
                   </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isEditingVitalSigns) {
+                          setForm(savedFormValuesRef.current);
+                          setVitalSignsLocked(true);
+                          setVitalSignsSaved(true);
+                          setVitalSignsSuccess(false);
+                          setIsEditingVitalSigns(false);
+                          setVitalSignsError(null);
+                          setFieldErrors({});
+                        } else {
+                          handleCancel();
+                        }
+                      }}
+                      disabled={savingVitalSigns}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveVitalSigns}
+                      disabled={savingVitalSigns}
+                      className="px-6 py-2 bg-medin-cyan text-white font-semibold rounded-lg hover:bg-medin-blue transition-colors disabled:opacity-50"
+                    >
+                      {savingVitalSigns ? 'Guardando...' : 'Guardar Signos Vitales'}
+                    </button>
+                  </>
                 )}
               </div>
-            </form>
+            </div>
+          </div>
+
+        {/* Mensaje entre secciones */}
+        {vitalSignsSuccess && !triageSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="font-semibold text-green-800">✓ Signos vitales guardados exitosamente</p>
+            <p className="text-sm text-green-700 mt-1">Ahora puede completar la clasificación Manchester</p>
           </div>
         )}
 
         {/* Manchester Classification Section (Step 2) - Show only after vital signs saved */}
-        {vitalSignsSaved && !result && !triageSuccess && (
+        {vitalSignsSaved && !triageSuccess && (
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Clasificación Manchester</h3>
             
@@ -739,7 +717,7 @@ const TriageVitalSignsCapture: FC = () => {
                   onChange={handleMotifChange}
                   disabled={catalogLoading || savingTriage}
                   required
-                  className={inputClass}
+                  className={inputCls(false)}
                 >
                   <option value="">Seleccione motivo de consulta</option>
                   {sortedMotifs.map(motif => (
@@ -790,7 +768,7 @@ const TriageVitalSignsCapture: FC = () => {
                                 {discriminator.description}
                               </span>
                               <span className={`text-xs px-2 py-0.5 rounded border ${priorityInfo.bgColor} ${priorityInfo.color}`}>
-                                {priorityInfo.level}
+                                {priorityInfo.label}
                               </span>
                             </div>
                           </div>
@@ -808,14 +786,22 @@ const TriageVitalSignsCapture: FC = () => {
                     Prioridad Calculada
                   </label>
                   <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 ${PRIORITY_MAP[calculatedPriority.level!].bgColor} ${PRIORITY_MAP[calculatedPriority.level!].color}`}>
-                    <span className="font-bold text-lg">{calculatedPriority.level}</span>
-                    <span className="text-sm">- {calculatedPriority.description}</span>
+                    <span className="font-bold text-lg">{PRIORITY_MAP[calculatedPriority.level!].label}</span>
+                    <span className="text-sm">— {calculatedPriority.description}</span>
                   </div>
                 </div>
               )}
 
               {/* Step 2 Submit Button */}
               <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={savingTriage}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
                   disabled={savingTriage || !selectedMotifId || selectedDiscriminatorIds.length === 0}

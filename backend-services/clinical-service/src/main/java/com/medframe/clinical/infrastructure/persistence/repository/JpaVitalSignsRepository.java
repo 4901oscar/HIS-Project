@@ -23,12 +23,13 @@ public interface JpaVitalSignsRepository extends JpaRepository<VitalSignsEntity,
     Optional<VitalSignsEntity> findFirstByPatientIdOrderByRecordedAtDesc(String patientId);
     
     /**
-     * Find vital signs for a specific appointment.
-     * 
+     * Find the most recent vital signs for a specific appointment.
+     * Uses findFirst to handle the case where multiple records exist (upsert guard).
+     *
      * @param appointmentId the appointment ID
-     * @return optional containing the vital signs entity for the appointment
+     * @return optional containing the most recent vital signs entity for the appointment
      */
-    Optional<VitalSignsEntity> findByAppointmentId(String appointmentId);
+    Optional<VitalSignsEntity> findFirstByAppointmentIdOrderByRecordedAtDesc(String appointmentId);
     
     /**
      * Find all vital signs for a specific patient, ordered by recorded date descending.

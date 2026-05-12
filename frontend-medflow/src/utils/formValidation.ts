@@ -14,7 +14,8 @@ export type ValidationRule =
   | { type: 'date'; message?: string }
   | { type: 'oneOf'; values: string[]; message?: string }
   | { type: 'match'; field: string; label?: string; message?: string }
-  | { type: 'regex'; pattern: RegExp; message: string };
+  | { type: 'regex'; pattern: RegExp; message: string }
+  | { type: 'range'; min: number; max: number; message?: string };
 
 export type Schema<T> = { [K in keyof T]?: ValidationRule[] };
 
@@ -100,6 +101,14 @@ export function validateForm<T>(
         case 'regex':
           if (!rule.pattern.test(val)) error = rule.message;
           break;
+
+        case 'range': {
+          if (!val) break;
+          const num = parseFloat(val);
+          if (isNaN(num) || num < rule.min || num > rule.max)
+            error = rule.message ?? `El valor debe estar entre ${rule.min} y ${rule.max}.`;
+          break;
+        }
       }
 
       if (error) {

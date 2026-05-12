@@ -13,6 +13,7 @@ const TriagePendingPage: FC = () => {
   const [appointments, setAppointments] = useState<AppointmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,6 +47,15 @@ const TriagePendingPage: FC = () => {
     return () => clearInterval(interval);
   }, [fetchAppointments]);
 
+  const filtered = appointments
+    .filter(a => !search || a.patient.dpi?.includes(search.trim()))
+    .slice()
+    .sort((a, b) => {
+      const d = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
+      if (d !== 0) return d;
+      return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
+    });
+
   const handleAtender = (appt: AppointmentListItem) => {
     const utterance = new SpeechSynthesisUtterance(
       `${appt.patient.fullName}, por favor pasar a sala de triaje`
@@ -69,18 +79,28 @@ const TriagePendingPage: FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Triaje — Signos Vitales</h2>
             <p className="text-gray-500 text-sm">Pacientes pendientes de registro de signos vitales</p>
           </div>
-          <button
-            onClick={handleManualRefresh}
-            disabled={loading}
-            className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50"
-          >
-            {loading ? (
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent" />
-                Actualizando...
-              </span>
-            ) : 'Actualizar'}
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={search}
+              onChange={e => { if (/^\d*$/.test(e.target.value)) setSearch(e.target.value); }}
+              placeholder="Buscar por DPI..."
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-medin-cyan focus:border-transparent w-44"
+            />
+            <button
+              onClick={handleManualRefresh}
+              disabled={loading}
+              className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50"
+            >
+              {loading ? (
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent" />
+                  Actualizando...
+                </span>
+              ) : 'Actualizar'}
+            </button>
+          </div>
         </div>
 
         {/* Error */}
@@ -99,11 +119,11 @@ const TriagePendingPage: FC = () => {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <h3 className="text-lg font-semibold text-gray-900">
-                Pacientes en Espera ({appointments.length})
+                Pacientes en Espera ({filtered.length})
               </h3>
             </div>
 
-            {appointments.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
                 <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -127,14 +147,7 @@ const TriagePendingPage: FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {appointments
-                      .slice()
-                      .sort((a, b) => {
-                        const d = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
-                        if (d !== 0) return d;
-                        return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
-                      })
-                      .map((appt) => (
+                    {filtered.map((appt) => (
                         <tr key={appt.id} className="hover:bg-gray-50">
                           <td className="py-3 pr-4 pl-6 whitespace-nowrap text-xs">
                             {new Date(appt.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
