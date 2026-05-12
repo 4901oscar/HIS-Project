@@ -1767,7 +1767,8 @@ public class AppointmentController {
                 .findByAppointmentId(id)
                 .orElseThrow(() -> {
                     log.info("No vital signs found for appointment {}", id);
-                    return new RuntimeException("No se encontraron signos vitales para esta cita");
+                    return new com.medframe.clinical.domain.exception.VitalSignsNotFoundException(
+                            "No se encontraron signos vitales para esta cita");
                 });
         
         log.info("Found vital signs {} for appointment {}", vitalSigns.getId(), id);

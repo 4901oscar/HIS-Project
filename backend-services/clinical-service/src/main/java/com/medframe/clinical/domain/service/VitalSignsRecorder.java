@@ -21,6 +21,9 @@ public class VitalSignsRecorder {
                                        Double weight, Double height, String recordedBy) {
 
         VitalSigns vitalSigns = new VitalSigns();
+        // Upsert: reuse existing ID so JPA issues UPDATE instead of INSERT
+        vitalSignsRepository.findByAppointmentId(appointmentId)
+                .ifPresent(existing -> vitalSigns.setId(existing.getId()));
         vitalSigns.setAppointmentId(appointmentId);
         vitalSigns.setPatientId(patientId);
         vitalSigns.setSystolicPressure(systolic);

@@ -177,6 +177,7 @@ const ActivateAppointments: FC = () => {
   const [listLoaded, setListLoaded] = useState(false);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [activateErrors, setActivateErrors] = useState<Record<string, string>>({});
+  const [dpiFilter, setDpiFilter] = useState('');
 
   const loadAppointments = useCallback(() => {
     setListLoading(true);
@@ -548,7 +549,8 @@ const ActivateAppointments: FC = () => {
     ACTIVE: '✅', EARLY: '⏰', MISSED: '❌',
   };
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm';
+  const inputCls = (hasError = false) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm`;
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
 
   return (
@@ -625,8 +627,8 @@ const ActivateAppointments: FC = () => {
                         }}
                         onBlur={handleDpiBlur}
                         maxLength={13}
-                        placeholder="13 dígitos" 
-                        className={inputClass}
+                        placeholder="13 dígitos"
+                        className={inputCls(!!fieldErrors.dpi)}
                       />
                       {checkingDpi && <p className="text-xs text-gray-500 mt-1">Verificando DPI...</p>}
                       {dpiError && <p className="text-xs text-red-600 mt-1">{dpiError}</p>}
@@ -641,10 +643,10 @@ const ActivateAppointments: FC = () => {
                         value={form.nit} 
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Primer Nombre <span className="text-red-500">*</span></label>
                       <input
@@ -652,22 +654,22 @@ const ActivateAppointments: FC = () => {
                         value={form.firstName}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls(!!fieldErrors.firstName)} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                       {fieldErrors.firstName && <p className="mt-1 text-xs text-red-600">{fieldErrors.firstName}</p>}
                     </div>
 
                     <div>
                       <label className={labelClass}>Segundo Nombre</label>
-                      <input 
-                        name="secondName" 
-                        value={form.secondName} 
+                      <input
+                        name="secondName"
+                        value={form.secondName}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Primer Apellido <span className="text-red-500">*</span></label>
                       <input
@@ -675,22 +677,22 @@ const ActivateAppointments: FC = () => {
                         value={form.firstLastName}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls(!!fieldErrors.firstLastName)} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                       {fieldErrors.firstLastName && <p className="mt-1 text-xs text-red-600">{fieldErrors.firstLastName}</p>}
                     </div>
 
                     <div>
                       <label className={labelClass}>Segundo Apellido</label>
-                      <input 
-                        name="secondLastName" 
-                        value={form.secondLastName} 
+                      <input
+                        name="secondLastName"
+                        value={form.secondLastName}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Fecha de Nacimiento <span className="text-red-500">*</span></label>
                       <input
@@ -699,7 +701,7 @@ const ActivateAppointments: FC = () => {
                         value={form.birthDate}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls(!!fieldErrors.birthDate)} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                       {fieldErrors.birthDate && <p className="mt-1 text-xs text-red-600">{fieldErrors.birthDate}</p>}
                     </div>
@@ -711,7 +713,7 @@ const ActivateAppointments: FC = () => {
                         value={form.gender}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls(!!fieldErrors.gender)} ${patientExists ? 'bg-gray-100' : ''}`}
                       >
                         <option value="MALE">Masculino</option>
                         <option value="FEMALE">Femenino</option>
@@ -723,12 +725,12 @@ const ActivateAppointments: FC = () => {
                     <div>
                       <label className={labelClass}>Correo Electrónico <span className="text-red-500">*</span></label>
                       <input
-                        type="email"
+                        type="text"
                         name="email"
                         value={form.email}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls(!!fieldErrors.email)} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                       {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
                     </div>
@@ -742,52 +744,52 @@ const ActivateAppointments: FC = () => {
                         disabled={patientExists}
                         maxLength={8}
                         placeholder="8 dígitos"
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls(!!fieldErrors.phone)} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                       {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Departamento</label>
-                      <input 
-                        name="department" 
-                        value={form.department} 
+                      <input
+                        name="department"
+                        value={form.department}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Municipio</label>
-                      <input 
-                        name="municipality" 
-                        value={form.municipality} 
+                      <input
+                        name="municipality"
+                        value={form.municipality}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Zona</label>
-                      <input 
-                        name="zone" 
-                        value={form.zone} 
+                      <input
+                        name="zone"
+                        value={form.zone}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={labelClass}>Dirección</label>
-                      <input 
-                        name="address" 
-                        value={form.address} 
+                      <input
+                        name="address"
+                        value={form.address}
                         onChange={handleFormChange}
                         disabled={patientExists}
-                        className={`${inputClass} ${patientExists ? 'bg-gray-100' : ''}`}
+                        className={`${inputCls()} ${patientExists ? 'bg-gray-100' : ''}`}
                       />
                     </div>
                   </div>
@@ -868,7 +870,7 @@ const ActivateAppointments: FC = () => {
                       }}
                       placeholder="Describe brevemente el motivo de la consulta..."
                       rows={3}
-                      className={`${inputClass} resize-none`}
+                      className={`${inputCls(!!fieldErrors.motivo)} resize-none`}
                     />
                     {fieldErrors.motivo && <p className="mt-1 text-xs text-red-600">{fieldErrors.motivo}</p>}
                   </div>
@@ -900,6 +902,22 @@ const ActivateAppointments: FC = () => {
                 Actualizar
               </button>
             </div>
+            <div className="flex items-center gap-3 mt-3 mb-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={13}
+                placeholder="Buscar por DPI..."
+                value={dpiFilter}
+                onChange={e => setDpiFilter(e.target.value.replace(/\D/g, ''))}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-medin-cyan w-52"
+              />
+              {dpiFilter && (
+                <button onClick={() => setDpiFilter('')} className="text-xs text-gray-400 hover:text-gray-600">
+                  Limpiar
+                </button>
+              )}
+            </div>
             <p className="text-xs text-gray-500 mb-4">
               Solo se pueden activar citas con pago confirmado en caja.
             </p>
@@ -928,6 +946,7 @@ const ActivateAppointments: FC = () => {
                   <tbody className="divide-y divide-gray-100">
                     {allAppointments
                       .filter(appt => appt.status === 'SCHEDULED' || appt.status === 'PENDING_PAYMENT')
+                      .filter(appt => !dpiFilter || (appt.patient.dpi ?? '').includes(dpiFilter))
                       .slice()
                       .sort((a, b) => {
                         const dateCompare = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
