@@ -11,6 +11,7 @@ interface SampleValidationStepProps {
   appointment: AppointmentListItem;
   labOrder: LabOrderWithTestsResponse;
   onRefresh: () => void;
+  onBack: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ const SampleValidationStep: FC<SampleValidationStepProps> = ({
   appointment,
   labOrder,
   onRefresh,
+  onBack,
 }) => {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -162,6 +164,15 @@ const SampleValidationStep: FC<SampleValidationStepProps> = ({
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-end gap-3">
+        {/* Volver Button */}
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isLoading}
+          className="px-5 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium text-sm lg:text-base border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
+        >
+          Volver
+        </button>
         {/* Reject Samples Button (Secondary/Red) */}
         <button
           onClick={handleRejectSamples}

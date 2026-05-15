@@ -80,7 +80,7 @@ public class AuthService {
 
     @Transactional
     public String register(RegisterRequest request) {
-        // Validar campos mÃ©dicos
+        // Validar campos mÃƒÂ©dicos
         validateBirthDate(request.getBirthDate());
         validateGender(request.getGender());
         
@@ -173,7 +173,7 @@ public class AuthService {
 
     @Transactional
     public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request) {
-        // Validar campos mÃ©dicos
+        // Validar campos mÃƒÂ©dicos
         validateBirthDate(request.getBirthDate());
         validateGender(request.getGender());
         
@@ -259,10 +259,22 @@ public class AuthService {
                 patientId,
                 saved.getUsername(),
                 tempPassword,
-                "Cuenta creada. Se enviÃ³ la contraseÃ±a temporal al correo del paciente."
+                "Cuenta creada. Se enviÃƒÂ³ la contraseÃƒÂ±a temporal al correo del paciente."
         );
     }
 
+
+    @Transactional
+    public void changePassword(String userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("La contraseña actual es incorrecta");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Contraseña actualizada para usuario: {}", userId);
+    }
     public void logout(String token) {
         blacklistService.addToBlacklist(token);
     }
@@ -296,20 +308,21 @@ public class AuthService {
                 throw new InvalidMedicalDataException("La fecha de nacimiento debe ser en el pasado");
             }
         } catch (DateTimeParseException e) {
-            throw new InvalidMedicalDataException("Formato de fecha invÃ¡lido. Use YYYY-MM-DD");
+            throw new InvalidMedicalDataException("Formato de fecha invÃƒÂ¡lido. Use YYYY-MM-DD");
         }
     }
 
     /**
-     * Valida que el gÃ©nero sea "M" o "F".
+     * Valida que el gÃƒÂ©nero sea "M" o "F".
      */
     private void validateGender(String gender) {
         if (gender == null || gender.isBlank()) {
-            throw new InvalidMedicalDataException("El gÃ©nero es requerido");
+            throw new InvalidMedicalDataException("El gÃƒÂ©nero es requerido");
         }
 
         if (!gender.equals("M") && !gender.equals("F")) {
-            throw new InvalidMedicalDataException("El gÃ©nero debe ser M o F");
+            throw new InvalidMedicalDataException("El gÃƒÂ©nero debe ser M o F");
         }
     }
 }
+

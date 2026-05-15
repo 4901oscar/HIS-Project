@@ -11,12 +11,15 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConsultationResponse {
-    
+
     private String id;
     private String patientId;
     private String doctorId;
     private String chiefComplaint;
+    private String symptoms;
     private String primaryDiagnosis;
     private List<String> secondaryDiagnoses;
+    private String medicalNotes;
+    private String treatmentPlan;
     private LocalDateTime consultationDate;
 }

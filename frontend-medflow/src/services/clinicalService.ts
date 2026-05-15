@@ -154,14 +154,26 @@ export interface ConsultationResponse {
   patientId: string;
   doctorId: string;
   chiefComplaint: string;
+  symptoms?: string;
   primaryDiagnosis: string;
   secondaryDiagnoses: string[];
+  medicalNotes?: string;
+  treatmentPlan?: string;
   consultationDate: string;
 }
 
 export const registerConsultation = async (data: ConsultationRequest): Promise<ConsultationResponse> => {
   const response = await api.post<ConsultationResponse>('/api/clinical/consultations', data);
   return response.data;
+};
+
+export const getConsultationByAppointment = async (appointmentId: string): Promise<ConsultationResponse | null> => {
+  try {
+    const response = await api.get<ConsultationResponse>(`/api/clinical/consultations/by-appointment/${appointmentId}`);
+    return response.data;
+  } catch {
+    return null;
+  }
 };
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────

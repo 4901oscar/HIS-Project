@@ -37,6 +37,17 @@ public class LabServiceClientAdapter implements LabServiceClient {
         }
     }
     
+    @Override
+    public void completeOrderByAppointmentId(String appointmentId) {
+        try {
+            log.debug("Marking lab order as COMPLETED for appointment: {}", appointmentId);
+            feignClient.completeOrderByAppointmentId(appointmentId);
+            log.info("Lab order marked as COMPLETED for appointment: {}", appointmentId);
+        } catch (Exception e) {
+            log.error("Failed to complete lab order for appointment {}: {}", appointmentId, e.getMessage());
+        }
+    }
+
     private LabOrderNotificationDTO mapToNotificationDTO(LabOrder labOrder, String appointmentId) {
         return new LabOrderNotificationDTO(
             labOrder.getId(),

@@ -77,7 +77,7 @@ export function validateForm<T>(
           break;
 
         case 'alphaName':
-          if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-]+$/.test(val))
+          if (val && !/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-]+$/.test(val))
             error = rule.message ?? 'Dato inválido.';
           break;
 

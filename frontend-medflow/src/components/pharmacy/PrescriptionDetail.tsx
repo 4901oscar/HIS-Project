@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import type { AppointmentListItem } from '../../services/appointmentService';
 import type { PrescriptionDetailResponse } from '../../services/clinicalService';
+import type { ServiceItemResponse } from '../../services/billingCatalogService';
 
 interface PrescriptionDetailProps {
   appointment: AppointmentListItem;
@@ -8,15 +9,24 @@ interface PrescriptionDetailProps {
   onDispense: (appointmentId: string) => Promise<void>;
   onBack: () => void;
   dispensing: boolean;
+  medicationCatalog?: ServiceItemResponse[];
 }
 
-const PrescriptionDetail: FC<PrescriptionDetailProps> = ({ 
-  appointment, 
-  prescription, 
-  onDispense, 
-  onBack, 
-  dispensing 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const PrescriptionDetail: FC<PrescriptionDetailProps> = ({
+  appointment,
+  prescription,
+  onDispense,
+  onBack,
+  dispensing,
+  medicationCatalog = [],
 }) => {
+  const resolveMedName = (name: string): string => {
+    if (!UUID_REGEX.test(name)) return name;
+    return medicationCatalog.find(m => m.id === name)?.name ?? name;
+  };
+
   const handleDispense = async () => {
     await onDispense(appointment.id);
   };
@@ -128,7 +138,7 @@ const PrescriptionDetail: FC<PrescriptionDetailProps> = ({
               {prescription.medications.map((med, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="py-4 pr-4 pl-6">
-                    <p className="font-medium text-gray-900">{med.name}</p>
+                    <p className="font-medium text-gray-900">{resolveMedName(med.name)}</p>
                     {med.specialInstructions && (
                       <p className="text-xs text-gray-500 mt-1 italic">{med.specialInstructions}</p>
                     )}

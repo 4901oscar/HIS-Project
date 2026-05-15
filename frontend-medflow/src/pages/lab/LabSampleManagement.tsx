@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import { listAppointments } from '../../services/appointmentService';
 import type { AppointmentListItem } from '../../services/appointmentService';
-import { playNotificationWithCallback } from '../../utils/AudioNotification';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
+
+const AUTO_REFRESH_INTERVAL_MS = 30_000;
+const REFRESH_DEBOUNCE_MS = 500;
 
 // ─── Tipos y constantes ───────────────────────────────────────────────────────
 
@@ -65,15 +68,7 @@ const LabAppointmentTable: FC<LabAppointmentTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {appointments
-            .slice()
-            .sort((a, b) => {
-              // Ordenar por fecha y hora de cita
-              const dateCompare = a.appointmentDate.localeCompare(b.appointmentDate);
-              if (dateCompare !== 0) return dateCompare;
-              return a.appointmentTime.localeCompare(b.appointmentTime);
-            })
-            .map((appointment) => (
+          {appointments.map((appointment) => (
               <tr key={appointment.id} className="hover:bg-gray-50">
                 <td className="py-3 pr-4 pl-6 whitespace-nowrap text-xs">
                   {new Date(appointment.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { 
@@ -95,7 +90,13 @@ const LabAppointmentTable: FC<LabAppointmentTableProps> = ({
                   {appointment.doctor.name}
                 </td>
                 <td className="py-3 pr-4">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${appointment.statusColor}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    appointment.statusColor === 'purple' ? 'bg-purple-100 text-purple-800' :
+                    appointment.statusColor === 'green'  ? 'bg-green-100 text-green-800' :
+                    appointment.statusColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                    appointment.statusColor === 'blue'   ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
                     {appointment.statusLabel}
                   </span>
                 </td>
@@ -119,45 +120,63 @@ const LabAppointmentTable: FC<LabAppointmentTableProps> = ({
 
 const LabSampleManagement: FC = () => {
   const navigate = useNavigate();
+  const { clearPatient } = usePatientHistory();
   const [labAppointments, setLabAppointments] = useState<AppointmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /**
-   * Carga las citas de laboratorio filtrando por estados LAB_*
-   * Requirements: 2.1, 2.6 - Filtrar solo citas con estados de laboratorio
-   */
-  const loadLabAppointments = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => { clearPatient(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => { if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current); };
+  }, []);
+
+  const loadLabAppointments = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
-      // Obtener citas con estados de laboratorio usando el endpoint unificado
       const appointments = await listAppointments({
         status: [...LAB_STATUSES],
         includeClinical: true,
       });
-      
       setLabAppointments(appointments);
     } catch {
       // Error shown via empty state
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
-  /**
-   * Handler para el botón "Atender"
-   * Requirements: 2.4, 2.5, 8.2, 8.3 - Reproducir audio y navegar al wizard
-   */
+  const handleManualRefresh = useCallback(() => {
+    if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    refreshDebounceRef.current = setTimeout(() => loadLabAppointments(true), REFRESH_DEBOUNCE_MS);
+  }, [loadLabAppointments]);
+
   const handleAtender = useCallback((appointment: AppointmentListItem) => {
-    // Reproducir notificación de audio y navegar después de 500ms
-    // El audio se reproduce de forma no bloqueante (continúa incluso si falla)
-    playNotificationWithCallback(() => {
-      navigate(`/lab/workflow/${appointment.id}`);
-    }, 500);
+    const utterance = new SpeechSynthesisUtterance(
+      `${appointment.patient.fullName}, por favor pasar a laboratorio`
+    );
+    utterance.lang = 'es-GT';
+    utterance.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    navigate(`/lab/workflow/${appointment.id}`);
   }, [navigate]);
 
   useEffect(() => {
-    loadLabAppointments();
+    loadLabAppointments(true);
+    const interval = setInterval(() => loadLabAppointments(false), AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [loadLabAppointments]);
+
+  const filtered = labAppointments
+    .filter(a => !search || a.patient.dpi?.includes(search.trim()))
+    .slice()
+    .sort((a, b) => {
+      const d = a.appointmentDate.localeCompare(b.appointmentDate);
+      if (d !== 0) return d;
+      return a.appointmentTime.localeCompare(b.appointmentTime);
+    });
 
   return (
     <MainLayout>
@@ -178,19 +197,34 @@ const LabSampleManagement: FC = () => {
                 <p className="text-xs text-gray-500">Pacientes con muestras pendientes, en validación o procesamiento</p>
               </div>
               <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
-                {loading ? '…' : labAppointments.length}
+                {loading ? '…' : filtered.length}
               </span>
             </div>
-            <button
-              onClick={loadLabAppointments}
-              disabled={loading}
-              className="text-xs text-purple-700 hover:text-purple-500 hover:bg-purple-50 px-2 py-1 rounded transition-all duration-200 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-            >
-              Actualizar
-            </button>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={search}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setSearch(e.target.value); }}
+                placeholder="Buscar por DPI..."
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-44"
+              />
+              <button
+                onClick={handleManualRefresh}
+                disabled={loading}
+                className="text-sm text-purple-700 hover:text-purple-500 transition-colors disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                    Actualizando...
+                  </span>
+                ) : 'Actualizar'}
+              </button>
+            </div>
           </div>
           <LabAppointmentTable
-            appointments={labAppointments}
+            appointments={filtered}
             loading={loading}
             emptyText="No hay citas de laboratorio pendientes"
             onAtender={handleAtender}

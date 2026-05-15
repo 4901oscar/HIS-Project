@@ -7,6 +7,8 @@ import { listAppointments } from '../../services/appointmentService';
 import type { AppointmentListItem } from '../../services/appointmentService';
 import { getPrescriptionByAppointment, dispenseMedication } from '../../services/clinicalService';
 import type { PrescriptionDetailResponse } from '../../services/clinicalService';
+import { getServiceItems } from '../../services/billingCatalogService';
+import type { ServiceItemResponse } from '../../services/billingCatalogService';
 
 type View = 'queue' | 'detail';
 
@@ -20,6 +22,7 @@ const PharmacyPage: FC = () => {
   const [dispensing, setDispensing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('queue');
+  const [medicationCatalog, setMedicationCatalog] = useState<ServiceItemResponse[]>([]);
 
   // Load pharmacy queue
   const loadQueue = useCallback(async () => {
@@ -38,26 +41,40 @@ const PharmacyPage: FC = () => {
     }
   }, []);
 
-  // Load queue on mount
+  // Load queue and medication catalog on mount
   useEffect(() => {
     loadQueue();
+    getServiceItems('MEDICATION').then(data => setMedicationCatalog(data.filter(m => m.status === 'ACTIVE'))).catch(() => {});
   }, [loadQueue]);
 
   // Select appointment and load prescription details
   const selectAppointment = async (appointment: AppointmentListItem) => {
+    // Llamar al paciente por nombre
+    const utterance = new SpeechSynthesisUtterance(
+      `${appointment.patient.fullName}, por favor pasar a Farmacia`
+    );
+    utterance.lang = 'es-GT';
+    utterance.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+
     setSelectedAppointment(appointment);
     setLoadingPrescription(true);
     setError(null);
-    
+
     try {
       const prescription = await getPrescriptionByAppointment(appointment.id);
       setPrescriptionDetails(prescription);
       setView('detail');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al cargar los detalles de la receta';
-      setError(errorMessage);
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr.response?.status === 404) {
+        setError('Este paciente no tiene receta registrada en el sistema.');
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Error al cargar los detalles de la receta';
+        setError(errorMessage);
+      }
       console.error('Error loading prescription details:', err);
-      // Stay on queue view if error
       setSelectedAppointment(null);
     } finally {
       setLoadingPrescription(false);
@@ -186,6 +203,7 @@ const PharmacyPage: FC = () => {
         onDispense={handleDispenseMedication}
         onBack={returnToQueue}
         dispensing={dispensing}
+        medicationCatalog={medicationCatalog}
       />
     );
   };

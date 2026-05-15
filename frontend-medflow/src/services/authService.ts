@@ -111,4 +111,8 @@ export const createPatientAccount = async (data: CreatePatientAccountRequest): P
   return response.data;
 };
 
-export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName, createPatientAccount };
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  await api.patch('/api/auth/change-password', { currentPassword, newPassword });
+};
+
+export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName, createPatientAccount, changePassword };

@@ -51,6 +51,14 @@ public class LabOrderController {
         return ResponseEntity.ok(order);
     }
 
+    @PutMapping("/by-appointment/{appointmentId}/complete")
+    public ResponseEntity<LabOrderResponse> completeOrderByAppointmentId(
+            @PathVariable String appointmentId) {
+        log.info("PUT /api/lab/orders/by-appointment/{}/complete", appointmentId);
+        LabOrderResponse response = labOrderService.completeOrderByAppointmentId(appointmentId);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/by-appointment/{appointmentId}")
     public ResponseEntity<LabOrderWithTestsResponse> getOrderByAppointmentId(
             @PathVariable String appointmentId) {

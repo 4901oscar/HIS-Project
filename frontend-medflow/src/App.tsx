@@ -35,6 +35,7 @@ import LabSampleWorkflow from './pages/lab/LabSampleWorkflow';
 import PharmacyPage from './pages/pharmacy/PharmacyPage';
 import CashierPage from './pages/cashier/CashierPage';
 import PatientDashboard from './pages/patient/PatientDashboard';
+import PatientProfilePage from './pages/patient/PatientProfilePage';
 
 function App() {
   return (
@@ -183,6 +184,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="PATIENT">
                 <PatientDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/patient/profile"
+            element={
+              <ProtectedRoute requiredRole="PATIENT">
+                <PatientProfilePage />
               </ProtectedRoute>
             }
           />

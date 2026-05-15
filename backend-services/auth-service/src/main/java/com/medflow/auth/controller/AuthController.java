@@ -121,6 +121,19 @@ public class AuthController {
         return ResponseEntity.ok(UserResponse.fromUser(user));
     }
 
+
+    @PatchMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @RequestHeader("Authorization") String authHeader,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        String token = extractToken(authHeader);
+        if (blacklistService.isBlacklisted(token) || !jwtService.isValid(token)) {
+            throw new RuntimeException("Invalid token");
+        }
+        String userId = jwtService.extractUserId(token);
+        authService.changePassword(userId, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok().build();
+    }
     private String extractToken(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) return authHeader.substring(7);
         throw new RuntimeException("Invalid Authorization header");

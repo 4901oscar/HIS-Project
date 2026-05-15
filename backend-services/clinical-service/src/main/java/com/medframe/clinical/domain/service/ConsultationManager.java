@@ -26,7 +26,12 @@ public class ConsultationManager {
                                               String medicalNotes, String treatmentPlan,
                                               boolean hasLabOrders, boolean hasPrescription) {
 
-        Consultation consultation = new Consultation();
+        // Upsert: si ya existe consulta para esta cita, actualizarla; si no, crearla
+        Consultation consultation = (appointmentId != null && !appointmentId.isBlank())
+                ? consultationRepository.findByAppointmentId(appointmentId)
+                        .orElse(new Consultation())
+                : new Consultation();
+
         consultation.setPatientId(patientId);
         consultation.setDoctorId(doctorId);
         consultation.setAppointmentId(appointmentId);
@@ -36,7 +41,9 @@ public class ConsultationManager {
         consultation.setSecondaryDiagnoses(secondaryDiagnoses);
         consultation.setMedicalNotes(medicalNotes);
         consultation.setTreatmentPlan(treatmentPlan);
-        consultation.setConsultationDate(LocalDateTime.now());
+        if (consultation.getConsultationDate() == null) {
+            consultation.setConsultationDate(LocalDateTime.now());
+        }
         consultation.setPerformedBy(doctorId);
 
         Consultation saved = consultationRepository.save(consultation);

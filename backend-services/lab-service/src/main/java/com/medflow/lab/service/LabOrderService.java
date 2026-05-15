@@ -113,6 +113,23 @@ public class LabOrderService {
         return response;
     }
 
+    @Transactional
+    public LabOrderResponse completeOrderByAppointmentId(String appointmentId) {
+        log.info("Completando orden de laboratorio para cita: {}", appointmentId);
+
+        LabOrder order = labOrderRepository.findFirstByAppointmentIdOrderByOrderedAtDesc(appointmentId)
+                .orElseThrow(() -> new LabOrderNotFoundException(
+                        "Orden de laboratorio no encontrada para appointmentId: " + appointmentId));
+
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            return mapToResponse(order);
+        }
+
+        order.setStatus(OrderStatus.COMPLETED);
+        order.setUpdatedAt(LocalDateTime.now());
+        return mapToResponse(labOrderRepository.save(order));
+    }
+
     @Transactional(readOnly = true)
     public LabOrderWithTestsResponse getOrderByAppointmentId(String appointmentId) {
         log.info("Consultando orden por appointmentId: {}", appointmentId);

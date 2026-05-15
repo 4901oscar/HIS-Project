@@ -14,6 +14,7 @@ import com.medframe.clinical.domain.port.in.ListPendingTriageAppointmentsUseCase
 import com.medframe.clinical.domain.port.in.ManageAppointmentUseCase;
 import com.medframe.clinical.domain.port.out.AppointmentRepository;
 import com.medframe.clinical.domain.port.out.DoctorRepository;
+import com.medframe.clinical.domain.port.out.LabServiceClient;
 import com.medframe.clinical.domain.port.out.PatientServiceClient;
 import com.medframe.clinical.domain.port.out.VitalSignsRepository;
 import com.medframe.clinical.domain.service.AppointmentManager;
@@ -75,6 +76,7 @@ public class AppointmentController {
     private final VitalSignsRepository vitalSignsRepository;
     private final com.medframe.clinical.domain.port.out.ConsultationRepository consultationRepository;
     private final com.medframe.clinical.domain.port.out.PrescriptionRepository prescriptionRepository;
+    private final LabServiceClient labServiceClient;
     
     @Value("${billing.service.enabled:true}")
     private boolean billingServiceEnabled;
@@ -1107,26 +1109,27 @@ public class AppointmentController {
             @PathVariable String appointmentId) {
         log.info("Fetching prescription for appointment {}", appointmentId);
         
-        // Validate permissions - only PHARMACY role can access prescriptions
-        permissionValidator.requireRole("PHARMACY", "ADMIN");
+        // Validate permissions - PHARMACY, DOCTOR, ADMIN and the patient themselves can access prescriptions
+        permissionValidator.requireRole("PHARMACY", "DOCTOR", "ADMIN", "PATIENT");
         
         // 1. Find consultation by appointmentId
-        com.medframe.clinical.domain.model.Consultation consultation = consultationRepository
-                .findByAppointmentId(appointmentId)
-                .orElseThrow(() -> {
-                    log.error("No consultation found for appointment {}", appointmentId);
-                    return new RuntimeException("No se encontró consulta para esta cita");
-                });
-        
+        java.util.Optional<com.medframe.clinical.domain.model.Consultation> consultationOpt =
+                consultationRepository.findByAppointmentId(appointmentId);
+        if (consultationOpt.isEmpty()) {
+            log.warn("No consultation found for appointment {}", appointmentId);
+            return ResponseEntity.status(404).build();
+        }
+        com.medframe.clinical.domain.model.Consultation consultation = consultationOpt.get();
+
         log.info("Found consultation {} for appointment {}", consultation.getId(), appointmentId);
-        
+
         // 2. Find prescription by consultationId
-        java.util.List<com.medframe.clinical.domain.model.Prescription> prescriptions = 
+        java.util.List<com.medframe.clinical.domain.model.Prescription> prescriptions =
                 prescriptionRepository.findByConsultationId(consultation.getId());
-        
+
         if (prescriptions.isEmpty()) {
-            log.error("No prescription found for consultation {}", consultation.getId());
-            throw new RuntimeException("No se encontró receta para esta cita");
+            log.warn("No prescription found for consultation {}", consultation.getId());
+            return ResponseEntity.status(404).build();
         }
         
         // Get the most recent prescription
@@ -1148,9 +1151,11 @@ public class AppointmentController {
                     .email(patient.getEmail())
                     .build();
         } catch (Exception e) {
-            log.error("Patient service unavailable for patient {}: {}", prescription.getPatientId(), e.getMessage());
-            throw new com.medframe.clinical.domain.exception.ServiceUnavailableException(
-                    "Servicio de pacientes no disponible");
+            log.warn("Patient service unavailable for patient {}: {}", prescription.getPatientId(), e.getMessage());
+            patientInfo = com.medframe.clinical.infrastructure.rest.dto.response.PrescriptionDetailResponse.PatientInfo.builder()
+                    .id(prescription.getPatientId())
+                    .fullName("Paciente")
+                    .build();
         }
         
         // 4. Fetch doctor details from DoctorRepository
@@ -1480,14 +1485,17 @@ public class AppointmentController {
             
             // 2. Call domain method (validates state and transitions)
             appointment.sendLabResultsToDoctor();
-            
+
             // 3. Save updated appointment
             appointment = appointmentRepository.save(appointment);
-            
-            log.info("Lab results sent to doctor for appointment {}. New status: {}", 
+
+            // 4. Mark lab order as COMPLETED in lab-service
+            labServiceClient.completeOrderByAppointmentId(id);
+
+            log.info("Lab results sent to doctor for appointment {}. New status: {}",
                      id, appointment.getStatus());
-            
-            // 4. Return updated appointment
+
+            // 5. Return updated appointment
             AppointmentListItemResponse response = mapToUnifiedResponse(appointment, false, false);
             return ResponseEntity.ok(response);
             
@@ -1948,7 +1956,24 @@ public class AppointmentController {
                 .canActivate(canActivateAppointment(appointment, validationResult))
                 .build();
         
-        // 7. Construir respuesta completa
+        // 7. Código de receta (solo para citas en cola de farmacia)
+        String prescriptionCode = null;
+        if (appointment.getStatus() == AppointmentStatus.PHARMACY) {
+            try {
+                java.util.List<com.medframe.clinical.domain.model.Prescription> prescriptions =
+                        prescriptionRepository.findByConsultationId(
+                                consultationRepository.findByAppointmentId(appointment.getId())
+                                        .map(c -> c.getId())
+                                        .orElse(null));
+                if (!prescriptions.isEmpty()) {
+                    prescriptionCode = prescriptions.get(0).getPrescriptionCode();
+                }
+            } catch (Exception e) {
+                log.debug("Could not fetch prescription code for appointment {}", appointment.getId());
+            }
+        }
+
+        // 8. Construir respuesta completa
         return AppointmentListItemResponse.builder()
                 .id(appointment.getId())
                 .appointmentDate(appointment.getAppointmentDate())
@@ -1964,6 +1989,7 @@ public class AppointmentController {
                 .clinical(clinicalInfo)
                 .qr(qrInfo)
                 .metadata(metadata)
+                .prescriptionCode(prescriptionCode)
                 .build();
     }
     
@@ -2101,6 +2127,14 @@ public class AppointmentController {
                 return "Pendiente Pago Lab";
             case LABORATORY:
                 return "Laboratorio";
+            case LAB_SAMPLE_COLLECTION:
+                return "Recolección de Muestras";
+            case LAB_SAMPLE_PENDING:
+                return "Muestras en Validación";
+            case LAB_PROCESSING:
+                return "En Procesamiento";
+            case LAB_RESULTS_READY:
+                return "Resultados Listos";
             case PENDING_PHARMACY_PAYMENT:
                 return "Pendiente Pago Farmacia";
             case PHARMACY:
@@ -2132,6 +2166,11 @@ public class AppointmentController {
             case LABORATORY:
             case PHARMACY:
                 return "green";
+            case LAB_SAMPLE_COLLECTION:
+            case LAB_SAMPLE_PENDING:
+            case LAB_PROCESSING:
+            case LAB_RESULTS_READY:
+                return "purple";
             case COMPLETED:
                 return "gray";
             case CANCELLED:

@@ -13,6 +13,7 @@ interface TestProcessingStepProps {
   appointment: AppointmentListItem;
   labOrder: LabOrderWithTestsResponse;
   onRefresh: () => void;
+  onBack: () => void;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ const TestProcessingStep: FC<TestProcessingStepProps> = ({
   appointment,
   labOrder,
   onRefresh,
+  onBack,
 }) => {
   // State for tracking uploaded results per test
   const [uploadedResults, setUploadedResults] = useState<Map<string, UploadedResult>>(new Map());
@@ -248,8 +250,16 @@ const TestProcessingStep: FC<TestProcessingStepProps> = ({
         </div>
       )}
 
-      {/* Action Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isCompleting || hasUploadsInProgress}
+          className="px-5 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium text-sm lg:text-base border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
+        >
+          Volver
+        </button>
         <button
           onClick={handleMarkComplete}
           disabled={isCompleting || hasUploadsInProgress || labOrder.tests.length === 0}

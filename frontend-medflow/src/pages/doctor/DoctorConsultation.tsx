@@ -8,6 +8,7 @@ import { getClinics } from '../../services/clinicService';
 import type { Clinic } from '../../types/clinic';
 import { listActiveDoctors } from '../../services/doctorService';
 import { useAuth } from '../../hooks/useAuth';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
 const REFRESH_DEBOUNCE_MS = 500;
@@ -15,11 +16,18 @@ const REFRESH_DEBOUNCE_MS = 500;
 const DoctorConsultation: FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { clearPatient } = usePatientHistory();
+
+  useEffect(() => {
+    clearPatient();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [doctorClinic, setDoctorClinic] = useState<Clinic | null>(null);
 
   // ── Mis citas asignadas ───────────────────────────────────────────────────
   const [myAppointments, setMyAppointments] = useState<AppointmentListItem[]>([]);
   const [apptLoading, setApptLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load doctor's clinic information
@@ -80,6 +88,23 @@ const DoctorConsultation: FC = () => {
     return () => clearInterval(interval);
   }, [fetchAppointments]);
 
+  const MANCHESTER_LABEL: Record<string, string> = {
+    RED: 'ROJO', ORANGE: 'NARANJA', YELLOW: 'AMARILLO', GREEN: 'VERDE', BLUE: 'AZUL',
+  };
+
+  const filtered = myAppointments
+    .filter(a => !search || a.patient.dpi?.includes(search.trim()))
+    .slice()
+    .sort((a, b) => {
+      const priorityOrder = { RED: 0, ORANGE: 1, YELLOW: 2, GREEN: 3, BLUE: 4 };
+      const ap = a.clinical?.manchesterLevel ? priorityOrder[a.clinical.manchesterLevel as keyof typeof priorityOrder] ?? 999 : 999;
+      const bp = b.clinical?.manchesterLevel ? priorityOrder[b.clinical.manchesterLevel as keyof typeof priorityOrder] ?? 999 : 999;
+      if (ap !== bp) return ap - bp;
+      const d = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
+      if (d !== 0) return d;
+      return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
+    });
+
   const handleAtender = (appt: AppointmentListItem) => {
     // Call patient to clinic
     const clinicName = doctorClinic?.codigo || 'consultorio';
@@ -99,26 +124,36 @@ const DoctorConsultation: FC = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mis Citas Asignadas</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Citas Asignadas</h2>
           <p className="mt-1 text-sm text-gray-600">Listado de pacientes en espera de consulta</p>
         </div>
 
         {/* ── Mis citas ── */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Mis Citas Asignadas ({myAppointments.length})</h3>
-            <button
-              onClick={handleManualRefresh}
-              disabled={apptLoading}
-              className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50"
-            >
-              {apptLoading ? (
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent" />
-                  Actualizando...
-                </span>
-              ) : 'Actualizar'}
-            </button>
+            <h3 className="text-lg font-semibold text-gray-900">Citas Asignadas ({filtered.length})</h3>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={search}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setSearch(e.target.value); }}
+                placeholder="Buscar por DPI..."
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-medin-cyan focus:border-transparent w-44"
+              />
+              <button
+                onClick={handleManualRefresh}
+                disabled={apptLoading}
+                className="text-sm text-medin-navy hover:text-medin-navy/80 transition-colors disabled:opacity-50"
+              >
+                {apptLoading ? (
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-medin-cyan border-t-transparent" />
+                    Actualizando...
+                  </span>
+                ) : 'Actualizar'}
+              </button>
+            </div>
           </div>
           
           {apptLoading ? (
@@ -150,21 +185,7 @@ const DoctorConsultation: FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {myAppointments
-                    .slice()
-                    .sort((a, b) => {
-                      // Sort by Manchester priority first (RED > ORANGE > YELLOW > GREEN > BLUE)
-                      const priorityOrder = { RED: 0, ORANGE: 1, YELLOW: 2, GREEN: 3, BLUE: 4 };
-                      const aPriority = a.clinical?.manchesterLevel ? priorityOrder[a.clinical.manchesterLevel as keyof typeof priorityOrder] ?? 999 : 999;
-                      const bPriority = b.clinical?.manchesterLevel ? priorityOrder[b.clinical.manchesterLevel as keyof typeof priorityOrder] ?? 999 : 999;
-                      if (aPriority !== bPriority) return aPriority - bPriority;
-                      
-                      // Then by date and time
-                      const d = a.appointmentDate.toString().localeCompare(b.appointmentDate.toString());
-                      if (d !== 0) return d;
-                      return a.appointmentTime.toString().localeCompare(b.appointmentTime.toString());
-                    })
-                    .map((appt) => (
+                  {filtered.map((appt) => (
                       <tr key={appt.id} className="hover:bg-gray-50">
                         <td className="py-3 pr-4 pl-6 whitespace-nowrap text-xs">
                           {new Date(appt.appointmentDate + 'T00:00:00').toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -194,7 +215,7 @@ const DoctorConsultation: FC = () => {
                               appt.clinical.manchesterLevel === 'BLUE' ? 'bg-blue-100 text-blue-800' :
                               'bg-gray-100 text-gray-600'
                             }`}>
-                              {appt.clinical.manchesterLevel}
+                              {MANCHESTER_LABEL[appt.clinical.manchesterLevel] ?? appt.clinical.manchesterLevel}
                             </span>
                           ) : (
                             <span className="text-gray-400 text-xs">—</span>
