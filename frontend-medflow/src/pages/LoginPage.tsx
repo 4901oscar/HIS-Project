@@ -64,7 +64,8 @@ const LoginPage: FC = () => {
 
       const from = (location.state as { from?: string })?.from;
       const primaryRole = response.user.roles[0] ?? '';
-      const redirectPath = from ?? roleRoutes[primaryRole] ?? '/dashboard';
+      const defaultPath = primaryRole === 'PATIENT' ? '/' : (roleRoutes[primaryRole] ?? '/dashboard');
+      const redirectPath = from ?? defaultPath;
       navigate(redirectPath);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
@@ -115,13 +116,13 @@ const LoginPage: FC = () => {
       <div className="relative w-full max-w-2xl">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-3 mb-4">
+          <Link to="/" className="inline-flex items-center justify-center space-x-3 mb-4 group">
             <img src="/icono.svg" alt="MedFlow" className="h-14 w-auto" />
             <h1 className="text-4xl font-bold">
-              <span className="text-white">Med</span>
-              <span className="text-medin-cyan">Flow</span>
+              <span className="text-white group-hover:text-gray-200 transition-colors">Med</span>
+              <span className="text-medin-cyan group-hover:text-cyan-300 transition-colors">Flow</span>
             </h1>
-          </div>
+          </Link>
           <p className="text-gray-200 text-base">Sistema de Información Hospitalaria</p>
         </div>
 

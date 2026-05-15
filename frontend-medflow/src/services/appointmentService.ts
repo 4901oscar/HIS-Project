@@ -199,6 +199,7 @@ export interface AppointmentListItem {
   statusColor: string;
   notes?: string;
   createdAt: string;
+  prescriptionCode?: string;
   patient: PatientInfo;
   doctor: DoctorInfo;
   payment: PaymentInfo;

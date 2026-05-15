@@ -42,14 +42,14 @@ public class PatientController {
 
     /** Obtener paciente por ID. */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER')")
+    @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER','PATIENT')")
     public ResponseEntity<PatientResponse> getById(@PathVariable String id) {
         return ResponseEntity.ok(patientService.getById(id));
     }
 
     /** Buscar por DPI exacto. */
     @GetMapping("/dpi/{dpi}")
-    @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER')")
+    @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER','PATIENT')")
     public ResponseEntity<PatientResponse> getByDpi(@PathVariable String dpi) {
         return ResponseEntity.ok(patientService.getByDpi(dpi));
     }
@@ -62,14 +62,14 @@ public class PatientController {
 
     /** Búsqueda por nombre, DPI o email (máx 50 resultados). */
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER')")
+    @PreAuthorize("hasAnyRole('ADMISSION','DOCTOR','VITAL_SIGNS','LABORATORY','PHARMACY','CASHIER','PATIENT')")
     public ResponseEntity<List<PatientResponse>> search(@RequestParam String query) {
         return ResponseEntity.ok(patientService.search(query));
     }
 
     /** Actualizar datos permitidos (email, teléfono, dirección). */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMISSION')")
+    @PreAuthorize("hasAnyRole('ADMISSION','PATIENT')")
     public ResponseEntity<PatientResponse> update(@PathVariable String id,
                                                    @Valid @RequestBody UpdatePatientRequest request) {
         return ResponseEntity.ok(patientService.update(id, request));

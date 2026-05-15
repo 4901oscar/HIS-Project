@@ -19,8 +19,12 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
   const [amountReceived, setAmountReceived] = useState<string>(invoice.total.toFixed(2));
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [changeAmount, setChangeAmount] = useState<number>(0);
+
+  const inputCls = (field: string) =>
+    `w-full px-3 py-2 border ${fieldErrors[field] ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm`;
 
   const calculateChange = (): number => {
     const received = parseFloat(amountReceived) || 0;
@@ -31,22 +35,21 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
     e.preventDefault();
     setError(null);
 
-    // Validaciones
-    if (!nit.trim()) {
-      setError('El NIT es obligatorio');
-      return;
-    }
+    const errors: Record<string, string> = {};
 
-    if (!customerName.trim()) {
-      setError('El nombre del cliente es obligatorio');
-      return;
-    }
+    if (!nit.trim()) errors.nit = 'El NIT es obligatorio';
+    if (!customerName.trim()) errors.customerName = 'El nombre del cliente es obligatorio';
 
     const received = parseFloat(amountReceived) || 0;
-    if (received < invoice.total) {
-      setError(`El monto recibido debe ser al menos Q ${invoice.total.toFixed(2)}`);
+    if (paymentMethod === 'CASH' && received < invoice.total) {
+      errors.amountReceived = `El monto recibido debe ser al menos Q ${invoice.total.toFixed(2)}`;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
 
     setProcessing(true);
 
@@ -194,11 +197,12 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
               <input
                 type="text"
                 value={nit}
-                onChange={(e) => setNit(e.target.value)}
+                onChange={(e) => { setNit(e.target.value); setFieldErrors(fe => ({ ...fe, nit: '' })); }}
                 placeholder="CF o NIT del cliente"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm"
+                className={inputCls('nit')}
                 disabled={processing}
               />
+              {fieldErrors.nit && <p className="mt-1 text-xs text-red-600">{fieldErrors.nit}</p>}
             </div>
 
             {/* Customer Name */}
@@ -209,11 +213,12 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
               <input
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                onChange={(e) => { setCustomerName(e.target.value); setFieldErrors(fe => ({ ...fe, customerName: '' })); }}
                 placeholder="Nombre completo"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm"
+                className={inputCls('customerName')}
                 disabled={processing}
               />
+              {fieldErrors.customerName && <p className="mt-1 text-xs text-red-600">{fieldErrors.customerName}</p>}
             </div>
 
             {/* Payment Method */}
@@ -268,23 +273,29 @@ const PaymentModal: FC<PaymentModalProps> = ({ invoice, onSuccess, onClose, paym
                   Monto Recibido <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min={invoice.total}
+                  type="text"
+                  inputMode="decimal"
                   value={amountReceived}
-                  onChange={(e) => setAmountReceived(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medin-cyan text-sm"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*\.?\d{0,2}$/.test(val)) setAmountReceived(val);
+                    setFieldErrors(fe => ({ ...fe, amountReceived: '' }));
+                  }}
+                  className={inputCls('amountReceived')}
                   disabled={processing}
                 />
-                {calculateChange() > 0 && (
-                  <p className="mt-2 text-sm text-gray-600">
-                    Cambio a devolver: <span className="font-bold text-green-600">Q {calculateChange().toFixed(2)}</span>
-                  </p>
-                )}
+                {fieldErrors.amountReceived
+                  ? <p className="mt-1 text-xs text-red-600">{fieldErrors.amountReceived}</p>
+                  : calculateChange() > 0 && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Cambio a devolver: <span className="font-bold text-green-600">Q {calculateChange().toFixed(2)}</span>
+                    </p>
+                  )
+                }
               </div>
             )}
 
-            {/* Error */}
+            {/* Error de servidor */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
                 {error}

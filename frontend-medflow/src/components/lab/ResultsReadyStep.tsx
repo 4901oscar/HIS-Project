@@ -14,6 +14,7 @@ interface ResultsReadyStepProps {
   appointment: AppointmentListItem;
   labOrder: LabOrderWithTestsResponse;
   onRefresh: () => void;
+  onBack: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -21,7 +22,7 @@ interface ResultsReadyStepProps {
 const ResultsReadyStep: FC<ResultsReadyStepProps> = ({
   appointment,
   labOrder,
-  // onRefresh is available but not currently used in this step
+  onBack,
 }) => {
   const navigate = useNavigate();
 
@@ -153,8 +154,16 @@ const ResultsReadyStep: FC<ResultsReadyStepProps> = ({
             <ResultsList results={results} />
           </div>
 
-          {/* Action Button */}
-          <div className="flex justify-end">
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={isSending}
+              className="px-5 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium text-sm lg:text-base border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              Volver
+            </button>
             <button
               onClick={handleSendToDoctor}
               disabled={isSending || results.length === 0}

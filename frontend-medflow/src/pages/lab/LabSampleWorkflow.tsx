@@ -38,6 +38,7 @@ interface StepProps {
   appointment: AppointmentListItem;
   labOrder: LabOrderWithTestsResponse;
   onRefresh: () => void;
+  onBack: () => void;
 }
 
 // ─── Main Container Component ─────────────────────────────────────────────────
@@ -105,6 +106,7 @@ const LabSampleWorkflow: FC = () => {
       appointment,
       labOrder,
       onRefresh: handleRefresh,
+      onBack: () => navigate('/lab'),
     };
 
     switch (currentStep) {
@@ -168,26 +170,18 @@ const LabSampleWorkflow: FC = () => {
     <MainLayout>
       <div className="space-y-4 lg:space-y-6">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-0">
-          <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Flujo de Laboratorio</h2>
-            <p className="text-gray-500 text-sm lg:text-base mt-1">
-              {appointment && (
-                <>
-                  Paciente: <span className="font-medium">{appointment.patient.fullName}</span>
-                  {appointment.patient.dpi && (
-                    <> · DPI: <span className="font-mono text-xs">{appointment.patient.dpi}</span></>
-                  )}
-                </>
-              )}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/lab')}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 active:bg-gray-200"
-          >
-            ← Volver a la lista
-          </button>
+        <div>
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Flujo de Laboratorio</h2>
+          <p className="text-gray-500 text-sm lg:text-base mt-1">
+            {appointment && (
+              <>
+                Paciente: <span className="font-medium">{appointment.patient.fullName}</span>
+                {appointment.patient.dpi && (
+                  <> · DPI: <span className="font-mono text-xs">{appointment.patient.dpi}</span></>
+                )}
+              </>
+            )}
+          </p>
         </div>
 
         {/* Wizard Progress Bar */}

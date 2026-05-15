@@ -52,6 +52,7 @@ public class AppointmentListItemResponse {
     private String statusColor;
     private String notes;
     private LocalDateTime createdAt;
+    private String prescriptionCode;
     
     // ═══════════════════════════════════════════════════════════
     // INFORMACIÓN DEL PACIENTE (siempre presente)

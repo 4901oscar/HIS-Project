@@ -4,12 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout';
 import { listAppointments } from '../../services/appointmentService';
 import type { AppointmentListItem } from '../../services/appointmentService';
+import { usePatientHistory } from '../../context/PatientHistoryContext';
 
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
 const REFRESH_DEBOUNCE_MS = 500;
 
 const TriagePendingPage: FC = () => {
   const navigate = useNavigate();
+  const { clearPatient } = usePatientHistory();
+
+  useEffect(() => { clearPatient(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [appointments, setAppointments] = useState<AppointmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

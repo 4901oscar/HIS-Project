@@ -11,6 +11,7 @@ import {
   getVitalSignsByAppointment,
   getAppointmentTriage,
   registerConsultation,
+  getConsultationByAppointment,
   generateLabOrder,
   generatePrescription,
 } from '../../services/clinicalService';
@@ -24,6 +25,14 @@ import type { Cie10Item } from '../../data/cie10';
 import axios from 'axios';
 import LabResultsSection from '../../components/doctor/LabResultsSection';
 import { usePatientHistory } from '../../context/PatientHistoryContext';
+import { validateForm, clearFieldError } from '../../utils/formValidation';
+import type { Schema, FormErrors } from '../../utils/formValidation';
+
+interface ConsultationForm {
+  chiefComplaint: string;
+  symptomsText: string;
+  primaryDiagnosis: string;
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -173,10 +182,13 @@ interface MedRowProps {
   onChange: (index: number, field: keyof MedicationItem, value: string | number) => void;
   onRemove: (index: number) => void;
   isInternal: boolean; // true = farmacia interna, false = receta externa
+  errors?: Record<string, string>;
+  onClearError?: (field: string) => void;
 }
 
-const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isInternal }) => {
-  const inp = 'w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-medin-cyan focus:border-transparent';
+const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isInternal, errors = {}, onClearError }) => {
+  const inp = (hasError = false) =>
+    `w-full px-2 py-1.5 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-md text-xs focus:ring-1 focus:ring-medin-cyan focus:border-transparent`;
   
   // Actualizar cantidad total cuando cambian los valores
   const handleDosageAmountChange = (value: number) => {
@@ -230,39 +242,39 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
           {/* Medicamento del catálogo */}
           <div className="col-span-4">
             <label className="block text-xs font-medium text-gray-700 mb-1">Medicamento *</label>
-            <select value={med.name} onChange={e => onChange(index, 'name', e.target.value)} required className={inp}>
+            <select value={med.name} onChange={e => { onChange(index, 'name', e.target.value); onClearError?.('name'); }} className={inp(!!errors.name)}>
               <option value="">— Seleccionar —</option>
               {catalog.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
+            {errors.name && <p className="text-xs text-red-600 mt-0.5">{errors.name}</p>}
           </div>
 
           {/* Dosis por toma */}
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Dosis/toma *</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               step="0.5"
               min="0.5"
-              value={med.dosageAmount || ''} 
-              onChange={e => handleDosageAmountChange(parseFloat(e.target.value) || 0)}
-              required 
-              placeholder="1" 
-              className={inp} 
+              value={med.dosageAmount || ''}
+              onChange={e => { handleDosageAmountChange(parseFloat(e.target.value) || 0); onClearError?.('dosageAmount'); }}
+              placeholder="1"
+              className={inp(!!errors.dosageAmount)}
             />
+            {errors.dosageAmount && <p className="text-xs text-red-600 mt-0.5">{errors.dosageAmount}</p>}
           </div>
 
           {/* Unidad */}
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Unidad *</label>
-            <select 
-              value={med.dosageUnit || ''} 
+            <select
+              value={med.dosageUnit || ''}
               onChange={e => {
                 onChange(index, 'dosageUnit', e.target.value);
-                // Actualizar también dosage con formato legible
                 onChange(index, 'dosage', `${med.dosageAmount || ''} ${e.target.value}`);
+                onClearError?.('dosageUnit');
               }}
-              required 
-              className={inp}
+              className={inp(!!errors.dosageUnit)}
             >
               <option value="">—</option>
               <option value="pastilla(s)">pastilla(s)</option>
@@ -273,16 +285,16 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
               <option value="gota(s)">gota(s)</option>
               <option value="aplicación(es)">aplicación(es)</option>
             </select>
+            {errors.dosageUnit && <p className="text-xs text-red-600 mt-0.5">{errors.dosageUnit}</p>}
           </div>
 
           {/* Frecuencia en horas */}
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Cada (hrs) *</label>
-            <select 
-              value={med.frequencyHours || ''} 
-              onChange={e => handleFrequencyHoursChange(parseInt(e.target.value))}
-              required 
-              className={inp}
+            <select
+              value={med.frequencyHours || ''}
+              onChange={e => { handleFrequencyHoursChange(parseInt(e.target.value)); onClearError?.('frequencyHours'); }}
+              className={inp(!!errors.frequencyHours)}
             >
               <option value="">—</option>
               <option value="4">4 hrs (6x/día)</option>
@@ -291,18 +303,18 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
               <option value="12">12 hrs (2x/día)</option>
               <option value="24">24 hrs (1x/día)</option>
             </select>
+            {errors.frequencyHours && <p className="text-xs text-red-600 mt-0.5">{errors.frequencyHours}</p>}
           </div>
 
           {/* Duración */}
           <div className="col-span-1">
             <label className="block text-xs font-medium text-gray-700 mb-1">Días *</label>
-            <input 
-              type="number" 
-              value={med.durationDays} 
+            <input
+              type="number"
+              value={med.durationDays}
               min={1}
               onChange={e => handleDurationChange(parseInt(e.target.value) || 1)}
-              required 
-              className={inp} 
+              className={inp()}
             />
           </div>
 
@@ -319,7 +331,7 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
         <div className="grid grid-cols-12 gap-2 mb-2">
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Vía *</label>
-            <select value={med.route} onChange={e => onChange(index, 'route', e.target.value)} required className={inp}>
+            <select value={med.route} onChange={e => { onChange(index, 'route', e.target.value); onClearError?.('route'); }} className={inp(!!errors.route)}>
               <option value="">—</option>
               <option value="Oral">Oral</option>
               <option value="Sublingual">Sublingual</option>
@@ -333,14 +345,15 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
               <option value="Nasal">Nasal</option>
               <option value="Rectal">Rectal</option>
             </select>
+            {errors.route && <p className="text-xs text-red-600 mt-0.5">{errors.route}</p>}
           </div>
           <div className="col-span-10">
             <label className="block text-xs font-medium text-gray-700 mb-1">Instrucciones especiales</label>
-            <input 
-              value={med.specialInstructions || ''} 
+            <input
+              value={med.specialInstructions || ''}
               onChange={e => onChange(index, 'specialInstructions', e.target.value)}
-              placeholder="Ej: Tomar con alimentos, evitar alcohol, etc." 
-              className={inp} 
+              placeholder="Ej: Tomar con alimentos, evitar alcohol, etc."
+              className={inp()}
             />
           </div>
         </div>
@@ -372,49 +385,48 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
           {/* Medicamento - texto libre */}
           <div className="col-span-4">
             <label className="block text-xs font-medium text-gray-700 mb-1">Medicamento *</label>
-            <input 
-              value={med.name} 
-              onChange={e => onChange(index, 'name', e.target.value)}
-              required 
-              placeholder="Ej: Amoxicilina 500mg" 
-              className={inp} 
+            <input
+              value={med.name}
+              onChange={e => { onChange(index, 'name', e.target.value); onClearError?.('name'); }}
+              placeholder="Ej: Amoxicilina 500mg"
+              className={inp(!!errors.name)}
             />
+            {errors.name && <p className="text-xs text-red-600 mt-0.5">{errors.name}</p>}
           </div>
 
           {/* Dosis - texto libre */}
           <div className="col-span-3">
             <label className="block text-xs font-medium text-gray-700 mb-1">Dosis *</label>
-            <input 
-              value={med.dosage} 
-              onChange={e => onChange(index, 'dosage', e.target.value)}
-              required 
-              placeholder="Ej: 1 cápsula" 
-              className={inp} 
+            <input
+              value={med.dosage}
+              onChange={e => { onChange(index, 'dosage', e.target.value); onClearError?.('dosage'); }}
+              placeholder="Ej: 1 cápsula"
+              className={inp(!!errors.dosage)}
             />
+            {errors.dosage && <p className="text-xs text-red-600 mt-0.5">{errors.dosage}</p>}
           </div>
 
           {/* Frecuencia - texto libre */}
           <div className="col-span-3">
             <label className="block text-xs font-medium text-gray-700 mb-1">Frecuencia *</label>
-            <input 
-              value={med.frequency} 
-              onChange={e => onChange(index, 'frequency', e.target.value)}
-              required 
-              placeholder="Ej: Cada 8 horas" 
-              className={inp} 
+            <input
+              value={med.frequency}
+              onChange={e => { onChange(index, 'frequency', e.target.value); onClearError?.('frequency'); }}
+              placeholder="Ej: Cada 8 horas"
+              className={inp(!!errors.frequency)}
             />
+            {errors.frequency && <p className="text-xs text-red-600 mt-0.5">{errors.frequency}</p>}
           </div>
 
           {/* Duración */}
           <div className="col-span-1">
             <label className="block text-xs font-medium text-gray-700 mb-1">Días *</label>
-            <input 
-              type="number" 
-              value={med.durationDays} 
+            <input
+              type="number"
+              value={med.durationDays}
               min={1}
               onChange={e => onChange(index, 'durationDays', parseInt(e.target.value) || 1)}
-              required 
-              className={inp} 
+              className={inp()}
             />
           </div>
 
@@ -431,7 +443,7 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Vía *</label>
-            <select value={med.route} onChange={e => onChange(index, 'route', e.target.value)} required className={inp}>
+            <select value={med.route} onChange={e => { onChange(index, 'route', e.target.value); onClearError?.('route'); }} className={inp(!!errors.route)}>
               <option value="">—</option>
               <option value="Oral">Oral</option>
               <option value="Sublingual">Sublingual</option>
@@ -445,14 +457,15 @@ const MedRow: FC<MedRowProps> = ({ med, index, catalog, onChange, onRemove, isIn
               <option value="Nasal">Nasal</option>
               <option value="Rectal">Rectal</option>
             </select>
+            {errors.route && <p className="text-xs text-red-600 mt-0.5">{errors.route}</p>}
           </div>
           <div className="col-span-10">
             <label className="block text-xs font-medium text-gray-700 mb-1">Instrucciones especiales</label>
-            <input 
-              value={med.specialInstructions || ''} 
+            <input
+              value={med.specialInstructions || ''}
               onChange={e => onChange(index, 'specialInstructions', e.target.value)}
-              placeholder="Ej: Tomar con alimentos, evitar alcohol, etc." 
-              className={inp} 
+              placeholder="Ej: Tomar con alimentos, evitar alcohol, etc."
+              className={inp()}
             />
           </div>
         </div>
@@ -486,6 +499,7 @@ const PatientConsultationForm: FC = () => {
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [symptomsText, setSymptomsText] = useState('');
   const [primaryDiagnosis, setPrimaryDiagnosis] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FormErrors<ConsultationForm>>({});
   const [secondaryDiagnosesText, setSecondaryDiagnosesText] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
   const [treatmentPlan, setTreatmentPlan] = useState('');
@@ -494,6 +508,7 @@ const PatientConsultationForm: FC = () => {
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
   const [medications, setMedications] = useState<MedicationItem[]>([]);
+  const [medErrors, setMedErrors] = useState<Record<string, string>[]>([]);
   const [followUp, setFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpTime, setFollowUpTime] = useState('');
@@ -505,12 +520,13 @@ const PatientConsultationForm: FC = () => {
     if (!appointmentId) { setError('ID de cita no proporcionado'); setLoading(false); return; }
     const load = async () => {
       try {
-        const [appt, vitals, tri, labItems, medItems] = await Promise.allSettled([
+        const [appt, vitals, tri, labItems, medItems, existingConsult] = await Promise.allSettled([
           getAppointmentById(appointmentId),
           getVitalSignsByAppointment(appointmentId),
           getAppointmentTriage(appointmentId),
           getServiceItems('LABORATORY'),
           getServiceItems('MEDICATION'),
+          getConsultationByAppointment(appointmentId),
         ]);
         if (appt.status === 'fulfilled') {
           setAppointment(appt.value);
@@ -520,6 +536,15 @@ const PatientConsultationForm: FC = () => {
         if (tri.status === 'fulfilled') setTriage(tri.value);
         if (labItems.status === 'fulfilled') setLabCatalog(labItems.value.filter(t => t.status === 'ACTIVE'));
         if (medItems.status === 'fulfilled') setMedCatalog(medItems.value.filter(m => m.status === 'ACTIVE'));
+        if (existingConsult.status === 'fulfilled' && existingConsult.value) {
+          const c = existingConsult.value;
+          if (c.chiefComplaint) setChiefComplaint(c.chiefComplaint);
+          if (c.symptoms) setSymptomsText(c.symptoms);
+          if (c.primaryDiagnosis) setPrimaryDiagnosis(c.primaryDiagnosis);
+          if (c.secondaryDiagnoses?.length) setSecondaryDiagnosesText(c.secondaryDiagnoses.join(', '));
+          if (c.medicalNotes) setMedicalNotes(c.medicalNotes);
+          if (c.treatmentPlan) setTreatmentPlan(c.treatmentPlan);
+        }
       } finally {
         setLoading(false);
       }
@@ -648,8 +673,20 @@ const PatientConsultationForm: FC = () => {
     setMedications(prev => prev.map((m, i) => i === index ? { ...m, [field]: value } : m));
   };
 
+  const clearMedError = (index: number, field: string) => {
+    setMedErrors(prev => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { ...next[index] };
+        delete next[index][field];
+      }
+      return next;
+    });
+  };
+
   const removeMedication = (index: number) => {
     setMedications(prev => prev.filter((_, i) => i !== index));
+    setMedErrors(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleTest = (test: string) => {
@@ -718,6 +755,26 @@ const PatientConsultationForm: FC = () => {
       setError('Agrega al menos un medicamento a la receta.');
       return;
     }
+    if (requiresMedications && medications.length > 0) {
+      const isInternal = destination === 'PHARMACY';
+      const newMedErrors: Record<string, string>[] = medications.map(med => {
+        const errs: Record<string, string> = {};
+        if (!med.name) errs.name = 'Este campo es requerido.';
+        if (isInternal) {
+          if (!med.dosageAmount) errs.dosageAmount = 'Este campo es requerido.';
+          if (!med.dosageUnit) errs.dosageUnit = 'Este campo es requerido.';
+          if (!med.frequencyHours) errs.frequencyHours = 'Este campo es requerido.';
+        } else {
+          if (!med.dosage) errs.dosage = 'Este campo es requerido.';
+          if (!med.frequency) errs.frequency = 'Este campo es requerido.';
+        }
+        if (!med.route) errs.route = 'Este campo es requerido.';
+        return errs;
+      });
+      const hasMedErrors = newMedErrors.some(e => Object.keys(e).length > 0);
+      if (hasMedErrors) { setMedErrors(newMedErrors); return; }
+      setMedErrors([]);
+    }
     if (followUp && !followUpDate) {
       setError('Selecciona la fecha de la cita de seguimiento.');
       return;
@@ -726,6 +783,17 @@ const PatientConsultationForm: FC = () => {
       setError('Selecciona la hora de la cita de seguimiento.');
       return;
     }
+
+    const consultationSchema: Schema<ConsultationForm> = {
+      chiefComplaint:   [{ type: 'required', message: 'El motivo de consulta es requerido.' }],
+      symptomsText:     [{ type: 'required', message: 'Los síntomas son requeridos.' }],
+      primaryDiagnosis: requiresDiagnosis
+        ? [{ type: 'required', message: 'El diagnóstico principal es requerido.' }]
+        : [],
+    };
+    const errs = validateForm(consultationSchema, { chiefComplaint, symptomsText, primaryDiagnosis });
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setFieldErrors({});
 
     setSaving(true);
     setError(null);
@@ -838,6 +906,8 @@ const PatientConsultationForm: FC = () => {
   };
 
   const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm';
+  const inputCls = (hasError: boolean) =>
+    `w-full px-3 py-2 border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-medin-cyan focus:border-transparent text-sm`;
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
 
   if (loading) {
@@ -933,7 +1003,7 @@ const PatientConsultationForm: FC = () => {
               <p className="text-sm font-medium text-gray-700 mb-2">Triaje Manchester</p>
               <div className="flex flex-wrap gap-2 text-sm">
                 <span className={`px-3 py-1.5 rounded-full font-semibold ${manchesterMeta?.bg} ${manchesterMeta?.text}`}>
-                  {triage.priorityLevel} — {triage.priorityDescription}
+                  {manchesterMeta?.label ?? `${triage.priorityLevel} — ${triage.priorityDescription}`}
                 </span>
                 <span className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700">
                   Tiempo máx. espera: <strong>{triage.maxWaitTimeMinutes} min</strong>
@@ -995,11 +1065,11 @@ const PatientConsultationForm: FC = () => {
                   </label>
                   <input
                     value={chiefComplaint}
-                    onChange={e => setChiefComplaint(e.target.value)}
-                    required
-                    className={inputClass}
+                    onChange={e => { setChiefComplaint(e.target.value); setFieldErrors(prev => clearFieldError(prev, 'chiefComplaint')); }}
+                    className={inputCls(!!fieldErrors.chiefComplaint)}
                     placeholder="Ej: Dolor de cabeza desde hace 3 días"
                   />
+                  {fieldErrors.chiefComplaint && <p className="text-xs text-red-600">{fieldErrors.chiefComplaint}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -1008,11 +1078,11 @@ const PatientConsultationForm: FC = () => {
                   </label>
                   <input
                     value={symptomsText}
-                    onChange={e => setSymptomsText(e.target.value)}
-                    required
-                    className={inputClass}
+                    onChange={e => { setSymptomsText(e.target.value); setFieldErrors(prev => clearFieldError(prev, 'symptomsText')); }}
+                    className={inputCls(!!fieldErrors.symptomsText)}
                     placeholder="cefalea, náuseas, fotofobia"
                   />
+                  {fieldErrors.symptomsText && <p className="text-xs text-red-600">{fieldErrors.symptomsText}</p>}
                 </div>
               </div>
 
@@ -1029,7 +1099,12 @@ const PatientConsultationForm: FC = () => {
                     </span>
                   )}
                 </div>
-                <Cie10Input value={primaryDiagnosis} onChange={setPrimaryDiagnosis} required={requiresDiagnosis} className={inputClass} />
+                <Cie10Input
+                  value={primaryDiagnosis}
+                  onChange={val => { setPrimaryDiagnosis(val); setFieldErrors(prev => clearFieldError(prev, 'primaryDiagnosis')); }}
+                  className={inputCls(!!fieldErrors.primaryDiagnosis)}
+                />
+                {fieldErrors.primaryDiagnosis && <p className="text-xs text-red-600">{fieldErrors.primaryDiagnosis}</p>}
                 <p className="text-xs text-gray-400">Escribe el nombre de la enfermedad o el código CIE-10 para buscar en el catálogo.</p>
               </div>
 
@@ -1167,14 +1242,16 @@ const PatientConsultationForm: FC = () => {
                       <span className="col-span-1" />
                     </div>
                     {medications.map((med, i) => (
-                      <MedRow 
-                        key={i} 
-                        med={med} 
-                        index={i} 
-                        catalog={medCatalog} 
-                        onChange={updateMedication} 
+                      <MedRow
+                        key={i}
+                        med={med}
+                        index={i}
+                        catalog={medCatalog}
+                        onChange={updateMedication}
                         onRemove={removeMedication}
                         isInternal={destination === 'PHARMACY'}
+                        errors={medErrors[i] ?? {}}
+                        onClearError={(field) => clearMedError(i, field)}
                       />
                     ))}
                   </div>

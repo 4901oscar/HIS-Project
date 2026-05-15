@@ -5,6 +5,7 @@ import com.medframe.clinical.domain.model.Appointment;
 import com.medframe.clinical.domain.model.Consultation;
 import com.medframe.clinical.domain.port.in.RegisterConsultationUseCase;
 import com.medframe.clinical.domain.port.out.AppointmentRepository;
+import com.medframe.clinical.domain.port.out.ConsultationRepository;
 import com.medframe.clinical.domain.service.AppointmentManager;
 import com.medframe.clinical.infrastructure.client.BillingServiceClient;
 import com.medframe.clinical.infrastructure.client.dto.ChargeRequest;
@@ -36,6 +37,7 @@ public class ConsultationController {
     private final RegisterConsultationUseCase registerConsultationUseCase;
     private final BillingServiceClient billingServiceClient;
     private final AppointmentRepository appointmentRepository;
+    private final ConsultationRepository consultationRepository;
     private final AppointmentManager appointmentManager;
     private final ConsultationPriceConfig priceConfig;
 
@@ -78,6 +80,13 @@ public class ConsultationController {
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToResponse(consultation));
+    }
+
+    @GetMapping("/by-appointment/{appointmentId}")
+    public ResponseEntity<ConsultationResponse> getByAppointment(@PathVariable String appointmentId) {
+        return consultationRepository.findByAppointmentId(appointmentId)
+                .map(c -> ResponseEntity.ok(mapToResponse(c)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private void createFollowUpAppointment(String patientId, String doctorId, 
@@ -207,8 +216,11 @@ public class ConsultationController {
             consultation.getPatientId(),
             consultation.getDoctorId(),
             consultation.getChiefComplaint(),
+            consultation.getSymptoms(),
             consultation.getPrimaryDiagnosis(),
             consultation.getSecondaryDiagnoses(),
+            consultation.getMedicalNotes(),
+            consultation.getTreatmentPlan(),
             consultation.getConsultationDate()
         );
     }

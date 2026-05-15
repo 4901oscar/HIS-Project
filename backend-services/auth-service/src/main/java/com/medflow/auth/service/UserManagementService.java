@@ -132,7 +132,8 @@ public class UserManagementService {
             RoleName roleName = resolveEmployeeRole(request.getRoleName());
             Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + roleName));
-            user.setRoles(Set.of(role));
+            user.getRoles().clear();
+            user.getRoles().add(role);
         }
 
         User saved = userRepository.save(user);

@@ -11,6 +11,7 @@ interface SampleCollectionStepProps {
   appointment: AppointmentListItem;
   labOrder: LabOrderWithTestsResponse;
   onRefresh: () => void;
+  onBack: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ const SampleCollectionStep: FC<SampleCollectionStepProps> = ({
   appointment,
   labOrder,
   onRefresh,
+  onBack,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,8 +136,15 @@ const SampleCollectionStep: FC<SampleCollectionStepProps> = ({
         )}
       </div>
 
-      {/* Action Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="px-5 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium text-sm lg:text-base border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        >
+          Volver
+        </button>
         <button
           onClick={handleCollectSamples}
           disabled={isLoading || labOrder.tests.length === 0}

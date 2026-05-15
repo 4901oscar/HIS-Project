@@ -111,14 +111,17 @@ const CashierPage: FC = () => {
   // Cola de consultas (PENDING_PAYMENT)
   const [consultations, setConsultations] = useState<AppointmentListItem[]>([]);
   const [loadingConsultations, setLoadingConsultations] = useState(true);
+  const [consultationSearch, setConsultationSearch] = useState('');
 
   // Cola de laboratorio (PENDING_LAB_PAYMENT)
   const [labPayments, setLabPayments] = useState<AppointmentListItem[]>([]);
   const [loadingLab, setLoadingLab] = useState(true);
+  const [labSearch, setLabSearch] = useState('');
 
   // Cola de farmacia (PENDING_PHARMACY_PAYMENT)
   const [pharmacyPayments, setPharmacyPayments] = useState<AppointmentListItem[]>([]);
   const [loadingPharmacy, setLoadingPharmacy] = useState(true);
+  const [pharmacySearch, setPharmacySearch] = useState('');
 
   // Modal
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentListItem | null>(null);
@@ -215,22 +218,32 @@ const CashierPage: FC = () => {
                 <p className="text-xs text-gray-500">Pacientes pendientes de pago inicial</p>
               </div>
               <span className="ml-2 px-2 py-0.5 bg-medin-navy/10 text-medin-navy rounded-full text-xs font-semibold">
-                {loadingConsultations ? '…' : consultations.length}
+                {loadingConsultations ? '…' : consultations.filter(a => !consultationSearch || a.patient.dpi?.includes(consultationSearch.trim())).length}
               </span>
             </div>
-            <button
-              onClick={loadConsultations}
-              disabled={loadingConsultations}
-              className="text-xs text-medin-navy hover:text-medin-navy/70 disabled:opacity-50"
-            >
-              Actualizar
-            </button>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={consultationSearch}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setConsultationSearch(e.target.value); }}
+                placeholder="Buscar por DPI..."
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-medin-cyan focus:border-transparent w-44"
+              />
+              <button
+                onClick={loadConsultations}
+                disabled={loadingConsultations}
+                className="text-xs text-medin-navy hover:text-medin-navy/70 disabled:opacity-50"
+              >
+                Actualizar
+              </button>
+            </div>
           </div>
           <AppointmentTable
-            appointments={consultations}
+            appointments={consultations.filter(a => !consultationSearch || a.patient.dpi?.includes(consultationSearch.trim()))}
             loading={loadingConsultations}
             onPay={appt => handlePay(appt, 'CONSULTATION')}
-            emptyText="No hay cobros de consulta pendientes"
+            emptyText={consultationSearch ? 'No se encontraron cobros para ese DPI' : 'No hay cobros de consulta pendientes'}
           />
         </div>
 
@@ -244,22 +257,32 @@ const CashierPage: FC = () => {
                 <p className="text-xs text-gray-500">Pacientes con exámenes pendientes de pago</p>
               </div>
               <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
-                {loadingLab ? '…' : labPayments.length}
+                {loadingLab ? '…' : labPayments.filter(a => !labSearch || a.patient.dpi?.includes(labSearch.trim())).length}
               </span>
             </div>
-            <button
-              onClick={loadLabPayments}
-              disabled={loadingLab}
-              className="text-xs text-purple-700 hover:text-purple-500 disabled:opacity-50"
-            >
-              Actualizar
-            </button>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={labSearch}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setLabSearch(e.target.value); }}
+                placeholder="Buscar por DPI..."
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-44"
+              />
+              <button
+                onClick={loadLabPayments}
+                disabled={loadingLab}
+                className="text-xs text-purple-700 hover:text-purple-500 disabled:opacity-50"
+              >
+                Actualizar
+              </button>
+            </div>
           </div>
           <AppointmentTable
-            appointments={labPayments}
+            appointments={labPayments.filter(a => !labSearch || a.patient.dpi?.includes(labSearch.trim()))}
             loading={loadingLab}
             onPay={appt => handlePay(appt, 'LAB')}
-            emptyText="No hay cobros de laboratorio pendientes"
+            emptyText={labSearch ? 'No se encontraron cobros para ese DPI' : 'No hay cobros de laboratorio pendientes'}
           />
         </div>
 
@@ -273,22 +296,32 @@ const CashierPage: FC = () => {
                 <p className="text-xs text-gray-500">Pacientes con medicamentos pendientes de pago</p>
               </div>
               <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                {loadingPharmacy ? '…' : pharmacyPayments.length}
+                {loadingPharmacy ? '…' : pharmacyPayments.filter(a => !pharmacySearch || a.patient.dpi?.includes(pharmacySearch.trim())).length}
               </span>
             </div>
-            <button
-              onClick={loadPharmacyPayments}
-              disabled={loadingPharmacy}
-              className="text-xs text-green-700 hover:text-green-500 disabled:opacity-50"
-            >
-              Actualizar
-            </button>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={pharmacySearch}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setPharmacySearch(e.target.value); }}
+                placeholder="Buscar por DPI..."
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent w-44"
+              />
+              <button
+                onClick={loadPharmacyPayments}
+                disabled={loadingPharmacy}
+                className="text-xs text-green-700 hover:text-green-500 disabled:opacity-50"
+              >
+                Actualizar
+              </button>
+            </div>
           </div>
           <AppointmentTable
-            appointments={pharmacyPayments}
+            appointments={pharmacyPayments.filter(a => !pharmacySearch || a.patient.dpi?.includes(pharmacySearch.trim()))}
             loading={loadingPharmacy}
             onPay={appt => handlePay(appt, 'PHARMACY')}
-            emptyText="No hay cobros de farmacia pendientes"
+            emptyText={pharmacySearch ? 'No se encontraron cobros para ese DPI' : 'No hay cobros de farmacia pendientes'}
           />
         </div>
       </div>

@@ -3,7 +3,7 @@
  */
 
 import type { FC } from 'react';
-import PatientHeader from '../components/PatientHeader/PatientHeader';
+import { Navbar } from '../components';
 import BookAppointmentForm from '../components/BookAppointmentForm/BookAppointmentForm';
 import ScheduleHours from '../components/ScheduleHours/ScheduleHours';
 import Footer from '../components/Footer/Footer';
@@ -11,7 +11,7 @@ import Footer from '../components/Footer/Footer';
 const AppointmentPage: FC = () => {
   return (
     <div className="min-h-screen bg-white">
-      <PatientHeader />
+      <Navbar />
 
       {/* Hero */}
       <section className="relative bg-gradient-to-r from-gray-100 to-blue-50 py-8 md:py-16">
