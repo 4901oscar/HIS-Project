@@ -58,6 +58,24 @@ ALTER TABLE billing_schema.service_items ADD COLUMN IF NOT EXISTS status VARCHAR
 ALTER TABLE billing_schema.service_items DROP COLUMN IF EXISTS active;
 ALTER TABLE billing_schema.service_items DROP COLUMN IF EXISTS deleted;
 
+-- Audit columns for tables that existed before audit tracking was added
+ALTER TABLE billing_schema.invoices ADD COLUMN IF NOT EXISTS updated_by VARCHAR(36);
+
+ALTER TABLE billing_schema.charges ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE billing_schema.charges ADD COLUMN IF NOT EXISTS created_by VARCHAR(36) NOT NULL DEFAULT 'internal';
+ALTER TABLE billing_schema.charges ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+ALTER TABLE billing_schema.charges ADD COLUMN IF NOT EXISTS updated_by VARCHAR(36);
+
+ALTER TABLE billing_schema.payments ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE billing_schema.payments ADD COLUMN IF NOT EXISTS created_by VARCHAR(36) NOT NULL DEFAULT 'internal';
+ALTER TABLE billing_schema.payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+ALTER TABLE billing_schema.payments ADD COLUMN IF NOT EXISTS updated_by VARCHAR(36);
+
+ALTER TABLE billing_schema.service_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE billing_schema.service_items ADD COLUMN IF NOT EXISTS created_by VARCHAR(36) NOT NULL DEFAULT 'internal';
+ALTER TABLE billing_schema.service_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+ALTER TABLE billing_schema.service_items ADD COLUMN IF NOT EXISTS updated_by VARCHAR(36);
+
 CREATE INDEX IF NOT EXISTS idx_service_items_code ON billing_schema.service_items(code);
 CREATE INDEX IF NOT EXISTS idx_service_items_category ON billing_schema.service_items(category);
 
