@@ -29,4 +29,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 ENV SPRING_PROFILES_ACTIVE=docker
 
 # Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=America/Guatemala", "-jar", "app.jar"]

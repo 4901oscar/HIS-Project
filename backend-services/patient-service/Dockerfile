@@ -26,4 +26,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:8082/actuator/health || exit 1
 
 # Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=America/Guatemala", "-jar", "app.jar"]
