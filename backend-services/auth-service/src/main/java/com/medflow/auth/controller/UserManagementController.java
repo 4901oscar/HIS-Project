@@ -64,6 +64,7 @@ public class UserManagementController {
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeResponse> getEmployee(
             @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
             @PathVariable String id) {
 
         userManagementService.requireAdmin(authHeader);
@@ -74,20 +75,22 @@ public class UserManagementController {
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
             @PathVariable String id,
             @Valid @RequestBody UpdateEmployeeRequest request) {
 
         userManagementService.requireAdmin(authHeader);
-        return ResponseEntity.ok(userManagementService.updateEmployee(id, request, null));
+        return ResponseEntity.ok(userManagementService.updateEmployee(id, request, userId));
     }
 
     /** CU-02: Activar / desactivar cuenta del empleado. */
     @PatchMapping("/{id}/estado")
     public ResponseEntity<EmployeeResponse> toggleActive(
             @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
             @PathVariable String id) {
 
         userManagementService.requireAdmin(authHeader);
-        return ResponseEntity.ok(userManagementService.toggleActive(id, null));
+        return ResponseEntity.ok(userManagementService.toggleActive(id, userId));
     }
 }

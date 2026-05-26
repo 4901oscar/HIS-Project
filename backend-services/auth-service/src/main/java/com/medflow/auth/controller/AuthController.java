@@ -70,8 +70,9 @@ public class AuthController {
 
     @PostMapping("/internal/create-patient")
     public ResponseEntity<CreatePatientAccountResponse> createPatientAccount(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
             @Valid @RequestBody CreatePatientAccountRequest request) {
-        CreatePatientAccountResponse response = authService.createPatientAccount(request);
+        CreatePatientAccountResponse response = authService.createPatientAccount(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
