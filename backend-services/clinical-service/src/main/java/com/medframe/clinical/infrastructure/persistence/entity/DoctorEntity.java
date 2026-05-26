@@ -8,15 +8,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-/**
- * JPA entity for doctors table.
- * 
- * <p>This entity represents the persistence layer mapping for the Doctor domain model.
- * It follows hexagonal architecture by residing in the infrastructure layer.
- * 
- * @author MedFlow Team
- * @version 1.0.0
- */
 @Entity
 @Table(name = "doctors", schema = "clinical_schema",
        indexes = {
@@ -50,10 +41,16 @@ public class DoctorEntity {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
     
-    /**
-     * Doctor status enum matching the domain model.
-     */
     public enum DoctorStatus {
         ACTIVE,
         INACTIVE

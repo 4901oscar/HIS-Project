@@ -116,35 +116,4 @@ public class RecordVitalSignsUseCaseImpl implements RecordVitalSignsUseCase {
         return vitalSignsRecorder.getLatestVitalSigns(patientId);
     }
     
-    /**
-     * Registra una transición de estado en la tabla de auditoría.
-     * 
-     * @param appointmentId ID de la cita
-     * @param fromState Estado anterior
-     * @param toState Estado nuevo
-     * @param notes Notas opcionales sobre la transición
-     */
-    private void logStateTransition(String appointmentId, 
-                                    com.medframe.clinical.domain.model.Appointment.AppointmentStatus fromState,
-                                    com.medframe.clinical.domain.model.Appointment.AppointmentStatus toState,
-                                    String notes) {
-        try {
-            String userId = permissionValidator.getUserId();
-            
-            com.medframe.clinical.domain.model.AppointmentStateTransition transition = 
-                com.medframe.clinical.domain.model.AppointmentStateTransition.builder()
-                    .appointmentId(appointmentId)
-                    .fromState(fromState)
-                    .toState(toState)
-                    .transitionedBy(userId)
-                    .transitionedAt(java.time.LocalDateTime.now())
-                    .notes(notes)
-                    .build();
-            
-            stateTransitionRepository.save(transition);
-        } catch (Exception e) {
-            // Log error but don't fail the transaction
-            System.err.println("Error logging state transition: " + e.getMessage());
-        }
-    }
 }

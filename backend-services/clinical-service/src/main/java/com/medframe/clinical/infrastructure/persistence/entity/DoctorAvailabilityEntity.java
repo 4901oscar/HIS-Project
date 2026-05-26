@@ -8,15 +8,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * JPA entity for doctor_availability table.
- * 
- * <p>This entity represents the persistence layer mapping for the DoctorAvailability domain model.
- * It follows hexagonal architecture by residing in the infrastructure layer.
- * 
- * @author MedFlow Team
- * @version 1.0.0
- */
 @Entity
 @Table(name = "doctor_availability", schema = "clinical_schema",
        uniqueConstraints = {
@@ -52,4 +43,10 @@ public class DoctorAvailabilityEntity {
     
     @Column(name = "created_by")
     private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
 }

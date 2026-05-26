@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -29,7 +30,7 @@ public class InventoryService {
     }
 
     @Transactional
-    public MedicationResponse addMedication(MedicationRequest request) {
+    public MedicationResponse addMedication(MedicationRequest request, String userId) {
         Medication medication = new Medication();
         medication.setName(request.getName());
         medication.setDescription(request.getDescription());
@@ -37,12 +38,12 @@ public class InventoryService {
         medication.setCurrentStock(request.getCurrentStock());
         medication.setMinStock(request.getMinStock());
         medication.setStatus(MedicationStatus.ACTIVE);
+        medication.setCreatedBy(userId != null ? userId : "internal");
         return mapToResponse(medicationRepository.save(medication));
     }
 
-
     @Transactional
-    public MedicationResponse updateMedication(String id, MedicationRequest request) {
+    public MedicationResponse updateMedication(String id, MedicationRequest request, String userId) {
         Medication medication = medicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("No se encontro el medicamento: " + id));
         medication.setName(request.getName());
@@ -52,19 +53,22 @@ public class InventoryService {
         if (request.getStatus() != null) {
             medication.setStatus(request.getStatus());
         }
-        return mapToResponse(medicationRepository.save(medication));
-    }
-    @Transactional
-    public MedicationResponse updateStock(String medicationId, Integer newStock) {
-        if (newStock < 0) throw new IllegalArgumentException("El stock no puede ser negativo");
-        Medication medication = medicationRepository.findById(medicationId)
-                .orElseThrow(() -> new RuntimeException("No se encontro el medicamento: " + medicationId));
-        medication.setCurrentStock(newStock);
+        medication.setUpdatedBy(userId != null ? userId : "internal");
         return mapToResponse(medicationRepository.save(medication));
     }
 
     @Transactional
-    public MedicationResponse toggleActive(String id) {
+    public MedicationResponse updateStock(String medicationId, Integer newStock, String userId) {
+        if (newStock < 0) throw new IllegalArgumentException("El stock no puede ser negativo");
+        Medication medication = medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new RuntimeException("No se encontro el medicamento: " + medicationId));
+        medication.setCurrentStock(newStock);
+        medication.setUpdatedBy(userId != null ? userId : "internal");
+        return mapToResponse(medicationRepository.save(medication));
+    }
+
+    @Transactional
+    public MedicationResponse toggleActive(String id, String userId) {
         Medication medication = medicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("No se encontro el medicamento: " + id));
         if (medication.getStatus() == MedicationStatus.DELETED) {
@@ -74,14 +78,16 @@ public class InventoryService {
                 ? MedicationStatus.INACTIVE
                 : MedicationStatus.ACTIVE;
         medication.setStatus(next);
+        medication.setUpdatedBy(userId != null ? userId : "internal");
         return mapToResponse(medicationRepository.save(medication));
     }
 
     @Transactional
-    public void delete(String id) {
+    public void delete(String id, String userId) {
         Medication medication = medicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("No se encontro el medicamento: " + id));
         medication.setStatus(MedicationStatus.DELETED);
+        medication.setUpdatedBy(userId != null ? userId : "internal");
         medicationRepository.save(medication);
     }
 

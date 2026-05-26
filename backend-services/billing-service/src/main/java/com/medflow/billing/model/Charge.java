@@ -6,13 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-/**
- * Entity representing a charge item in an invoice.
- * Each charge represents a billable service or item (consultation, lab test, medication, etc.)
- * 
- * Mapped to: billing_schema.charges
- */
 @Entity
 @Table(name = "charges", schema = "billing_schema")
 @Data
@@ -24,41 +19,47 @@ public class Charge {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     
-    /**
-     * Reference to the parent invoice
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
     
-    /**
-     * Type of charge (CONSULTATION, LABORATORY, MEDICATION, OTHER)
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ChargeType type;
     
-    /**
-     * Description of the charge
-     */
     @Column(nullable = false, length = 300)
     private String description;
     
-    /**
-     * Quantity of items/services
-     */
     @Column(nullable = false)
     private Integer quantity = 1;
     
-    /**
-     * Price per unit
-     */
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
     
-    /**
-     * Subtotal (quantity * unitPrice)
-     */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

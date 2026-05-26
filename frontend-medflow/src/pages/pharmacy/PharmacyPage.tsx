@@ -35,7 +35,6 @@ const PharmacyPage: FC = () => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar la cola de farmacia';
       setError(errorMessage);
-      console.error('Error loading pharmacy queue:', err);
     } finally {
       setLoading(false);
     }
@@ -74,7 +73,6 @@ const PharmacyPage: FC = () => {
         const errorMessage = err instanceof Error ? err.message : 'Error al cargar los detalles de la receta';
         setError(errorMessage);
       }
-      console.error('Error loading prescription details:', err);
       setSelectedAppointment(null);
     } finally {
       setLoadingPrescription(false);
@@ -100,7 +98,6 @@ const PharmacyPage: FC = () => {
         ? err.message 
         : 'Error al dispensar medicamentos. Por favor, intente nuevamente.';
       setError(errorMessage);
-      console.error('Error dispensing medication:', err);
       alert(errorMessage);
     } finally {
       setDispensing(false);

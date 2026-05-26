@@ -109,6 +109,11 @@ public class Invoice {
      */
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    /**
+     * ID of the user who last updated the invoice
+     */
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
     
     /**
      * Helper method to add a charge to the invoice and set the bidirectional relationship
@@ -121,6 +126,18 @@ public class Invoice {
     /**
      * Helper method to remove a charge from the invoice
      */
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
     public void removeCharge(Charge charge) {
         charges.remove(charge);
         charge.setInvoice(null);

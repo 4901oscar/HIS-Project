@@ -113,6 +113,7 @@ services:
     ports:
       - "8081:8081"
     environment:
+      - TZ=America/Guatemala
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=auth_schema
@@ -143,6 +144,7 @@ services:
     ports:
       - "8082:8082"
     environment:
+      - TZ=America/Guatemala
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=patient_schema
@@ -218,6 +220,7 @@ services:
     ports:
       - "8084:8084"
     environment:
+      - TZ=America/Guatemala
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=lab_schema
@@ -248,6 +251,7 @@ services:
     ports:
       - "8085:8085"
     environment:
+      - TZ=America/Guatemala
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=pharmacy_schema
@@ -274,6 +278,7 @@ services:
     ports:
       - "8086:8086"
     environment:
+      - TZ=America/Guatemala
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=billing_schema

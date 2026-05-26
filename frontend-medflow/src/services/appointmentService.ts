@@ -114,6 +114,10 @@ export const listAppointments = async (params?: ListAppointmentsParams): Promise
     queryParams.queue = params.queue;
   }
   
+  if (params?.doctorId) {
+    queryParams.doctorId = params.doctorId;
+  }
+
   if (params?.missingInvoice !== undefined) {
     queryParams.missingInvoice = params.missingInvoice;
   }
@@ -212,6 +216,7 @@ export interface ListAppointmentsParams {
   status?: string[];
   date?: string;
   queue?: 'payment' | 'lab' | 'pharmacy' | 'triage' | 'admission';
+  doctorId?: string;
   missingInvoice?: boolean;
   includeQR?: boolean;
   includeClinical?: boolean;

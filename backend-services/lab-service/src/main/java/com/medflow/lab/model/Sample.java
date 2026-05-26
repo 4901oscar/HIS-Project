@@ -29,10 +29,30 @@ public class Sample {
     @Column(name = "collected_by", nullable = false, length = 36)
     private String collectedBy;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
+
     @PrePersist
     protected void onCreate() {
         if (collectedAt == null) {
             collectedAt = LocalDateTime.now();
         }
+        if (createdAt == null) {
+            createdAt = collectedAt;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

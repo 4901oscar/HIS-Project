@@ -101,11 +101,6 @@ export const getCurrentUser = (): AuthUser | null => {
   return data ? JSON.parse(data) : null;
 };
 
-export const getUserFullName = async (userId: string): Promise<string> => {
-  const response = await api.get<{ id: string; fullName: string }>(`/api/auth/users/${userId}`);
-  return response.data.fullName;
-};
-
 export const createPatientAccount = async (data: CreatePatientAccountRequest): Promise<CreatePatientAccountResponse> => {
   const response = await api.post<CreatePatientAccountResponse>('/api/auth/internal/create-patient', data);
   return response.data;
@@ -115,4 +110,4 @@ export const changePassword = async (currentPassword: string, newPassword: strin
   await api.patch('/api/auth/change-password', { currentPassword, newPassword });
 };
 
-export default { login, logout, isAuthenticated, getCurrentUser, getUserFullName, createPatientAccount, changePassword };
+export default { login, logout, isAuthenticated, getCurrentUser, createPatientAccount, changePassword };

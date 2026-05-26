@@ -50,7 +50,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -132,33 +131,34 @@ public class AppointmentController {
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) String queue,
+            @RequestParam(required = false) String doctorId,
             @RequestParam(required = false, defaultValue = "false") boolean missingInvoice,
             @RequestParam(required = false, defaultValue = "false") boolean includeQR,
             @RequestParam(required = false, defaultValue = "false") boolean includeClinical) {
-        
-        log.info("Listing appointments with filters - status: {}, date: {}, queue: {}, missingInvoice: {}", 
-                 status, date, queue, missingInvoice);
-        
+
+        log.info("Listing appointments with filters - status: {}, date: {}, queue: {}, doctorId: {}, missingInvoice: {}",
+                 status, date, queue, doctorId, missingInvoice);
+
         // 1. Obtener todas las citas
         List<Appointment> appointments;
-        
+
         if (missingInvoice) {
             appointments = manageAppointmentUseCase.listAppointmentsWithoutInvoice();
             log.info("Filtering appointments without invoice. Total found: {}", appointments.size());
         } else {
             appointments = manageAppointmentUseCase.listAll();
         }
-        
+
         // 2. Aplicar filtros
-        appointments = applyFilters(appointments, status, date, queue);
-        
+        appointments = applyFilters(appointments, status, date, queue, doctorId);
+
         log.info("After filtering: {} appointments", appointments.size());
-        
+
         // 3. Mapear a DTO unificado
         List<AppointmentListItemResponse> response = appointments.stream()
                 .map(appt -> mapToUnifiedResponse(appt, includeQR, includeClinical))
                 .collect(java.util.stream.Collectors.toList());
-        
+
         return ResponseEntity.ok(response);
     }
     
@@ -198,12 +198,14 @@ public class AppointmentController {
             List<Appointment> appointments,
             List<String> statusFilter,
             LocalDate dateFilter,
-            String queueFilter) {
-        
+            String queueFilter,
+            String doctorIdFilter) {
+
         return appointments.stream()
                 .filter(appt -> matchesStatusFilter(appt, statusFilter))
                 .filter(appt -> matchesDateFilter(appt, dateFilter))
                 .filter(appt -> matchesQueueFilter(appt, queueFilter))
+                .filter(appt -> doctorIdFilter == null || doctorIdFilter.equals(appt.getDoctorId()))
                 .collect(java.util.stream.Collectors.toList());
     }
     
@@ -621,15 +623,12 @@ public class AppointmentController {
             @Valid @RequestBody CreateAppointmentRequest request,
             @RequestHeader("X-User-Id") String userId) {
 
-        log.error("=== createAppointment - userId: {}, request.patientId: {} ===", userId, request.getPatientId());
-
         // 1. Determine patient ID
         String patientId;
         String patientEmail = "no-email@medflow.com";
         String patientFirstName = "Paciente";
         
         if (request.getPatientId() != null && !request.getPatientId().isBlank()) {
-            log.error("=== Usando patientId del request: {} ===", request.getPatientId());
             // Patient ID provided in request (admission flow)
             patientId = request.getPatientId();
             try {
@@ -642,10 +641,8 @@ public class AppointmentController {
         } else {
             // No patient ID provided, use authenticated user (patient self-booking flow)
             try {
-                log.error("=== Buscando paciente por auth_user_id: {} ===", userId);
                 PatientDTO patient = (PatientDTO) patientServiceClient.getPatientByAuthUserId(userId);
                 patientId = patient.getId(); // Use the real patient ID from patient-service
-                log.error("=== Paciente encontrado. patient_id: {}, auth_user_id: {} ===", patientId, patient.getAuthUserId());
                 patientEmail = patient.getEmail();
                 patientFirstName = patient.getFirstName();
             } catch (Exception e) {
@@ -655,7 +652,6 @@ public class AppointmentController {
         }
 
         // 2. Create appointment (manual or auto-assignment) — exactly once
-        log.error("=== Antes de crear cita. patientId: {} ===", patientId);
         Appointment appointment;
         boolean hasPaid = request.getHasPaid() != null ? request.getHasPaid() : false;
         if (request.getDoctorId() != null && !request.getDoctorId().trim().isEmpty()) {
@@ -669,7 +665,6 @@ public class AppointmentController {
                 request.getAppointmentDate(), request.getAppointmentTime(),
                 request.getNotes(), userId);
         }
-        log.error("=== Después de crear cita. appointment.patientId: {} ===", appointment.getPatientId());
 
         // 3. Release slot hold if provided
         if (request.getSessionId() != null && !request.getSessionId().isBlank()) {
@@ -763,17 +758,6 @@ public class AppointmentController {
      */
     private String generateTemporaryInvoiceNumber() {
         return "INV-" + LocalDateTime.now().format(INVOICE_TIMESTAMP_FORMATTER);
-    }
-    
-    /**
-     * Generates a unique invoice number using timestamp format.
-     * Format: INV-yyyyMMddHHmmss (e.g., INV-20260422143025)
-     * 
-     * @deprecated Use {@link #generateTemporaryInvoiceNumber()} instead
-     */
-    @Deprecated
-    private String generateInvoiceNumber() {
-        return generateTemporaryInvoiceNumber();
     }
     
     /** QR scan — validates payment and time window before activating the appointment. */

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,4 +34,16 @@ public class ManchesterMotifEntity {
 
     @OneToMany(mappedBy = "motif", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ManchesterDiscriminatorEntity> discriminators = new ArrayList<>();
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
 }

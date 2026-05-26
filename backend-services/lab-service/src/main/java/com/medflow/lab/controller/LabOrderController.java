@@ -30,9 +30,10 @@ public class LabOrderController {
 
     @PostMapping("/notify")
     public ResponseEntity<LabOrderResponse> notifyOrder(
-            @Valid @RequestBody LabOrderNotificationRequest request) {
+            @Valid @RequestBody LabOrderNotificationRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
         log.info("POST /api/lab/orders/notify - orderCode: {}", request.getOrderCode());
-        LabOrderResponse response = labOrderService.receiveOrder(request);
+        LabOrderResponse response = labOrderService.receiveOrder(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -51,13 +52,6 @@ public class LabOrderController {
         return ResponseEntity.ok(order);
     }
 
-    @PutMapping("/by-appointment/{appointmentId}/complete")
-    public ResponseEntity<LabOrderResponse> completeOrderByAppointmentId(
-            @PathVariable String appointmentId) {
-        log.info("PUT /api/lab/orders/by-appointment/{}/complete", appointmentId);
-        LabOrderResponse response = labOrderService.completeOrderByAppointmentId(appointmentId);
-        return ResponseEntity.ok(response);
-    }
 
     @GetMapping("/by-appointment/{appointmentId}")
     public ResponseEntity<LabOrderWithTestsResponse> getOrderByAppointmentId(

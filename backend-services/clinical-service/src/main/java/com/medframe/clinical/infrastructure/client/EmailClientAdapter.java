@@ -41,4 +41,21 @@ public class EmailClientAdapter implements AppointmentEmailSender {
             // Do not throw - email failure should not affect appointment creation
         }
     }
+
+    @Async
+    @Override
+    public void sendTriageAlert(com.medframe.clinical.infrastructure.client.dto.TriageAlertRequest request) {
+        try {
+            log.info("Sending triage alert email for doctorId={}, priority={}",
+                    request.getDoctorId(), request.getPriorityLevel());
+            emailClient.sendTriageAlert(request);
+            log.info("Triage alert email sent for doctorId={}", request.getDoctorId());
+        } catch (FeignException e) {
+            log.error("Failed to send triage alert email for doctorId={}: HTTP {} - {}",
+                    request.getDoctorId(), e.status(), e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error sending triage alert email for doctorId={}: {}",
+                    request.getDoctorId(), e.getMessage(), e);
+        }
+    }
 }

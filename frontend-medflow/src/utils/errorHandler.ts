@@ -54,17 +54,6 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
- * Verifica si un error es un error HTTP con un código de estado específico.
- *
- * @param error - El error a verificar
- * @param status - El código de estado HTTP a comparar
- * @returns true si el error es un AxiosError con el código de estado especificado
- */
-export function isHttpError(error: unknown, status: number): boolean {
-  return isAxiosError(error) && error.response?.status === status;
-}
-
-/**
  * Type guard para verificar si un error es un AxiosError.
  *
  * @param error - El error a verificar
@@ -81,5 +70,4 @@ function isAxiosError(error: unknown): error is AxiosError {
 
 export default {
   extractErrorMessage,
-  isHttpError,
 };

@@ -39,7 +39,7 @@ public class PatientService {
      * Crea datos demográficos + cuenta en auth-service con contraseña temporal.
      */
     @Transactional
-    public PatientResponse createPatient(CreatePatientRequest request) {
+    public PatientResponse createPatient(CreatePatientRequest request, String userId) {
         if (patientRepository.existsByDpi(request.getDpi())) {
             throw new DuplicateDpiException(request.getDpi());
         }
@@ -64,6 +64,7 @@ public class PatientService {
                 .address(request.getAddress())
                 .build();
 
+        patient.setCreatedBy(userId != null ? userId : "internal");
         Patient saved = patientRepository.save(patient);
         log.info("[CU-01] Paciente creado. DPI: {}, ID: {}", saved.getDpi(), saved.getId());
 
@@ -117,6 +118,7 @@ public class PatientService {
                 .active(request.getActive())
                 .build();
 
+        patient.setCreatedBy("internal");
         Patient saved = patientRepository.save(patient);
         log.info("[INTERNAL] Paciente creado exitosamente. DPI: {}, ID: {}", saved.getDpi(), saved.getId());
 
@@ -148,7 +150,7 @@ public class PatientService {
     }
 
     @Transactional
-    public PatientResponse update(String id, UpdatePatientRequest request) {
+    public PatientResponse update(String id, UpdatePatientRequest request, String userId) {
         Patient patient = patientRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new PatientNotFoundException(id));
 
@@ -164,6 +166,7 @@ public class PatientService {
         if (request.getZone() != null) patient.setZone(request.getZone());
         if (request.getAddress() != null) patient.setAddress(request.getAddress());
 
+        patient.setUpdatedBy(userId != null ? userId : "internal");
         return PatientResponse.from(patientRepository.save(patient));
     }
 }

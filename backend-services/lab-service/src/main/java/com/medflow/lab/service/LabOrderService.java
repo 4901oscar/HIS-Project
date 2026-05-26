@@ -36,7 +36,7 @@ public class LabOrderService {
     private final ExamTypeRepository examTypeRepository;
 
     @Transactional
-    public LabOrderResponse receiveOrder(LabOrderNotificationRequest request) {
+    public LabOrderResponse receiveOrder(LabOrderNotificationRequest request, String userId) {
         log.info("Recibiendo orden de laboratorio: {}", request.getOrderCode());
 
         LabOrder order = LabOrder.builder()
@@ -47,6 +47,7 @@ public class LabOrderService {
                 .testNames(request.getTestNames())
                 .status(OrderStatus.PENDING)
                 .orderedAt(LocalDateTime.now())
+                .createdBy(userId != null ? userId : request.getDoctorId())
                 .build();
 
         LabOrder savedOrder = labOrderRepository.save(order);
@@ -95,7 +96,6 @@ public class LabOrderService {
 
         // Update order status
         order.setStatus(OrderStatus.IN_PROGRESS);
-        order.setUpdatedAt(LocalDateTime.now());
         LabOrder updatedOrder = labOrderRepository.save(order);
 
         // Create sample record
@@ -114,7 +114,7 @@ public class LabOrderService {
     }
 
     @Transactional
-    public LabOrderResponse completeOrderByAppointmentId(String appointmentId) {
+    public LabOrderResponse completeOrderByAppointmentId(String appointmentId, String userId) {
         log.info("Completando orden de laboratorio para cita: {}", appointmentId);
 
         LabOrder order = labOrderRepository.findFirstByAppointmentIdOrderByOrderedAtDesc(appointmentId)
@@ -126,7 +126,7 @@ public class LabOrderService {
         }
 
         order.setStatus(OrderStatus.COMPLETED);
-        order.setUpdatedAt(LocalDateTime.now());
+        order.setUpdatedBy(userId != null ? userId : "internal");
         return mapToResponse(labOrderRepository.save(order));
     }
 

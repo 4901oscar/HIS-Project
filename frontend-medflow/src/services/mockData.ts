@@ -116,25 +116,3 @@ export const getMockAuthResponse = (username: string): AuthResponse | null => {
   };
 };
 
-/**
- * Valida credenciales contra el mock data
- * @param username
- * @param password
- * @returns AuthResponse o null si es inválido
- */
-export const validateMockCredentials = (username: string, password: string): AuthResponse | null => {
-  const user = MOCK_USERS[username as keyof typeof MOCK_USERS];
-
-  if (!user || user.password !== password) {
-    return null;
-  }
-
-  return getMockAuthResponse(username);
-};
-
-export const printAvailableUsers = () => {
-  console.log('%c=== USUARIOS DISPONIBLES PARA TESTING ===', 'font-weight: bold; color: blue;');
-  Object.entries(MOCK_USERS).forEach(([, user]) => {
-    console.log(`%c${user.username} / ${user.password}`, 'color: green;', `→ ${user.fullName} (${user.roles.join(', ')})`);
-  });
-};

@@ -7,11 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa el registro de despacho de una prescripción.
- * 
- * Se crea cuando un farmacéutico despacha los medicamentos al paciente.
- */
 @Entity
 @Table(name = "dispensations", schema = "pharmacy_schema")
 @Data
@@ -37,4 +32,26 @@ public class Dispensation {
     
     @Column(name = "dispensed_medications_json", nullable = false, columnDefinition = "TEXT")
     private String dispensedMedicationsJson;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
+
+    @PrePersist
+    protected void onCreate() {
+        if (dispensedAt == null) {
+            dispensedAt = LocalDateTime.now();
+        }
+        if (createdAt == null) {
+            createdAt = dispensedAt;
+        }
+    }
 }

@@ -36,18 +36,6 @@ export const cancelAppointment = async (id: string): Promise<void> => {
 };
 
 /**
- * Get list of pending triage appointments (VITAL_SIGNS appointments without triage)
- * @returns Array of pending triage appointments
- * @deprecated Use listAppointments({ queue: 'triage' }) from appointmentService instead
- */
-export const getPendingTriageAppointments = async (): Promise<AppointmentResponse[]> => {
-  const response = await api.get<AppointmentResponse[]>('/api/clinical/appointments', {
-    params: { queue: 'triage' }
-  });
-  return response.data;
-};
-
-/**
  * Get triage for a specific appointment
  * @param appointmentId - The appointment ID
  * @returns Triage response
@@ -268,26 +256,10 @@ export const generateLabOrder = async (data: {
   return response.data;
 };
 
-// ─── Medical History ──────────────────────────────────────────────────────────
-
-export interface MedicalHistoryResponse {
-  patient: unknown;
-  consultations: ConsultationResponse[];
-  vitalSigns: VitalSignsResponse[];
-  prescriptions: PrescriptionResponse[];
-  labOrders: LabOrderResponse[];
-}
-
-export const getMedicalHistory = async (patientId: string): Promise<MedicalHistoryResponse> => {
-  const response = await api.get<MedicalHistoryResponse>(`/api/clinical/history/${patientId}`);
-  return response.data;
-};
-
 export default {
   createAppointment,
   activateAppointment,
   cancelAppointment,
-  getPendingTriageAppointments,
   getAppointmentTriage,
   recordVitalSigns,
   getVitalSignsByAppointment,
@@ -297,5 +269,4 @@ export default {
   getPrescriptionByAppointment,
   dispenseMedication,
   generateLabOrder,
-  getMedicalHistory,
 };

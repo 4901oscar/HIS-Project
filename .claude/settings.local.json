@@ -70,7 +70,22 @@
       "PowerShell(python -c \"import docx; print\\('OK'\\)\")",
       "PowerShell(pip install python-docx 2>&1)",
       "PowerShell(python -c \"from docx import Document; print\\('OK'\\)\")",
-      "PowerShell(python \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\gen_cu16.py\")"
+      "PowerShell(python \"C:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\gen_cu16.py\")",
+      "Bash(git merge *)",
+      "Bash(git -C \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\.claude\\\\worktrees\\\\agent-aceaffcf9c912a5e6\" status --short)",
+      "Bash(git -C \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\.claude\\\\worktrees\\\\agent-a9c049aab65f14bb7\" status --short)",
+      "Bash(git -C \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\.claude\\\\worktrees\\\\agent-aa216cad531993f69\" status --short)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\\\\components\\\\PatientForm\\\\PatientForm.tsx\" -Force)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\\\\components\\\\Debug\\\\QuickLoginDebug.tsx\" -Force)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\\\\pages\\\\pharmacy\\\\PharmacyDispense.tsx\" -Force)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\\\\components\\\\common\\\\SuccessAlert.tsx\" -Force)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\\\\components\\\\PatientHeader\\\\PatientHeader.tsx\" -Force)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\" -Force | Select-Object Name, @{Name='Type'; Expression={if\\($_.PSIsContainer\\){'DIR'}else{'FILE'}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-cloud\" -Recurse -Force | Where-Object {$_.PSIsContainer} | Select-Object @{Name='Path'; Expression={$_.FullName -replace [regex]::Escape\\(\"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-cloud\\\\\"\\), ''}} | Sort-Object Path | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\backend-services\" | Select-Object Name, @{Name='Type'; Expression={if\\($_.PSIsContainer\\){'DIR'}else{'FILE'}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\LENOVO\\\\HIS-Project\\\\frontend-medflow\\\\src\" -Force | Where-Object {$_.PSIsContainer} | Select-Object Name | Sort-Object Name)"
     ]
   }
 }

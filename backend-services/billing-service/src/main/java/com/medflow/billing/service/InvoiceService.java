@@ -231,7 +231,7 @@ public class InvoiceService {
      * @throws com.medflow.billing.exception.InvalidInvoiceStatusException if invoice is not PENDING
      */
     @Transactional
-    public InvoiceResponse applyDiscount(String id, com.medflow.billing.dto.request.ApplyDiscountRequest request) {
+    public InvoiceResponse applyDiscount(String id, com.medflow.billing.dto.request.ApplyDiscountRequest request, String userId) {
         Invoice invoice = invoiceRepository.findById(id)
             .orElseThrow(() -> new com.medflow.billing.exception.InvoiceNotFoundException(
                 "Factura no encontrada con ID: " + id));
@@ -264,7 +264,7 @@ public class InvoiceService {
         // Update invoice
         invoice.setDiscountAmount(discountAmount);
         invoice.setTotal(invoice.getSubtotal().subtract(discountAmount));
-        invoice.setUpdatedAt(LocalDateTime.now());
+        invoice.setUpdatedBy(userId != null ? userId : "internal");
         
         Invoice savedInvoice = invoiceRepository.save(invoice);
         return mapToResponse(savedInvoice);
@@ -280,7 +280,7 @@ public class InvoiceService {
      * @throws com.medflow.billing.exception.InvalidInvoiceStatusException if invoice is not PENDING
      */
     @Transactional
-    public InvoiceResponse cancelInvoice(String id) {
+    public InvoiceResponse cancelInvoice(String id, String userId) {
         Invoice invoice = invoiceRepository.findById(id)
             .orElseThrow(() -> new com.medflow.billing.exception.InvoiceNotFoundException(
                 "Factura no encontrada con ID: " + id));
@@ -293,7 +293,7 @@ public class InvoiceService {
         
         // Update status to CANCELLED
         invoice.setStatus(InvoiceStatus.CANCELLED);
-        invoice.setUpdatedAt(LocalDateTime.now());
+        invoice.setUpdatedBy(userId != null ? userId : "internal");
         
         Invoice savedInvoice = invoiceRepository.save(invoice);
         return mapToResponse(savedInvoice);

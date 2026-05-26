@@ -10,6 +10,8 @@ import com.medframe.clinical.domain.port.out.AppointmentRepository;
 import com.medframe.clinical.domain.port.out.AppointmentSlotCache;
 import com.medframe.clinical.domain.port.out.DoctorRepository;
 import com.medframe.clinical.domain.service.AppointmentManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +38,9 @@ import java.util.TreeSet;
 @Service
 @Transactional
 public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(ManageAppointmentUseCaseImpl.class);
+
     private final AppointmentManager appointmentManager;
     private final AppointmentRepository appointmentRepository;
     private final AppointmentSlotCache slotCache;
@@ -506,7 +510,7 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
         } catch (Exception e) {
             // Log error but don't fail the transaction
             // Audit logging is important but shouldn't block business operations
-            System.err.println("Error logging state transition: " + e.getMessage());
+            log.error("Error logging state transition: {}", e.getMessage());
         }
     }
 }

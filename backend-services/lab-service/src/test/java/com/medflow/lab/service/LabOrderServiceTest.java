@@ -65,7 +65,7 @@ class LabOrderServiceTest {
         when(labOrderRepository.save(any(LabOrder.class))).thenReturn(testOrder);
 
         // Act
-        LabOrderResponse response = labOrderService.receiveOrder(testRequest);
+        LabOrderResponse response = labOrderService.receiveOrder(testRequest, null);
 
         // Assert
         assertThat(response).isNotNull();

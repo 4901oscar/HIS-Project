@@ -64,10 +64,10 @@ const DoctorConsultation: FC = () => {
   const fetchAppointments = useCallback(async (showLoading = true) => {
     if (showLoading) setApptLoading(true);
     try {
-      // Fetch appointments with status CONSULTATION and include clinical data
-      const data = await listAppointments({ 
+      const data = await listAppointments({
         status: ['CONSULTATION'],
-        includeClinical: true 
+        includeClinical: true,
+        doctorId: user?.id,
       });
       setMyAppointments(data);
     } catch {
@@ -75,7 +75,7 @@ const DoctorConsultation: FC = () => {
     } finally {
       if (showLoading) setApptLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const handleManualRefresh = useCallback(() => {
     if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
