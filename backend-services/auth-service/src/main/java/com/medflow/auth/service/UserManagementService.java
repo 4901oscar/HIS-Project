@@ -57,7 +57,7 @@ public class UserManagementService {
     }
 
     @Transactional
-    public EmployeeCreationResult createEmployee(CreateEmployeeRequest request) {
+    public EmployeeCreationResult createEmployee(CreateEmployeeRequest request, String userId) {
         RoleName roleName = resolveEmployeeRole(request.getRoleName());
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -81,6 +81,7 @@ public class UserManagementService {
             .phone(request.getPhone())
             .active(true)
             .roles(Set.of(role))
+            .createdBy(userId != null ? userId : "internal")
             .build();
 
         User saved = userRepository.save(user);
@@ -107,7 +108,7 @@ public class UserManagementService {
     }
 
     @Transactional
-    public EmployeeResponse updateEmployee(String id, UpdateEmployeeRequest request) {
+    public EmployeeResponse updateEmployee(String id, UpdateEmployeeRequest request, String userId) {
         User user = findEmployeeById(id);
 
         if (request.getFirstName() != null && !request.getFirstName().isBlank())
@@ -136,15 +137,17 @@ public class UserManagementService {
             user.getRoles().add(role);
         }
 
+        user.setUpdatedBy(userId != null ? userId : "internal");
         User saved = userRepository.save(user);
         log.info("[CU-02] Empleado actualizado. id={}", id);
         return EmployeeResponse.fromUser(saved);
     }
 
     @Transactional
-    public EmployeeResponse toggleActive(String id) {
+    public EmployeeResponse toggleActive(String id, String userId) {
         User user = findEmployeeById(id);
         user.setActive(!user.isActive());
+        user.setUpdatedBy(userId != null ? userId : "internal");
         User saved = userRepository.save(user);
         log.info("[CU-02] Estado empleado cambiado. id={}, activo={}", id, saved.isActive());
         return EmployeeResponse.fromUser(saved);

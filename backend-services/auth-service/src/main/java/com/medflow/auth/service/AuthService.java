@@ -107,6 +107,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .active(false)
                 .roles(Set.of(patientRole))
+                .createdBy("self")
                 .build();
 
         User saved = userRepository.save(user);
@@ -172,7 +173,7 @@ public class AuthService {
     }
 
     @Transactional
-    public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request) {
+    public CreatePatientAccountResponse createPatientAccount(CreatePatientAccountRequest request, String userId) {
         // Validar campos mÃƒÂ©dicos
         validateBirthDate(request.getBirthDate());
         validateGender(request.getGender());
@@ -202,6 +203,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .active(true)
                 .roles(Set.of(patientRole))
+                .createdBy(userId != null ? userId : "internal")
                 .build();
 
         User saved = userRepository.save(user);
