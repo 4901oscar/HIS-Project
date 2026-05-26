@@ -459,7 +459,7 @@ class InvoiceServiceTest {
         request.setDiscountAmount(new BigDecimal("20.00"));
         
         // Act
-        InvoiceResponse response = invoiceService.applyDiscount("inv-1", request);
+        InvoiceResponse response = invoiceService.applyDiscount("inv-1", request, null);
         
         // Assert
         assertThat(response.getDiscountAmount()).isEqualByComparingTo("20.00");
@@ -478,7 +478,7 @@ class InvoiceServiceTest {
         request.setDiscountPercentage(new BigDecimal("15.00")); // 15%
         
         // Act
-        InvoiceResponse response = invoiceService.applyDiscount("inv-1", request);
+        InvoiceResponse response = invoiceService.applyDiscount("inv-1", request, null);
         
         // Assert
         assertThat(response.getDiscountAmount()).isEqualByComparingTo("15.00"); // 15% of 100
@@ -497,7 +497,7 @@ class InvoiceServiceTest {
         request.setDiscountAmount(new BigDecimal("150.00")); // More than subtotal
         
         // Act
-        InvoiceResponse response = invoiceService.applyDiscount("inv-1", request);
+        InvoiceResponse response = invoiceService.applyDiscount("inv-1", request, null);
         
         // Assert - BR7: Total never negative
         assertThat(response.getDiscountAmount()).isEqualByComparingTo("100.00"); // Capped at subtotal
@@ -514,7 +514,7 @@ class InvoiceServiceTest {
         request.setDiscountAmount(new BigDecimal("10.00"));
         
         // Act & Assert
-        assertThatThrownBy(() -> invoiceService.applyDiscount("non-existent", request))
+        assertThatThrownBy(() -> invoiceService.applyDiscount("non-existent", request, null))
             .isInstanceOf(InvoiceNotFoundException.class)
             .hasMessageContaining("Factura no encontrada con ID: non-existent");
     }
@@ -529,7 +529,7 @@ class InvoiceServiceTest {
         request.setDiscountAmount(new BigDecimal("10.00"));
         
         // Act & Assert - BR2: Only PENDING invoices can receive discounts
-        assertThatThrownBy(() -> invoiceService.applyDiscount("inv-3", request))
+        assertThatThrownBy(() -> invoiceService.applyDiscount("inv-3", request, null))
             .isInstanceOf(InvalidInvoiceStatusException.class)
             .hasMessageContaining("Solo se pueden aplicar descuentos a facturas PENDIENTES");
     }
@@ -543,7 +543,7 @@ class InvoiceServiceTest {
         ApplyDiscountRequest request = new ApplyDiscountRequest(); // No discount set
         
         // Act & Assert
-        assertThatThrownBy(() -> invoiceService.applyDiscount("inv-1", request))
+        assertThatThrownBy(() -> invoiceService.applyDiscount("inv-1", request, null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Debe proporcionar un monto o porcentaje de descuento");
     }
@@ -558,7 +558,7 @@ class InvoiceServiceTest {
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         // Act
-        InvoiceResponse response = invoiceService.cancelInvoice("inv-1");
+        InvoiceResponse response = invoiceService.cancelInvoice("inv-1", null);
         
         // Assert
         assertThat(response.getStatus()).isEqualTo(InvoiceStatus.CANCELLED);
@@ -571,7 +571,7 @@ class InvoiceServiceTest {
         when(invoiceRepository.findById("non-existent")).thenReturn(Optional.empty());
         
         // Act & Assert
-        assertThatThrownBy(() -> invoiceService.cancelInvoice("non-existent"))
+        assertThatThrownBy(() -> invoiceService.cancelInvoice("non-existent", null))
             .isInstanceOf(InvoiceNotFoundException.class)
             .hasMessageContaining("Factura no encontrada con ID: non-existent");
     }
@@ -583,7 +583,7 @@ class InvoiceServiceTest {
         when(invoiceRepository.findById("inv-3")).thenReturn(Optional.of(paidInvoice));
         
         // Act & Assert - BR2: Only PENDING invoices can be cancelled
-        assertThatThrownBy(() -> invoiceService.cancelInvoice("inv-3"))
+        assertThatThrownBy(() -> invoiceService.cancelInvoice("inv-3", null))
             .isInstanceOf(InvalidInvoiceStatusException.class)
             .hasMessageContaining("Solo se pueden cancelar facturas PENDIENTES");
     }

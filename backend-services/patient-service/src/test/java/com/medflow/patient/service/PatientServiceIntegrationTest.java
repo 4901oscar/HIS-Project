@@ -59,7 +59,7 @@ class PatientServiceIntegrationTest {
 
     @Test
     void createPatient_guardaDatosYAuthUserId() {
-        PatientResponse response = patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        PatientResponse response = patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         assertThat(response.getId()).isNotNull();
         assertThat(response.getDpi()).isEqualTo("1234567890123");
@@ -69,25 +69,25 @@ class PatientServiceIntegrationTest {
 
     @Test
     void createPatient_lanzaExcepcionSiDpiDuplicado() {
-        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         assertThatThrownBy(() ->
-                patientService.createPatient(buildRequest("1234567890123", "otro@test.com")))
+                patientService.createPatient(buildRequest("1234567890123", "otro@test.com"), null))
                 .isInstanceOf(DuplicateDpiException.class);
     }
 
     @Test
     void createPatient_lanzaExcepcionSiEmailDuplicado() {
-        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         assertThatThrownBy(() ->
-                patientService.createPatient(buildRequest("9876543210987", "juan@test.com")))
+                patientService.createPatient(buildRequest("9876543210987", "juan@test.com"), null))
                 .isInstanceOf(DuplicateEmailException.class);
     }
 
     @Test
     void getById_retornaPacienteExistente() {
-        PatientResponse created = patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        PatientResponse created = patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         PatientResponse found = patientService.getById(created.getId());
 
@@ -103,7 +103,7 @@ class PatientServiceIntegrationTest {
 
     @Test
     void getByDpi_retornaPacienteExistente() {
-        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         PatientResponse found = patientService.getByDpi("1234567890123");
 
@@ -112,7 +112,7 @@ class PatientServiceIntegrationTest {
 
     @Test
     void search_retornaPacientesPorNombre() {
-        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         List<PatientResponse> results = patientService.search("García");
 
@@ -122,13 +122,13 @@ class PatientServiceIntegrationTest {
 
     @Test
     void update_modificaCamposPermitidos() {
-        PatientResponse created = patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
+        PatientResponse created = patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
 
         UpdatePatientRequest update = new UpdatePatientRequest();
         update.setPhone("99998888");
         update.setAddress("Nueva Dirección 123");
 
-        PatientResponse updated = patientService.update(created.getId(), update);
+        PatientResponse updated = patientService.update(created.getId(), update, null);
 
         assertThat(updated.getPhone()).isEqualTo("99998888");
         assertThat(updated.getAddress()).isEqualTo("Nueva Dirección 123");
@@ -137,14 +137,14 @@ class PatientServiceIntegrationTest {
 
     @Test
     void update_lanzaExcepcionSiEmailDuplicado() {
-        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"));
-        PatientResponse segundo = patientService.createPatient(buildRequest("9876543210987", "maria@test.com"));
+        patientService.createPatient(buildRequest("1234567890123", "juan@test.com"), null);
+        PatientResponse segundo = patientService.createPatient(buildRequest("9876543210987", "maria@test.com"), null);
 
         UpdatePatientRequest update = new UpdatePatientRequest();
         update.setEmail("juan@test.com");
 
         assertThatThrownBy(() ->
-                patientService.update(segundo.getId().toString(), update))
+                patientService.update(segundo.getId().toString(), update, null))
                 .isInstanceOf(DuplicateEmailException.class);
     }
 }

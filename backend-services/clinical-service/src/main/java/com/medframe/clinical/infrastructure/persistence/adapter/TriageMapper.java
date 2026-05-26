@@ -26,6 +26,7 @@ public class TriageMapper {
         entity.setMaxWaitTimeMinutes(domain.getMaxWaitTimeMinutes());
         entity.setPerformedAt(domain.getPerformedAt());
         entity.setPerformedBy(domain.getPerformedBy());
+        entity.setCreatedBy(domain.getPerformedBy());
 
         return entity;
     }

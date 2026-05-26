@@ -248,8 +248,18 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
           type="time"
           value={shiftStart}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            setShiftStart(e.target.value);
+            const start = e.target.value;
+            setShiftStart(start);
             setFieldErrors(prev => clearFieldError(prev, 'shiftStart'));
+            if (start) {
+              const [h, m] = start.split(':').map(Number);
+              const endTotal = h * 60 + m + 480;
+              const endH = Math.floor(endTotal / 60) % 24;
+              const endM = endTotal % 60;
+              const computed = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+              setShiftEnd(computed);
+              setFieldErrors(prev => clearFieldError(prev, 'shiftEnd'));
+            }
           }}
           onBlur={handleShiftBlur}
           className={fieldClass('shiftStart')}
@@ -265,15 +275,10 @@ const DoctorForm: FC<DoctorFormProps> = ({ doctor, onSuccess, onCancel }) => {
         <input
           type="time"
           value={shiftEnd}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            setShiftEnd(e.target.value);
-            setFieldErrors(prev => clearFieldError(prev, 'shiftEnd'));
-          }}
-          onBlur={handleShiftBlur}
-          className={fieldClass('shiftEnd')}
+          readOnly
+          className="w-full px-4 py-2 border border-gray-200 rounded bg-gray-50 text-gray-600 cursor-not-allowed"
         />
-        {fieldErrors.shiftEnd && <p className="text-red-500 text-xs mt-1">{fieldErrors.shiftEnd}</p>}
-        <p className="text-xs text-gray-500 mt-1">El turno debe ser de exactamente 8 horas (ej: 08:00 - 16:00)</p>
+        <p className="text-xs text-gray-500 mt-1">Se calcula automáticamente (inicio + 8 horas)</p>
       </div>
 
       {submitError && (

@@ -23,4 +23,7 @@ public interface EmailServiceFeignClient {
      */
     @PostMapping("/api/emails/appointment-confirmation")
     void sendAppointmentConfirmation(@RequestBody AppointmentEmailRequest request);
+
+    @PostMapping("/api/emails/triage-alert")
+    void sendTriageAlert(@RequestBody com.medframe.clinical.infrastructure.client.dto.TriageAlertRequest request);
 }

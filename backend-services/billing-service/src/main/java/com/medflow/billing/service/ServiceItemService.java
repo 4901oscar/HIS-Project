@@ -24,7 +24,7 @@ public class ServiceItemService {
         return items.stream().map(ServiceItemResponse::from).collect(Collectors.toList());
     }
 
-    public ServiceItemResponse create(ServiceItemRequest req) {
+    public ServiceItemResponse create(ServiceItemRequest req, String userId) {
         ServiceItem item = ServiceItem.builder()
                 .code(req.getCode().toUpperCase())
                 .name(req.getName())
@@ -32,11 +32,12 @@ public class ServiceItemService {
                 .category(req.getCategory())
                 .price(req.getPrice())
                 .status(ServiceItemStatus.ACTIVE)
+                .createdBy(userId != null ? userId : "internal")
                 .build();
         return ServiceItemResponse.from(repository.save(item));
     }
 
-    public ServiceItemResponse update(String id, ServiceItemRequest req) {
+    public ServiceItemResponse update(String id, ServiceItemRequest req, String userId) {
         ServiceItem item = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
         item.setCode(req.getCode().toUpperCase());
@@ -47,10 +48,11 @@ public class ServiceItemService {
         if (req.getStatus() != null) {
             item.setStatus(req.getStatus());
         }
+        item.setUpdatedBy(userId != null ? userId : "internal");
         return ServiceItemResponse.from(repository.save(item));
     }
 
-    public ServiceItemResponse toggleActive(String id) {
+    public ServiceItemResponse toggleActive(String id, String userId) {
         ServiceItem item = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
         if (item.getStatus() == ServiceItemStatus.DELETED) {
@@ -60,13 +62,15 @@ public class ServiceItemService {
                 ? ServiceItemStatus.INACTIVE
                 : ServiceItemStatus.ACTIVE;
         item.setStatus(next);
+        item.setUpdatedBy(userId != null ? userId : "internal");
         return ServiceItemResponse.from(repository.save(item));
     }
 
-    public void delete(String id) {
+    public void delete(String id, String userId) {
         ServiceItem item = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
         item.setStatus(ServiceItemStatus.DELETED);
+        item.setUpdatedBy(userId != null ? userId : "internal");
         repository.save(item);
     }
 }

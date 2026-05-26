@@ -44,6 +44,12 @@ public class AppointmentEntity {
     @Column(name = "created_by", nullable = false, length = 36)
     private String createdBy;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
+
     @Column(name = "invoice_id", length = 36)
     private String invoiceId;
 
@@ -83,6 +89,12 @@ public class AppointmentEntity {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
 
     public String getInvoiceId() { return invoiceId; }
     public void setInvoiceId(String invoiceId) { this.invoiceId = invoiceId; }

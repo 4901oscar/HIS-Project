@@ -7,11 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa una prescripción médica recibida desde Clinical Service.
- * 
- * Almacena la información de la receta y los medicamentos prescritos en formato JSON.
- */
 @Entity
 @Table(name = "prescriptions", schema = "pharmacy_schema", indexes = {
     @Index(name = "idx_prescriptions_patient", columnList = "patient_id"),
@@ -48,4 +43,22 @@ public class Prescription {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
+
+    @PrePersist
+    protected void onCreate() {
+        if (issuedAt == null) {
+            issuedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

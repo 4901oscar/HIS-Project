@@ -8,15 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Entidad de auditoría para transiciones de estado de citas.
- * Registra cada cambio de estado con timestamp y usuario responsable.
- * 
- * <p><strong>Requisitos relacionados:</strong></p>
- * <ul>
- *   <li>REQ-14.2: Auditoría de transiciones de estado</li>
- * </ul>
- */
 @Entity
 @Table(name = "appointment_state_transitions")
 @Data
@@ -48,6 +39,18 @@ public class AppointmentStateTransition {
     
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
     
     @PrePersist
     protected void onCreate() {
@@ -56,6 +59,9 @@ public class AppointmentStateTransition {
         }
         if (transitionedAt == null) {
             transitionedAt = LocalDateTime.now();
+        }
+        if (createdAt == null) {
+            createdAt = transitionedAt;
         }
     }
 }

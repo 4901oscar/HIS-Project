@@ -54,6 +54,23 @@ INSERT INTO auth_schema.roles (name, description) VALUES
 ('PATIENT', 'Paciente')
 ON CONFLICT (name) DO NOTHING;
 
+-- Add standard audit columns (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'auth_schema' AND table_name = 'users' AND column_name = 'created_by'
+    ) THEN
+        ALTER TABLE auth_schema.users ADD COLUMN created_by VARCHAR(36) NOT NULL DEFAULT 'SYSTEM';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'auth_schema' AND table_name = 'users' AND column_name = 'updated_by'
+    ) THEN
+        ALTER TABLE auth_schema.users ADD COLUMN updated_by VARCHAR(36);
+    END IF;
+END $$;
+
 -- ============================================================
 -- USUARIOS SEED (solo para desarrollo/demo)
 -- Cambiar contraseñas antes de producción

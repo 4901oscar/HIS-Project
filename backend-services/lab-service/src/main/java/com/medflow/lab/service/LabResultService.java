@@ -37,6 +37,7 @@ public class LabResultService {
 
     private final LabResultRepository labResultRepository;
     private final LabOrderRepository labOrderRepository;
+    private final LabNotificationService labNotificationService;
 
     @Value("${lab.results.storage-path}")
     private String storagePath;
@@ -86,8 +87,11 @@ public class LabResultService {
 
         // Update order status to COMPLETED
         order.setStatus(OrderStatus.COMPLETED);
-        order.setUpdatedAt(LocalDateTime.now());
         labOrderRepository.save(order);
+
+        labNotificationService.notifyLabResultsReady(
+                order.getDoctorId(), order.getPatientId(),
+                order.getAppointmentId(), orderId);
 
         log.info("Resultado guardado con ID: {}", savedResult.getId());
 

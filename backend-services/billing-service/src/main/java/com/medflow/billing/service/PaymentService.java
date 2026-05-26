@@ -92,7 +92,6 @@ public class PaymentService {
         invoice.setCustomerNit(request.getNit());
         invoice.setCustomerName(request.getCustomerName());
         invoice.setStatus(InvoiceStatus.PAID);
-        invoice.setUpdatedAt(LocalDateTime.now());
         invoiceRepository.save(invoice);
         
         // 7. Return payment response

@@ -158,8 +158,8 @@ const CashierPage: FC = () => {
     try {
       const data = await listAppointments({ status: ['PENDING_PHARMACY_PAYMENT'] });
       setPharmacyPayments(data);
-    } catch (err) {
-      console.error('Error cargando cola de farmacia:', err);
+    } catch {
+      // Error shown via empty state
     } finally {
       setLoadingPharmacy(false);
     }
@@ -181,8 +181,7 @@ const CashierPage: FC = () => {
     try {
       const invoice = await getInvoiceById(appt.payment.invoiceId);
       setSelectedInvoice(invoice);
-    } catch (err) {
-      console.error('Error cargando factura:', err);
+    } catch {
       alert('Error al cargar los detalles de la factura');
       setSelectedAppointment(null);
     } finally {

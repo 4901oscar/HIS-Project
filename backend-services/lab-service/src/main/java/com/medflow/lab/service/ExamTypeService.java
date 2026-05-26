@@ -6,6 +6,7 @@ import com.medflow.lab.repository.ExamTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -18,18 +19,20 @@ public class ExamTypeService {
         return repository.findByStatusNot(ExamTypeStatus.DELETED);
     }
 
-    public ExamType create(String code, String name, String description, String testType, String sampleType, ExamTypeStatus status) {
-        return repository.save(ExamType.builder()
+    public ExamType create(String code, String name, String description, String testType, String sampleType, ExamTypeStatus status, String userId) {
+        ExamType examType = ExamType.builder()
                 .code(code.toUpperCase())
                 .name(name)
                 .description(description)
                 .testType(testType)
                 .sampleType(sampleType)
                 .status(status != null ? status : ExamTypeStatus.ACTIVE)
-                .build());
+                .build();
+        examType.setCreatedBy(userId != null ? userId : "internal");
+        return repository.save(examType);
     }
 
-    public ExamType update(String id, String code, String name, String description, String testType, String sampleType, ExamTypeStatus status) {
+    public ExamType update(String id, String code, String name, String description, String testType, String sampleType, ExamTypeStatus status, String userId) {
         ExamType examType = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Examen no encontrado"));
         examType.setCode(code.toUpperCase());
@@ -38,10 +41,11 @@ public class ExamTypeService {
         examType.setTestType(testType);
         examType.setSampleType(sampleType);
         if (status != null) examType.setStatus(status);
+        examType.setUpdatedBy(userId != null ? userId : "internal");
         return repository.save(examType);
     }
 
-    public ExamType toggleActive(String id) {
+    public ExamType toggleActive(String id, String userId) {
         ExamType examType = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Examen no encontrado"));
         if (examType.getStatus() == ExamTypeStatus.DELETED) {
@@ -50,13 +54,15 @@ public class ExamTypeService {
         ExamTypeStatus next = examType.getStatus() == ExamTypeStatus.ACTIVE
                 ? ExamTypeStatus.INACTIVE : ExamTypeStatus.ACTIVE;
         examType.setStatus(next);
+        examType.setUpdatedBy(userId != null ? userId : "internal");
         return repository.save(examType);
     }
 
-    public void delete(String id) {
+    public void delete(String id, String userId) {
         ExamType examType = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Examen no encontrado"));
         examType.setStatus(ExamTypeStatus.DELETED);
+        examType.setUpdatedBy(userId != null ? userId : "internal");
         repository.save(examType);
     }
 }

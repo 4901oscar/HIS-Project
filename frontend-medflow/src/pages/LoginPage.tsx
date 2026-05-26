@@ -8,7 +8,6 @@ import type { FC, FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import type { LoginCredentials } from '../services/authService';
-// import { validateMockCredentials } from '../services/mockData'; // solo desarrollo
 import { useAuth } from '../hooks/useAuth';
 import { Navbar } from '../components';
 import axios from 'axios';
@@ -34,22 +33,6 @@ const LoginPage: FC = () => {
       const response = await login(credentials);
 
       setUser(response.user);
-
-      /* // mock auth — solo desarrollo
-      if (import.meta.env.VITE_USE_MOCK_AUTH === 'true') {
-        response = validateMockCredentials(credentials.username, credentials.password);
-        if (!response) {
-          setError('Usuario o contraseña incorrectos.');
-          setCredentials({ ...credentials, password: '' });
-          setIsLoading(false);
-          return;
-        }
-        localStorage.setItem('auth_token', response.token);
-        localStorage.setItem('user_data', JSON.stringify(response.user));
-      } else {
-        response = await login(credentials);
-      }
-      */
 
       const roleRoutes: Record<string, string> = {
         'ADMIN': '/administrator',

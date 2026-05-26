@@ -25,23 +25,32 @@ public class ServiceItemController {
     }
 
     @PostMapping
-    public ResponseEntity<ServiceItemResponse> create(@Valid @RequestBody ServiceItemRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req));
+    public ResponseEntity<ServiceItemResponse> create(
+            @Valid @RequestBody ServiceItemRequest req,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req, userId));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ServiceItemResponse> update(@PathVariable String id, @Valid @RequestBody ServiceItemRequest req) {
-        return ResponseEntity.ok(service.update(id, req));
+    public ResponseEntity<ServiceItemResponse> update(
+            @PathVariable String id,
+            @Valid @RequestBody ServiceItemRequest req,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        return ResponseEntity.ok(service.update(id, req, userId));
     }
 
     @PatchMapping("/{id}/toggle")
-    public ResponseEntity<ServiceItemResponse> toggle(@PathVariable String id) {
-        return ResponseEntity.ok(service.toggleActive(id));
+    public ResponseEntity<ServiceItemResponse> toggle(
+            @PathVariable String id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        return ResponseEntity.ok(service.toggleActive(id, userId));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable String id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        service.delete(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -213,4 +213,18 @@ public class UserManagementService {
     }
 
     public record EmployeeCreationResult(EmployeeResponse employee, String temporaryPassword) {}
+
+    /** Lookup interno: devuelve email y nombre del usuario dado su ID (sin validación de rol). */
+    public UserEmailInfo getUserEmailById(String userId) {
+        try {
+            User user = userRepository.findById(UUID.fromString(userId)).orElse(null);
+            if (user == null) return null;
+            return new UserEmailInfo(user.getEmail(), user.getFirstName() + " " + user.getFirstLastName());
+        } catch (Exception e) {
+            log.warn("[Internal] No se pudo obtener email para userId={}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+    public record UserEmailInfo(String email, String fullName) {}
 }

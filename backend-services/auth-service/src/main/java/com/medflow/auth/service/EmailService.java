@@ -192,4 +192,78 @@ public class EmailService {
             + "</td></tr>"
             + "</table></td></tr></table></body></html>";
     }
+
+    @Async
+    public void sendTriageAlertEmail(String toEmail, String doctorName,
+                                     String patientId, String appointmentId,
+                                     String priorityLevel, String priorityDescription,
+                                     int maxWaitMinutes) {
+        String subject = "URGENTE - Paciente con triaje " + priorityDescription + " - MedFlow HIS";
+        send(toEmail, doctorName, subject,
+                buildTriageAlertHtml(doctorName, patientId, appointmentId,
+                        priorityLevel, priorityDescription, maxWaitMinutes));
+    }
+
+    @Async
+    public void sendLabResultsReadyEmail(String toEmail, String doctorName,
+                                         String patientId, String appointmentId,
+                                         String orderId) {
+        send(toEmail, doctorName, "Resultados de laboratorio disponibles - MedFlow HIS",
+                buildLabResultsReadyHtml(doctorName, patientId, appointmentId, orderId));
+    }
+
+    private String buildTriageAlertHtml(String doctorName, String patientId, String appointmentId,
+                                        String priorityLevel, String priorityDescription, int maxWaitMinutes) {
+        String badgeColor = "RED".equals(priorityLevel) ? "#c0392b" : "#e67e22";
+        String waitText = maxWaitMinutes == 0 ? "Atención INMEDIATA" : "Máximo " + maxWaitMinutes + " minutos";
+        return "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"></head>"
+            + "<body style=\"margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;\">"
+            + "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f6f8;padding:40px 0;\"><tr><td align=\"center\">"
+            + "<table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);\">"
+            + "<tr><td style=\"background:#0f4c75;padding:28px 40px;\">"
+            + "<h1 style=\"margin:0;color:#00d4e8;font-size:22px;\">MedFlow HIS</h1>"
+            + "<p style=\"margin:4px 0 0;color:#b0d4e8;font-size:12px;\">Sistema de Informacion Hospitalaria</p></td></tr>"
+            + "<tr><td style=\"padding:36px 40px;\">"
+            + "<h2 style=\"margin:0 0 8px;color:#1a1a2e;\">Dr. " + doctorName + "</h2>"
+            + "<p style=\"color:#444;margin:0 0 24px;\">Se le asigno un paciente con prioridad de triaje alta.</p>"
+            + "<div style=\"background:" + badgeColor + ";color:#fff;padding:12px 20px;border-radius:6px;margin:0 0 20px;text-align:center;\">"
+            + "<strong style=\"font-size:18px;\">" + priorityDescription.toUpperCase() + " (" + priorityLevel + ")</strong><br>"
+            + "<span style=\"font-size:13px;\">" + waitText + "</span></div>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin:0 0 24px;\">"
+            + "<tr><td style=\"padding:8px 12px;background:#f0f4f8;color:#555;font-size:13px;\"><strong>Cita:</strong></td>"
+            + "<td style=\"padding:8px 12px;font-family:monospace;font-size:13px;\">" + appointmentId + "</td></tr>"
+            + "<tr><td style=\"padding:8px 12px;color:#555;font-size:13px;\"><strong>Paciente:</strong></td>"
+            + "<td style=\"padding:8px 12px;font-family:monospace;font-size:13px;\">" + patientId + "</td></tr>"
+            + "</table>"
+            + "<p style=\"color:#888;font-size:12px;margin:0;\">Ingrese al sistema para ver los detalles completos del paciente.</p>"
+            + "</td></tr>"
+            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS</p></td></tr>"
+            + "</table></td></tr></table></body></html>";
+    }
+
+    private String buildLabResultsReadyHtml(String doctorName, String patientId,
+                                            String appointmentId, String orderId) {
+        return "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"></head>"
+            + "<body style=\"margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;\">"
+            + "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f6f8;padding:40px 0;\"><tr><td align=\"center\">"
+            + "<table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);\">"
+            + "<tr><td style=\"background:#0f4c75;padding:28px 40px;\">"
+            + "<h1 style=\"margin:0;color:#00d4e8;font-size:22px;\">MedFlow HIS</h1>"
+            + "<p style=\"margin:4px 0 0;color:#b0d4e8;font-size:12px;\">Sistema de Informacion Hospitalaria</p></td></tr>"
+            + "<tr><td style=\"padding:36px 40px;\">"
+            + "<h2 style=\"margin:0 0 8px;color:#1a1a2e;\">Dr. " + doctorName + "</h2>"
+            + "<p style=\"color:#444;margin:0 0 24px;\">Los resultados de laboratorio de su paciente ya estan disponibles en el sistema.</p>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin:0 0 24px;\">"
+            + "<tr><td style=\"padding:8px 12px;background:#f0f4f8;color:#555;font-size:13px;\"><strong>Orden:</strong></td>"
+            + "<td style=\"padding:8px 12px;font-family:monospace;font-size:13px;\">" + orderId + "</td></tr>"
+            + "<tr><td style=\"padding:8px 12px;color:#555;font-size:13px;\"><strong>Cita:</strong></td>"
+            + "<td style=\"padding:8px 12px;font-family:monospace;font-size:13px;\">" + appointmentId + "</td></tr>"
+            + "<tr><td style=\"padding:8px 12px;background:#f0f4f8;color:#555;font-size:13px;\"><strong>Paciente:</strong></td>"
+            + "<td style=\"padding:8px 12px;font-family:monospace;font-size:13px;\">" + patientId + "</td></tr>"
+            + "</table>"
+            + "<p style=\"color:#888;font-size:12px;margin:0;\">Ingrese al sistema para revisar los resultados y continuar con la consulta.</p>"
+            + "</td></tr>"
+            + "<tr><td style=\"background:#f4f6f8;padding:16px 40px;text-align:center;\"><p style=\"margin:0;color:#aaa;font-size:11px;\">&copy; 2025 MedFlow HIS</p></td></tr>"
+            + "</table></td></tr></table></body></html>";
+    }
 }

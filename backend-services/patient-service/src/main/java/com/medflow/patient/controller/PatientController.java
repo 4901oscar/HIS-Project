@@ -26,8 +26,8 @@ public class PatientController {
     /** CU-01: Admisión registra paciente presencialmente. */
     @PostMapping
     @PreAuthorize("hasRole('ADMISSION')")
-    public ResponseEntity<PatientResponse> createPatient(@Valid @RequestBody CreatePatientRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(patientService.createPatient(request));
+    public ResponseEntity<PatientResponse> createPatient(@Valid @RequestBody CreatePatientRequest request, @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(patientService.createPatient(request, userId));
     }
 
     /**
@@ -71,7 +71,8 @@ public class PatientController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMISSION','PATIENT')")
     public ResponseEntity<PatientResponse> update(@PathVariable String id,
-                                                   @Valid @RequestBody UpdatePatientRequest request) {
-        return ResponseEntity.ok(patientService.update(id, request));
+                                                   @Valid @RequestBody UpdatePatientRequest request,
+                                                   @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        return ResponseEntity.ok(patientService.update(id, request, userId));
     }
 }

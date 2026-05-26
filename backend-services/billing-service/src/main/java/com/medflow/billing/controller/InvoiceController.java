@@ -120,9 +120,10 @@ public class InvoiceController {
     @PutMapping("/{id}/discount")
     public ResponseEntity<InvoiceResponse> applyDiscount(
             @PathVariable String id,
-            @Valid @RequestBody ApplyDiscountRequest request) {
+            @Valid @RequestBody ApplyDiscountRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
         
-        InvoiceResponse response = invoiceService.applyDiscount(id, request);
+        InvoiceResponse response = invoiceService.applyDiscount(id, request, userId);
         return ResponseEntity.ok(response);
     }
     
@@ -134,8 +135,10 @@ public class InvoiceController {
      * @return 200 OK with updated InvoiceResponse
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<InvoiceResponse> cancelInvoice(@PathVariable String id) {
-        InvoiceResponse response = invoiceService.cancelInvoice(id);
+    public ResponseEntity<InvoiceResponse> cancelInvoice(
+            @PathVariable String id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        InvoiceResponse response = invoiceService.cancelInvoice(id, userId);
         return ResponseEntity.ok(response);
     }
     

@@ -169,7 +169,6 @@ public class PrescriptionService {
         
         // 6. Actualizar estado de prescripción
         prescription.setStatus(PrescriptionStatus.DISPENSED);
-        prescription.setUpdatedAt(LocalDateTime.now());
         Prescription updated = prescriptionRepository.save(prescription);
         
         // 7. Crear registro de dispensación

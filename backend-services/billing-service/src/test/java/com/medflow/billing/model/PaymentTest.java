@@ -81,7 +81,11 @@ class PaymentTest {
             new BigDecimal("0.00"),
             PaymentMethod.CASH,
             paidAt,
-            "user-123"
+            "user-123",
+            null,
+            null,
+            null,
+            null
         );
         
         assertEquals("payment-123", payment.getId());

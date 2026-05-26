@@ -1,6 +1,7 @@
 package com.medframe.clinical.domain.port.out;
 
 import com.medframe.clinical.infrastructure.client.dto.AppointmentEmailRequest;
+import com.medframe.clinical.infrastructure.client.dto.TriageAlertRequest;
 
 /**
  * Port for sending appointment confirmation emails.
@@ -16,4 +17,10 @@ public interface AppointmentEmailSender {
      * @param request The email request containing appointment details and QR code
      */
     void sendAppointmentConfirmationEmail(AppointmentEmailRequest request);
+
+    /**
+     * Envía alerta de triaje urgente (RED/ORANGE) al médico asignado.
+     * No lanza excepciones; los fallos se loguean y se ignoran.
+     */
+    void sendTriageAlert(TriageAlertRequest request);
 }

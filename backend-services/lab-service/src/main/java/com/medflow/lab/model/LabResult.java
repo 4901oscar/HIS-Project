@@ -44,10 +44,30 @@ public class LabResult {
     @Column(name = "uploaded_by", nullable = false, length = 36)
     private String uploadedBy;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
+
     @PrePersist
     protected void onCreate() {
         if (uploadedAt == null) {
             uploadedAt = LocalDateTime.now();
         }
+        if (createdAt == null) {
+            createdAt = uploadedAt;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

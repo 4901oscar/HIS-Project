@@ -75,8 +75,14 @@ public class Patient {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
 
     @PrePersist
     protected void onCreate() {
