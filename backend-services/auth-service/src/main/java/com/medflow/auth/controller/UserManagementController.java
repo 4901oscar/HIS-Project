@@ -35,10 +35,11 @@ public class UserManagementController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createEmployee(
             @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
             @Valid @RequestBody CreateEmployeeRequest request) {
 
         userManagementService.requireAdmin(authHeader);
-        EmployeeCreationResult result = userManagementService.createEmployee(request);
+        EmployeeCreationResult result = userManagementService.createEmployee(request, userId);
         log.info("[CU-02] Empleado creado por admin. username={}", result.employee().getUsername());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
@@ -77,7 +78,7 @@ public class UserManagementController {
             @Valid @RequestBody UpdateEmployeeRequest request) {
 
         userManagementService.requireAdmin(authHeader);
-        return ResponseEntity.ok(userManagementService.updateEmployee(id, request));
+        return ResponseEntity.ok(userManagementService.updateEmployee(id, request, null));
     }
 
     /** CU-02: Activar / desactivar cuenta del empleado. */
@@ -87,6 +88,6 @@ public class UserManagementController {
             @PathVariable String id) {
 
         userManagementService.requireAdmin(authHeader);
-        return ResponseEntity.ok(userManagementService.toggleActive(id));
+        return ResponseEntity.ok(userManagementService.toggleActive(id, null));
     }
 }

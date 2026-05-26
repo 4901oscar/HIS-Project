@@ -107,6 +107,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .active(false)
                 .roles(Set.of(patientRole))
+                .createdBy("self")
                 .build();
 
         User saved = userRepository.save(user);
@@ -202,6 +203,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .active(true)
                 .roles(Set.of(patientRole))
+                .createdBy("internal")
                 .build();
 
         User saved = userRepository.save(user);
