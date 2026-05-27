@@ -58,12 +58,9 @@ public class LabResult {
 
     @PrePersist
     protected void onCreate() {
-        if (uploadedAt == null) {
-            uploadedAt = LocalDateTime.now();
-        }
-        if (createdAt == null) {
-            createdAt = uploadedAt;
-        }
+        if (uploadedAt == null) uploadedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = uploadedAt;
+        if (createdBy == null) createdBy = "internal";
     }
 
     @PreUpdate

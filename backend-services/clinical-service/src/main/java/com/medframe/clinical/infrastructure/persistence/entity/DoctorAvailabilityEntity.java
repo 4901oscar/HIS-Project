@@ -49,4 +49,18 @@ public class DoctorAvailabilityEntity {
 
     @Column(name = "updated_by", length = 36)
     private String updatedBy;
-}
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = java.time.LocalDateTime.now();
+        }
+        if (createdBy == null) {
+            createdBy = "internal";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = java.time.LocalDateTime.now();
+    }}

@@ -47,4 +47,15 @@ public class ManchesterDiscriminatorEntity {
 
     @Column(name = "updated_by", length = 36)
     private String updatedBy;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdBy == null) createdBy = "internal";
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

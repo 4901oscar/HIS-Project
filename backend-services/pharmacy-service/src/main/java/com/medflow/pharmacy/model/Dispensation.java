@@ -47,11 +47,13 @@ public class Dispensation {
 
     @PrePersist
     protected void onCreate() {
-        if (dispensedAt == null) {
-            dispensedAt = LocalDateTime.now();
-        }
-        if (createdAt == null) {
-            createdAt = dispensedAt;
-        }
+        if (dispensedAt == null) dispensedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = dispensedAt;
+        if (createdBy == null) createdBy = "internal";
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

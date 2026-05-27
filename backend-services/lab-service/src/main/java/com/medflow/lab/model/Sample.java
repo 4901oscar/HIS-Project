@@ -43,12 +43,9 @@ public class Sample {
 
     @PrePersist
     protected void onCreate() {
-        if (collectedAt == null) {
-            collectedAt = LocalDateTime.now();
-        }
-        if (createdAt == null) {
-            createdAt = collectedAt;
-        }
+        if (collectedAt == null) collectedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = collectedAt;
+        if (createdBy == null) createdBy = "internal";
     }
 
     @PreUpdate

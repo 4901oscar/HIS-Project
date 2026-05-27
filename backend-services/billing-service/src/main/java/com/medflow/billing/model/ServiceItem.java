@@ -55,9 +55,8 @@ public class ServiceItem {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdBy == null) createdBy = "internal";
     }
 
     @PreUpdate

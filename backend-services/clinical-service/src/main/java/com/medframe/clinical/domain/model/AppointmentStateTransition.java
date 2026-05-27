@@ -54,14 +54,14 @@ public class AppointmentStateTransition {
     
     @PrePersist
     protected void onCreate() {
-        if (id == null) {
-            id = java.util.UUID.randomUUID().toString();
-        }
-        if (transitionedAt == null) {
-            transitionedAt = LocalDateTime.now();
-        }
-        if (createdAt == null) {
-            createdAt = transitionedAt;
-        }
+        if (id == null) id = java.util.UUID.randomUUID().toString();
+        if (transitionedAt == null) transitionedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = transitionedAt;
+        if (createdBy == null) createdBy = "internal";
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

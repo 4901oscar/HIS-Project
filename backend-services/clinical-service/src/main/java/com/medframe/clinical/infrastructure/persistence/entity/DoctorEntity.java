@@ -55,4 +55,18 @@ public class DoctorEntity {
         ACTIVE,
         INACTIVE
     }
-}
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = java.time.LocalDateTime.now();
+        }
+        if (createdBy == null) {
+            createdBy = "internal";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = java.time.LocalDateTime.now();
+    }}

@@ -99,4 +99,16 @@ public class PrescriptionEntity {
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+
+    @PrePersist
+    protected void onCreate() {
+        if (issuedAt == null) issuedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdBy == null) createdBy = "internal";
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
