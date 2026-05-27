@@ -31,6 +31,9 @@ public class VitalSignsMapper {
         entity.setRecordedAt(domain.getRecordedAt());
         entity.setRecordedBy(domain.getRecordedBy());
         entity.setCreatedBy(domain.getRecordedBy());
+        if (domain.getId() != null) {
+            entity.setUpdatedBy(domain.getRecordedBy());
+        }
 
         return entity;
     }

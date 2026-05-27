@@ -83,7 +83,7 @@ public class Invoice {
     /**
      * Timestamp when the invoice was created
      */
-    @Column(name = "created_at", nullable = false, updatable = false, nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
     /**
