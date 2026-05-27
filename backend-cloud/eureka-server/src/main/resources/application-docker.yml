@@ -1,0 +1,51 @@
+# ============================================
+# Eureka Server Configuration - Docker Profile
+# ============================================
+
+spring:
+  application:
+    name: eureka-server
+
+server:
+  port: 8761
+
+# ============================================
+# Eureka Server Settings for Docker
+# ============================================
+eureka:
+  instance:
+    hostname: eureka-server  # Nombre del contenedor Docker
+    prefer-ip-address: true
+    ip-address: eureka-server
+  
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  
+  server:
+    eviction-interval-timer-in-ms: 15000
+    enable-self-preservation: false
+    renewal-percent-threshold: 0.85
+
+# ============================================
+# Actuator Configuration
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ============================================
+# Logging Configuration
+# ============================================
+logging:
+  level:
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+    root: INFO

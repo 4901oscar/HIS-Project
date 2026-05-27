@@ -1,0 +1,336 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: medflow-postgres
+    environment:
+      POSTGRES_DB: medflow_db
+      POSTGRES_USER: medflow_user
+      POSTGRES_PASSWORD: medflow_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medflow_user -d medflow_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: medflow-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  # ============================================
+  # Email Testing Service (MailHog)
+  # ============================================
+  # mailhog:
+  #   image: mailhog/mailhog:latest
+  #   container_name: medflow-mailhog
+  #   ports:
+  #     - "1025:1025"
+  #     - "8025:8025"
+  #   networks:
+  #     - medflow-network
+  #   healthcheck:
+  #     test: ["CMD", "echo", "ok"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  # ============================================
+  # Spring Cloud Infrastructure
+  # ============================================
+  
+  eureka-server:
+    build:
+      context: ./backend-cloud/eureka-server
+      dockerfile: Dockerfile
+    container_name: medflow-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./backend-cloud/api-gateway
+      dockerfile: Dockerfile
+    container_name: medflow-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET:-default-secret-key-change-in-production-256-bits-minimum}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # Microservices - Business Domain
+  # ============================================
+
+  auth-service:
+    build:
+      context: ./backend-services/auth-service
+      dockerfile: Dockerfile
+    container_name: medflow-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - TZ=America/Guatemala
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=auth_schema
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - JWT_SECRET=${JWT_SECRET:-default-secret-key-change-in-production-256-bits-minimum}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - APP_FRONTEND_URL=${APP_FRONTEND_URL:-http://localhost:5173}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  patient-service:
+    build:
+      context: ./backend-services/patient-service
+      dockerfile: Dockerfile
+    container_name: medflow-patient-service
+    ports:
+      - "8082:8082"
+    environment:
+      - TZ=America/Guatemala
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=patient_schema
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - AUTH_SERVICE_URL=http://auth-service:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      # mailhog:                        
+      #   condition: service_started
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  clinical-service:
+    build:
+      context: ./backend-services/clinical-service
+      dockerfile: Dockerfile
+    container_name: medflow-clinical-service
+    ports:
+      - "8083:8083"
+    environment:
+      - TZ=America/Guatemala
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=clinical_schema
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - PATIENT_SERVICE_URL=http://patient-service:8082
+      - PHARMACY_SERVICE_URL=http://pharmacy-service:8085
+      - LAB_SERVICE_URL=http://lab-service:8084
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - BILLING_SERVICE_URL=http://billing-service:8086
+      - BILLING_SERVICE_ENABLED=true
+      - PAYMENT_VALIDATION_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      patient-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      billing-service:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  lab-service:
+    build:
+      context: ./backend-services/lab-service
+      dockerfile: Dockerfile
+    container_name: medflow-lab-service
+    ports:
+      - "8084:8084"
+    environment:
+      - TZ=America/Guatemala
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=lab_schema
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+      - LAB_RESULTS_PATH=/app/lab-results
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    volumes:
+      - lab_results:/app/lab-results
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pharmacy-service:
+    build:
+      context: ./backend-services/pharmacy-service
+      dockerfile: Dockerfile
+    container_name: medflow-pharmacy-service
+    ports:
+      - "8085:8085"
+    environment:
+      - TZ=America/Guatemala
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=pharmacy_schema
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  billing-service:
+    build:
+      context: ./backend-services/billing-service
+      dockerfile: Dockerfile
+    container_name: medflow-billing-service
+    ports:
+      - "8086:8086"
+    environment:
+      - TZ=America/Guatemala
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/medflow_db?currentSchema=billing_schema
+      - SPRING_DATASOURCE_USERNAME=medflow_user
+      - SPRING_DATASOURCE_PASSWORD=medflow_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - medflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # Frontend
+  # ============================================
+
+  frontend:
+    build:
+      context: ./frontend-medflow
+      dockerfile: Dockerfile
+      args:
+        VITE_API_GATEWAY_URL: ${VITE_API_GATEWAY_URL:-http://localhost:8080}
+    container_name: medflow-frontend
+    ports:
+      - "3002:3000"
+    environment:
+      - VITE_API_GATEWAY_URL=${VITE_API_GATEWAY_URL:-http://localhost:8080}
+    depends_on:
+      - api-gateway
+    networks:
+      - medflow-network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  medflow-network:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  lab_results:
+    driver: local

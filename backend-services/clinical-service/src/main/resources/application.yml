@@ -1,0 +1,215 @@
+spring:
+  application:
+    name: clinical-service
+
+  # Set default timezone to Guatemala (GMT-6)
+  jackson:
+    time-zone: America/Guatemala
+    serialization:
+      write-dates-as-timestamps: false
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/medflow_db?currentSchema=clinical_schema
+    username: ${DB_USERNAME:medflow_user}
+    password: ${DB_PASSWORD:medflow_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 5
+        queue-capacity: 100
+        thread-name-prefix: async-email-
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: clinical_schema
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    out-of-order: true
+    validate-on-migrate: false
+    locations: classpath:db/migration
+    schemas: clinical_schema
+    default-schema: clinical_schema
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+server:
+  port: 8083
+  error:
+    include-message: always
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+services:
+  patient-service:
+    url: ${PATIENT_SERVICE_URL:http://localhost:8082}
+  pharmacy-service:
+    url: ${PHARMACY_SERVICE_URL:http://localhost:8085}
+  lab-service:
+    url: ${LAB_SERVICE_URL:http://localhost:8084}
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+
+# Configuración de URL del Billing Service
+# REQ-1.1
+billing:
+  service:
+    url: ${BILLING_SERVICE_URL:http://localhost:8086}
+    # Feature flag para activar/desactivar integración con Billing Service
+    # REQ-11.4, REQ-11.5
+    enabled: ${BILLING_SERVICE_ENABLED:true}
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 2000
+        readTimeout: 5000
+        loggerLevel: basic
+      auth-service:
+        connectTimeout: 2000
+        readTimeout: 5000
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      patientService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      # Circuit breaker para Billing Service
+      # REQ-3.1, REQ-3.2, REQ-3.4, REQ-3.5
+      billingService:
+        # Tamaño de ventana deslizante para calcular tasa de fallos
+        sliding-window-size: 10
+        # Número mínimo de llamadas antes de calcular tasa de fallos
+        minimum-number-of-calls: 5
+        # Umbral de tasa de fallos (50%) para abrir el circuit breaker
+        failure-rate-threshold: 50
+        # Tiempo de espera en estado OPEN antes de transicionar a HALF_OPEN
+        wait-duration-in-open-state: 30s
+        # Número de llamadas permitidas en estado HALF_OPEN para probar recuperación
+        permitted-number-of-calls-in-half-open-state: 3
+        # Excepciones que se registran como fallos
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+          - com.medframe.clinical.infrastructure.client.BillingServiceException
+  retry:
+    instances:
+      patientService:
+        max-attempts: 3
+        wait-duration: 1s
+      # Retry para Billing Service (POST - crear facturas)
+      # REQ-3.6
+      billingService:
+        # Número máximo de intentos (1 intento inicial + 2 reintentos)
+        max-attempts: 3
+        # Tiempo de espera inicial entre reintentos
+        wait-duration: 1s
+        # Multiplicador para backoff exponencial (1s, 2s, 4s)
+        exponential-backoff-multiplier: 2
+        # Excepciones que activan reintentos
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+          - com.medframe.clinical.infrastructure.client.BillingServiceException
+      # Retry para Billing Service GET requests (validación de pago)
+      # REQ-3.6 (payment-validation-before-activation)
+      billingServiceGet:
+        # Número máximo de intentos (1 intento inicial + 1 reintento = 2 total)
+        max-attempts: 2
+        # Tiempo de espera inicial entre reintentos
+        wait-duration: 500ms
+        # Habilitar backoff exponencial
+        enable-exponential-backoff: true
+        # Multiplicador para backoff exponencial (500ms, 1s)
+        exponential-backoff-multiplier: 2
+        # Excepciones que activan reintentos
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+        # Excepciones que NO activan reintentos (404 Not Found)
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException$NotFound
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.medframe.clinical: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+
+# Configuración de precios de consulta médica
+# REQ-4.1, REQ-4.2, REQ-4.3, REQ-4.6
+consultation:
+  price:
+    # Precio por defecto para consultas generales (GTQ)
+    default: 150.00
+    # Precio para consultas de emergencia (GTQ)
+    emergency: 300.00
+    # Precio para consultas de seguimiento (GTQ)
+    followup: 100.00
+    # Precio para órdenes de laboratorio (GTQ)
+    lab: 75.00
+
+# Configuración de validación de pago antes de activar citas
+# REQ-9.1, REQ-9.2, REQ-9.3, REQ-9.4 (payment-validation-before-activation)
+payment:
+  validation:
+    # Feature flag para habilitar/deshabilitar validación de pago
+    # true: Solo citas con factura PAID pueden activarse
+    # false: Citas pueden activarse sin validar pago (rollback rápido)
+    enabled: ${PAYMENT_VALIDATION_ENABLED:true}
+
+# Configuración de RestTemplate para comunicación HTTP
+# REQ-3.7, NFR-2
+rest:
+  template:
+    connection:
+      # Timeout de conexión en milisegundos (tiempo máximo para establecer conexión TCP)
+      timeout: 5000
+    read:
+      # Timeout de lectura en milisegundos (tiempo máximo para recibir respuesta completa)
+      timeout: 5000

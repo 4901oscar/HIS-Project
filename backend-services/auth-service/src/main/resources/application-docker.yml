@@ -1,0 +1,32 @@
+management:
+  health:
+    mail:
+      enabled: false
+
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/medflow_db?currentSchema=auth_schema
+    username: ${SPRING_DATASOURCE_USERNAME:medflow_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:medflow_pass}
+
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    hostname: auth-service
+
+jwt:
+  secret: ${JWT_SECRET:default-secret-key-change-in-production-256-bits-minimum}
+
+logging:
+  level:
+    com.medflow.auth: INFO
+    org.springframework.security: INFO

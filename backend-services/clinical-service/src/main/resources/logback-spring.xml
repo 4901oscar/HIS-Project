@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console appender for development -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- JSON appender for PaymentValidator structured logging -->
+    <!-- REQ-7.1-7.8, NFR-15 -->
+    <appender name="PAYMENT_VALIDATION_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/payment-validation.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/payment-validation.%d{yyyy-MM-dd}.json</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Include standard fields -->
+            <includeMdcKeyName>appointmentId</includeMdcKeyName>
+            <includeMdcKeyName>invoiceId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>duration_ms</includeMdcKeyName>
+            <includeMdcKeyName>validationResult</includeMdcKeyName>
+            <includeMdcKeyName>paymentStatus</includeMdcKeyName>
+            <includeMdcKeyName>errorCode</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- Async wrapper for payment validation logging -->
+    <appender name="ASYNC_PAYMENT_VALIDATION" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="PAYMENT_VALIDATION_JSON" />
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Logger for PaymentValidator with JSON structured logging -->
+    <logger name="com.medframe.clinical.domain.service.PaymentValidator" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_PAYMENT_VALIDATION" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!-- Logger for BillingServiceClient -->
+    <logger name="com.medframe.clinical.infrastructure.client.BillingServiceClient" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_PAYMENT_VALIDATION" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!-- Logger for AppointmentController activation -->
+    <logger name="com.medframe.clinical.infrastructure.rest.controller.AppointmentController" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_PAYMENT_VALIDATION" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:medflow_db}
+    username: ${DB_USER:medflow_user}
+    password: ${DB_PASSWORD:medflow_pass}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    hostname: lab-service
+
+lab:
+  results:
+    storage-path: ${LAB_RESULTS_PATH:/app/lab-results}
+
+logging:
+  level:
+    com.medflow.lab: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+
+services:
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://auth-service:8081}
