@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
+import Swal from 'sweetalert2';
 import { MainLayout } from '../../components/Layout';
 import PharmacyQueue from '../../components/pharmacy/PharmacyQueue';
 import PrescriptionDetail from '../../components/pharmacy/PrescriptionDetail';
@@ -87,18 +88,28 @@ const PharmacyPage: FC = () => {
     try {
       await dispenseMedication(appointmentId);
       
-      // Show success message
-      alert('Medicamentos dispensados correctamente');
-      
+      await Swal.fire({
+        icon: 'success',
+        title: 'Medicamento entregado exitosamente',
+        confirmButtonText: 'Aceptar',
+        confirmButtonColor: '#16a34a',
+      });
+
       // Return to queue and refresh
       returnToQueue();
       await loadQueue();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error 
-        ? err.message 
+      const errorMessage = err instanceof Error
+        ? err.message
         : 'Error al dispensar medicamentos. Por favor, intente nuevamente.';
       setError(errorMessage);
-      alert(errorMessage);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: errorMessage,
+        confirmButtonText: 'Aceptar',
+        confirmButtonColor: '#dc2626',
+      });
     } finally {
       setDispensing(false);
     }
