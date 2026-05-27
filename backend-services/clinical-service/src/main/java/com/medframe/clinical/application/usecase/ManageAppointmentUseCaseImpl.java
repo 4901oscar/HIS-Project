@@ -8,7 +8,10 @@ import com.medframe.clinical.domain.model.ScanResult;
 import com.medframe.clinical.domain.port.in.ManageAppointmentUseCase;
 import com.medframe.clinical.domain.port.out.AppointmentRepository;
 import com.medframe.clinical.domain.port.out.AppointmentSlotCache;
+import com.medframe.clinical.domain.port.out.ConsultationRepository;
 import com.medframe.clinical.domain.port.out.DoctorRepository;
+import com.medframe.clinical.domain.port.out.PrescriptionRepository;
+import com.medframe.clinical.domain.model.Prescription;
 import com.medframe.clinical.domain.service.AppointmentManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +52,8 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     private final DoctorRepository doctorRepository;
     private final com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient;
     private final com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository;
+    private final ConsultationRepository consultationRepository;
+    private final PrescriptionRepository prescriptionRepository;
 
     public ManageAppointmentUseCaseImpl(AppointmentManager appointmentManager,
                                         AppointmentRepository appointmentRepository,
@@ -57,7 +62,9 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
                                         com.medframe.clinical.domain.service.DoctorAssignmentService doctorAssignmentService,
                                         DoctorRepository doctorRepository,
                                         com.medframe.clinical.domain.port.out.PatientServiceClient patientServiceClient,
-                                        com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository) {
+                                        com.medframe.clinical.domain.repository.AppointmentStateTransitionRepository stateTransitionRepository,
+                                        ConsultationRepository consultationRepository,
+                                        PrescriptionRepository prescriptionRepository) {
         this.appointmentManager = appointmentManager;
         this.appointmentRepository = appointmentRepository;
         this.slotCache = slotCache;
@@ -66,6 +73,8 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
         this.doctorRepository = doctorRepository;
         this.patientServiceClient = patientServiceClient;
         this.stateTransitionRepository = stateTransitionRepository;
+        this.consultationRepository = consultationRepository;
+        this.prescriptionRepository = prescriptionRepository;
     }
     
     /**
@@ -303,21 +312,26 @@ public class ManageAppointmentUseCaseImpl implements ManageAppointmentUseCase {
     @Override
     public void dispenseMedication(String appointmentId) {
         permissionValidator.requireRole("PHARMACY", "ADMIN");
-        
+
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentNotFoundException("Cita no encontrada: " + appointmentId));
-        
+
         Appointment.AppointmentStatus oldStatus = appointment.getStatus();
-        
-        // Transition state
+
         appointment.dispenseMedication();
-        
-        // Persist changes
         appointmentRepository.update(appointment);
-        
-        // Log state transition
-        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), 
-                          "Medicamentos dispensados");
+
+        logStateTransition(appointmentId, oldStatus, appointment.getStatus(), "Medicamentos dispensados");
+
+        // Marcar prescripciones de esta cita como DISPENSED
+        consultationRepository.findByAppointmentId(appointmentId).ifPresent(consultation ->
+            prescriptionRepository.findByConsultationId(consultation.getId()).forEach(prescription -> {
+                if (prescription.getStatus() == Prescription.PrescriptionStatus.PENDING) {
+                    prescription.setStatus(Prescription.PrescriptionStatus.DISPENSED);
+                    prescriptionRepository.save(prescription);
+                }
+            })
+        );
     }
     
     /**
