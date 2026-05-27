@@ -1,4 +1,4 @@
-﻿package com.medflow.billing.model;
+package com.medflow.billing.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
