@@ -55,12 +55,9 @@ public class LabOrder {
 
     @PrePersist
     protected void onCreate() {
-        if (orderedAt == null) {
-            orderedAt = LocalDateTime.now();
-        }
-        if (status == null) {
-            status = OrderStatus.PENDING;
-        }
+        if (orderedAt == null) orderedAt = LocalDateTime.now();
+        if (status == null) status = OrderStatus.PENDING;
+        if (createdBy == null) createdBy = "internal";
     }
 
     @PreUpdate

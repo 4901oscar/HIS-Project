@@ -104,4 +104,15 @@ public class AppointmentEntity {
 
     public String getPharmacyInvoiceId() { return pharmacyInvoiceId; }
     public void setPharmacyInvoiceId(String pharmacyInvoiceId) { this.pharmacyInvoiceId = pharmacyInvoiceId; }
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdBy == null) createdBy = "internal";
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

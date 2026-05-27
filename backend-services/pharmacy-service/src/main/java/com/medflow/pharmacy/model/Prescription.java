@@ -52,9 +52,8 @@ public class Prescription {
 
     @PrePersist
     protected void onCreate() {
-        if (issuedAt == null) {
-            issuedAt = LocalDateTime.now();
-        }
+        if (issuedAt == null) issuedAt = LocalDateTime.now();
+        if (createdBy == null) createdBy = "internal";
     }
 
     @PreUpdate
