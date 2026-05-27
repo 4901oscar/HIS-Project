@@ -1,4 +1,4 @@
-package com.medflow.billing.model;
+﻿package com.medflow.billing.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -57,6 +57,9 @@ public class Payment {
         }
         if (createdAt == null) {
             createdAt = paidAt;
+        }
+        if (createdBy == null) {
+            createdBy = "internal";
         }
     }
 
