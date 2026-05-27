@@ -9,5 +9,5 @@ import java.util.List;
 public interface ExamTypeRepository extends JpaRepository<ExamType, String> {
     List<ExamType> findByStatusNot(ExamTypeStatus status);
     boolean existsByCode(String code);
-    java.util.Optional<ExamType> findByName(String name);
+    java.util.Optional<ExamType> findFirstByName(String name);
 }

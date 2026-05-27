@@ -150,7 +150,7 @@ public class LabOrderService {
         List<TestDetail> testDetails = order.getTestNames().stream()
                 .map(testName -> {
                     // Try to find exam type by name
-                    ExamType examType = examTypeRepository.findByName(testName).orElse(null);
+                    ExamType examType = examTypeRepository.findFirstByName(testName).orElse(null);
                     
                     return TestDetail.builder()
                             .testName(testName)
