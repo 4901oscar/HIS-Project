@@ -38,7 +38,7 @@ public class DoctorAvailabilityEntity {
     @Column(name = "reason", length = 500)
     private String reason;
     
-    @Column(name = "created_at", nullable = false, updatable = false, nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
     @Column(name = "created_by", updatable = false)
