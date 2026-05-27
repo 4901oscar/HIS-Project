@@ -1,4 +1,4 @@
-package com.medflow.billing.service;
+﻿package com.medflow.billing.service;
 
 import com.medflow.billing.dto.request.ChargeRequest;
 import com.medflow.billing.dto.request.CreateInvoiceRequest;
@@ -56,7 +56,7 @@ public class InvoiceService {
         Invoice invoice = new Invoice();
         invoice.setInvoiceNumber(invoiceNumber);
         invoice.setPatientId(request.getPatientId());
-        // REQ-1.8, REQ-5.4, REQ-7.3: Guardar appointmentId si está presente
+        // REQ-1.8, REQ-5.4, REQ-7.3: Guardar appointmentId si estÃ¡ presente
         invoice.setAppointmentId(request.getAppointmentId());
         invoice.setStatus(InvoiceStatus.PENDING);
         invoice.setCreatedAt(LocalDateTime.now());
@@ -65,7 +65,7 @@ public class InvoiceService {
         
         // 3. Create charges and calculate subtotals
         List<Charge> charges = request.getCharges().stream()
-            .map(chargeRequest -> createCharge(chargeRequest, invoice))
+            .map(chargeRequest -> createCharge(chargeRequest, invoice, createdBy))
             .collect(Collectors.toList());
         
         invoice.setCharges(charges);
@@ -115,7 +115,7 @@ public class InvoiceService {
      * @param invoice the parent invoice
      * @return created Charge entity
      */
-    private Charge createCharge(ChargeRequest chargeRequest, Invoice invoice) {
+    private Charge createCharge(ChargeRequest chargeRequest, Invoice invoice, String createdBy) {
         Charge charge = new Charge();
         charge.setInvoice(invoice);
         charge.setType(chargeRequest.getType());
@@ -127,6 +127,7 @@ public class InvoiceService {
         BigDecimal subtotal = chargeRequest.getUnitPrice()
             .multiply(BigDecimal.valueOf(chargeRequest.getQuantity()));
         charge.setSubtotal(subtotal);
+        charge.setCreatedBy(createdBy);
         
         return charge;
     }

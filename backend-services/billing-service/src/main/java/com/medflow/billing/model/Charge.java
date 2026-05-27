@@ -56,6 +56,9 @@ public class Charge {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (createdBy == null) {
+            createdBy = "internal";
+        }
     }
 
     @PreUpdate
