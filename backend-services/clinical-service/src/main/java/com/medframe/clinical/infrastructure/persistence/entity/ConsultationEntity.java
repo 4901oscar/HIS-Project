@@ -49,10 +49,10 @@ public class ConsultationEntity {
     @Column(name = "performed_by", nullable = false, length = 36)
     private String performedBy;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "created_by", length = 36)
+    @Column(name = "created_by", updatable = false, length = 36)
     private String createdBy;
 
     @Column(name = "updated_at")

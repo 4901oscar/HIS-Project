@@ -83,13 +83,13 @@ public class Invoice {
     /**
      * Timestamp when the invoice was created
      */
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, nullable = false)
     private LocalDateTime createdAt;
     
     /**
      * ID of the user who created the invoice
      */
-    @Column(name = "created_by", nullable = false, length = 36)
+    @Column(name = "created_by", updatable = false, nullable = false, length = 36)
     private String createdBy;
     
     /**
