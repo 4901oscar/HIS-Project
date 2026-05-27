@@ -4,11 +4,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.context.request.WebRequest;
 
 /**
- * Manejador global de excepciones para el servicio de facturación.
- * Todos los mensajes de error están en español según BR6.
+ * Manejador global de excepciones para el servicio de facturaciÃ³n.
+ * Todos los mensajes de error estÃ¡n en espaÃ±ol segÃºn BR6.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -59,7 +60,7 @@ public class GlobalExceptionHandler {
         
         ErrorResponse error = new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
-            "Solicitud Inválida",
+            "Solicitud InvÃ¡lida",
             ex.getMessage(),
             request.getDescription(false).replace("uri=", "")
         );
@@ -86,9 +87,31 @@ public class GlobalExceptionHandler {
     }
     
     /**
-     * Maneja excepciones genéricas - 500 Internal Server Error
+     * Maneja excepciones genÃ©ricas - 500 Internal Server Error
      */
-    @ExceptionHandler(Exception.class)
+    
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException ex,
+            WebRequest request) {
+
+        String detail = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+        String message = "Datos duplicados o invalidos.";
+        if (detail != null && detail.contains("code")) {
+            message = "Ya existe un servicio con ese codigo.";
+        } else if (detail != null && detail.contains("invoice_number")) {
+            message = "Ya existe una factura con ese numero.";
+        }
+
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            "Conflicto",
+            message,
+            request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+@ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, 
             WebRequest request) {

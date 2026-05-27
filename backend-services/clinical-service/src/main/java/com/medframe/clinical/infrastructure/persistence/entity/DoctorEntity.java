@@ -39,10 +39,10 @@ public class DoctorEntity {
     @Column(name = "clinic_id", length = 36)
     private String clinicId;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "created_by", length = 36)
+    @Column(name = "created_by", updatable = false, length = 36)
     private String createdBy;
 
     @Column(name = "updated_at")

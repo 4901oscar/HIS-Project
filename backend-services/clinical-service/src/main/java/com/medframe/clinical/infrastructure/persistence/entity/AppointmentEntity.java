@@ -38,10 +38,10 @@ public class AppointmentEntity {
     @Column(length = 500)
     private String notes;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "created_by", nullable = false, length = 36)
+    @Column(name = "created_by", updatable = false, nullable = false, length = 36)
     private String createdBy;
 
     @Column(name = "updated_at")
